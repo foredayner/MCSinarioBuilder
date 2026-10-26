@@ -127,15 +127,25 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
                     throw new RuntimeException(e);
                 }
             });
+            game.getServer().runCommand("gamerule sendCommandFeedback false");
             game.getServer().runCommand("gamemode spectator @a");
-            game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 110) + " " + mid[2] + " 0 90");
+            // High over the sea side, looking down over the whole town.
+            game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 95) + " " + (mid[2] + 110) + " 180 50");
             context.waitTicks(40);
             game.getClientWorld().waitForChunksRender();
+            context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
             context.takeScreenshot("05_town_from_above");
             game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 28) + " " + (mid[2] + 95) + " 180 22");
             context.waitTicks(40);
             game.getClientWorld().waitForChunksRender();
+            context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
             context.takeScreenshot("05b_town_view");
+            // In the street, by the inn.
+            game.getServer().runCommand("tp @a " + (mid[0] - 30) + " " + (mid[1] + 3) + " " + (mid[2] + 10) + " 225 8");
+            context.waitTicks(40);
+            game.getClientWorld().waitForChunksRender();
+            context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
+            context.takeScreenshot("05c_town_street");
             game.getServer().runCommand("gamemode creative @a");
             context.setScreen(HandbookScreen::new);
             context.waitTicks(5);
