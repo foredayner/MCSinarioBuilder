@@ -16,7 +16,7 @@ public final class Archetypes {
     private Archetypes() {
     }
 
-    /** Whether the era is after the 1940s (cars, concrete, electric light everywhere). */
+    /** Whether the era is from the 1960s on (cars, concrete, electric light everywhere). */
     public static boolean modern(String era) {
         String e = era == null ? "" : era.toLowerCase(Locale.ROOT);
         if (e.contains("modern") || e.contains("현대") || e.contains("contemporary")) {
@@ -25,7 +25,7 @@ public final class Archetypes {
         var m = java.util.regex.Pattern.compile("(1[89]|20)(\\d)0").matcher(e);
         if (m.find()) {
             int decade = Integer.parseInt(m.group(1) + m.group(2) + "0");
-            return decade >= 1950;
+            return decade >= 1960;
         }
         return false;
     }

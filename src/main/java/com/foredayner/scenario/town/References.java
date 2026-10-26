@@ -8,7 +8,8 @@ import java.util.Locale;
  * Reference cards: what common buildings of a particular country and era really look like,
  * written from real ones (proportions, materials, signs, what is outside and inside), for places
  * the AI would otherwise build as a generic box. Text only; no pictures are shipped. Used when the
- * sheet's setting is in Korea (modern, or the 1920s-30s colonial period).
+ * sheet's setting is in Korea (modern, the 1920s-30s colonial period, or a mountain village before
+ * the 1960s).
  */
 public final class References {
 
@@ -19,13 +20,37 @@ public final class References {
     public static boolean korean(ScenarioSheet sheet) {
         String s = (sheet.setting + " " + sheet.title + " " + sheet.style + " " + sheet.terrain.notes).toLowerCase(Locale.ROOT);
         for (String w : new String[] { "korea", "한국", "서울", "seoul", "경기", "gyeonggi", "부산", "busan", "인천", "대구", "대전", "광주",
-            "경성", "gyeongseong", "keijo", "조선", "joseon", "chosen" }) {
+            "경성", "gyeongseong", "keijo", "조선", "joseon", "chosen", "강원", "gangwon" }) {
             if (s.contains(w)) {
                 return true;
             }
         }
         return false;
     }
+
+    /**
+     * A Korean mountain village before the 1960s (log and shingle houses, dirt lanes): its houses
+     * follow their own card instead of the general house checklist, variations and yard.
+     */
+    public static boolean mountainVillage(ScenarioSheet sheet) {
+        if (!korean(sheet) || Archetypes.modern(sheet.era)) {
+            return false;
+        }
+        String s = (sheet.setting + " " + sheet.title + " " + sheet.style + " " + sheet.terrain.notes).toLowerCase(Locale.ROOT);
+        return has(s, "산골", "산속", "산간", "두메", "너와", "강원", "gangwon", "mountain village", "mountain hamlet");
+    }
+
+    /** Whether a place of a mountain village is a dwelling (it follows the 너와집 card). */
+    public static boolean villageHouse(ScenarioSheet sheet, ScenarioSheet.Place p) {
+        return mountainVillage(sheet) && ("house".equals(p.kind) || "farm".equals(p.kind) || "mansion".equals(p.kind) || p.filler);
+    }
+
+    /** Around a mountain-village house, inside its lot. */
+    public static final String VILLAGE_YARD = "Around the house, inside the lot: a packed-earth front yard (마당: coarse_dirt and dirt"
+        + " paths, no paving), a low brushwood fence (싸리 울타리: spruce_fence or oak_fence, 1 high) along the lot edge with an opening"
+        + " at the front, a 장독대 (a raised stone platform of cobblestone with 3-6 earthen jars: decorated_pot, flower_pot) beside the"
+        + " house, a stacked firewood pile (나뭇단: spruce_log or oak_log on their side, under a slab roof), and a small separate"
+        + " outhouse (변소: a 2x2 plank hut with a door) in a back corner. No mailbox, no lamp post, no garden flowers in rows.";
 
     private static boolean has(String text, String... words) {
         for (String w : words) {
@@ -43,7 +68,7 @@ public final class References {
         }
         String t = (p.kind + " " + p.name + " " + p.notes).toLowerCase(Locale.ROOT);
         boolean modern = Archetypes.modern(sheet.era);
-        String card = modern ? modernKorea(p.kind, t) : colonialKorea(p.kind, t);
+        String card = villageHouse(sheet, p) ? NEOWAJIP : modern ? modernKorea(p.kind, t) : colonialKorea(p.kind, t);
         return card.isEmpty() ? "" : "REFERENCE (how such a building really looks; follow it, scaled to the site):\n" + card;
     }
 
@@ -136,6 +161,34 @@ public final class References {
         return "";
     }
 
+    /** 너와집: the log and shingle houses of the Gangwon mountains (1950s and before). */
+    private static final String NEOWAJIP = """
+        Neowajip (너와집), the mountain house of Gangwon-do: a single-storey house, nearly square in plan (a "double-row"
+        겹집 plan: rooms on both sides of the ridge, under one roof), about 9-11 wide and 8-10 deep on a 15 site.
+        - Base: a low stone footing (cobblestone or mossy_cobblestone, 1 block) the whole floor stands on; one stone
+          step (cobblestone_stairs or a stone slab) in front of every door, so nobody climbs a full block.
+        - Walls: log-cabin walls of stacked logs laid on their side (stripped_spruce_log or spruce_log, axis along the
+          wall) with mud plaster in the gaps on some courses (packed_mud, mud_bricks, light_gray_terracotta). Always full
+          blocks; never slabs or stairs as wall.
+        - Roof: a big low hip-and-gable roof of wooden shingles (너와): dark_oak or spruce stairs and slabs, weathered grey
+          in places (some stripped_dark_oak or mossy stone pieces), with loose fist-sized stones on it to hold the shingles
+          (a few cobblestone_slab or stone_button on the roof slopes), a small smoke hole under each gable end (까치구멍:
+          a 1x1 opening or a spruce_trapdoor). Eaves overhang 1 block. The underside of the eaves is at least 4 blocks
+          above the yard where people walk in, so the doorway never feels cramped.
+        - Front: a wooden-floored veranda (마루: spruce_planks floor, 1 block above the yard, 2-3 wide) under the eaves,
+          reached by the stone step; sliding paper doors and windows: spruce_door or birch_door, windows of
+          white_stained_glass_pane or birch_trapdoor lattice, small (1 wide, 1 high) and few. No glass windows, no shutters.
+        - Inside (rooms at least 4x4, ceiling 3 high, a 2-wide passage where you walk): a kitchen (정지/부엌) with an earth
+          floor a step lower than the rooms (coarse_dirt or packed_mud), 1-2 fire holes (아궁이: a furnace or campfire
+          set into a stone block wall) with iron pots on them (cauldron), a shelf of bowls (barrel, decorated_pot);
+          an earth-floored entry hall (봉당); 안방 and 웃방 with warm yellow oiled-paper floors (orange or yellow
+          terracotta or birch_planks) - bedding folded in a corner (white or light_gray carpet and wool), never bed
+          blocks; a low wooden chest (chest or barrel) and a small low table (a spruce_trapdoor on top of 1 block); a
+          corner fire nook for light (코클: a small stone niche with a lantern or candle). Some houses keep a cow stall
+          (외양간) inside one corner under the same roof (hay_block, fence). Doors between rooms are real doors.
+        - Light: no electricity. Lanterns, candles and fire only.
+        """;
+
     private static String colonialKorea(String kind, String t) {
         if ("police".equals(kind) || has(t, "주재소", "경찰", "police", "헌병")) {
             return """
@@ -151,6 +204,9 @@ public final class References {
                 over the entrance, pointed arched windows, buttresses, a dark slate roof; some country churches are
                 hanok-style halls with tiled roofs and a small bell tower beside them.
                 """;
+        }
+        if (has(t, "너와", "neowa", "귀틀", "산골", "mountain")) {
+            return NEOWAJIP;
         }
         if ("house".equals(kind) || "inn".equals(kind) || has(t, "한옥", "hanok", "주막", "여관")) {
             return """

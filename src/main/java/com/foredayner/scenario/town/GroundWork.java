@@ -185,6 +185,13 @@ public final class GroundWork {
                         soil = Blocks.STONE.getDefaultState();
                     }
                     case "square" -> top = paving(x, z);
+                    case "pyeongsang", "yard" -> {
+                        // The village's packed-earth meeting ground.
+                        int n = GroundPlan.noise(x, z, 42);
+                        top = n < 45 ? Blocks.COARSE_DIRT.getDefaultState() : n < 75 ? Blocks.DIRT_PATH.getDefaultState()
+                            : n < 90 ? Blocks.DIRT.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
+                    }
+                    case "pine" -> top = GroundPlan.noise(x, z, 43) < 40 ? Blocks.PODZOL.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
                     default -> top = Blocks.GRASS_BLOCK.getDefaultState();
                 }
             }
@@ -310,6 +317,13 @@ public final class GroundWork {
             } else {
                 grave(x, z);
             }
+        } else if (cell == GroundPlan.Cell.OUTDOOR && "pine".equals(kind)) {
+            int[] m = plan.middles.get(plan.outdoor[x][z]);
+            if (m != null && m[0] == x && m[1] == z) {
+                bigPine(x, z);
+            } else if (GroundPlan.noise(x, z, 44) < 8) {
+                setIfAir(x, y0, z, Blocks.FERN.getDefaultState());
+            }
         } else if (cell == GroundPlan.Cell.OUTDOOR && "cave".equals(kind)) {
             // Boulders scattered over the rocks.
             int n = GroundPlan.noise(x, z, 41);
@@ -327,6 +341,66 @@ public final class GroundWork {
                 if ((x + z) % 6 == 0) {
                     set(x, y0 + 1, z, Blocks.SPRUCE_FENCE.getDefaultState());
                     set(x, y0 + 2, z, Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, false));
+                }
+            }
+        }
+    }
+
+    /**
+     * An old pine, the village's landmark: a thick leaning trunk with branches, flat layered crowns of
+     * needles and small bells hanging from the lowest boughs.
+     */
+    private void bigPine(int x, int z) {
+        BlockState log = Blocks.SPRUCE_LOG.getDefaultState();
+        BlockState wood = Blocks.SPRUCE_WOOD.getDefaultState();
+        BlockState leaves = Blocks.SPRUCE_LEAVES.getDefaultState().with(LeavesBlock.PERSISTENT, true);
+        int height = 15;
+        int tx = x, tz = z;
+        for (int y = 0; y < height; y++) {
+            if (y == 6 || y == 11) {
+                tx++; // the trunk leans a little
+            }
+            set(tx, y0 + y, tz, log);
+            if (y < 3) {
+                set(tx + 1, y0 + y, tz, wood);
+                set(tx, y0 + y, tz + 1, wood);
+                if (y == 0) {
+                    set(tx - 1, y0, tz, Blocks.SPRUCE_WOOD.getDefaultState()); // roots
+                    set(tx, y0, tz - 1, Blocks.SPRUCE_WOOD.getDefaultState());
+                }
+            }
+        }
+        // Crowns: flat discs on branches, the lowest widest.
+        int[][] crowns = { { 7, -4, 1, 4 }, { 9, 3, -2, 4 }, { 11, -2, -3, 3 }, { 12, 3, 3, 3 }, { 14, 0, 0, 3 }, { 16, 1, 0, 2 } };
+        int[] trunkX = new int[height + 2];
+        for (int y = 0; y < trunkX.length; y++) {
+            trunkX[y] = x + (y >= 6 ? 1 : 0) + (y >= 11 ? 1 : 0);
+        }
+        for (int[] c : crowns) {
+            int cy = y0 + c[0], cx = trunkX[Math.min(c[0], height - 1)] + c[1], cz = z + c[2], r = c[3];
+            // The branch out to it.
+            int bx = trunkX[Math.min(c[0], height - 1)], steps = Math.max(Math.abs(c[1]), Math.abs(c[2]));
+            for (int k = 1; k <= steps; k++) {
+                set(bx + c[1] * k / steps, cy - 1, z + c[2] * k / steps, wood);
+            }
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    double d = Math.hypot(dx, dz);
+                    if (d <= r + 0.3 && GroundPlan.noise(cx + dx, cz + dz, 45 + c[0]) < 92) {
+                        setIfAir(cx + dx, cy, cz + dz, leaves);
+                        if (d <= r - 1.5) {
+                            setIfAir(cx + dx, cy + 1, cz + dz, leaves);
+                        }
+                    }
+                }
+            }
+            // Bells under the two lowest crowns.
+            if (c[0] <= 9) {
+                for (int[] b : new int[][] { { r - 1, 0 }, { -(r - 1), 1 }, { 0, r - 1 } }) {
+                    if (get(cx + b[0], cy - 1, cz + b[1]).isAir()) {
+                        set(cx + b[0], cy - 1, cz + b[1], Blocks.BELL.getDefaultState()
+                            .with(net.minecraft.block.BellBlock.ATTACHMENT, net.minecraft.block.enums.Attachment.CEILING));
+                    }
                 }
             }
         }

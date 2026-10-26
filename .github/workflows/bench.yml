@@ -10,7 +10,7 @@ on:
         description: Model id for the guide and the buildings
         default: claude-haiku-5-5
       sheet:
-        description: Test sheet (greymouth = 1920s harbour town, modern_korea = modern Korean street, e2e = the whole way from the scenario text)
+        description: Test sheet (greymouth = 1920s harbour town, modern_korea = modern Korean street, meigol = 1950s mountain village from a traced map (world only, no photos), e2e = the whole way from the scenario text)
         default: greymouth
       places:
         description: Comma-separated place ids (empty = every place of the sheet)
@@ -70,6 +70,9 @@ jobs:
           SCN_BENCH_SHEET: ${{ github.event.inputs.sheet || 'greymouth' }}
           SCN_BENCH_E2E: ${{ (github.event.inputs.sheet || 'greymouth') == 'e2e' && 'greymouth' || '' }}
           SCN_BENCH_PLACES: ${{ github.event.inputs.places || '' }}
+          SCN_BENCH_PARALLEL: "8"
+          SCN_BENCH_PHOTOS: ${{ (github.event.inputs.sheet || 'greymouth') == 'meigol' && '0' || '1' }}
+          SCN_BENCH_WORLD: ${{ (github.event.inputs.sheet || 'greymouth') == 'meigol' && '1' || '0' }}
           SCN_BENCH_REF: ${{ (github.event.inputs.sheet || 'greymouth') == 'modern_korea' && 'police=ref_police.jpg' || '' }}
         with:
           run: |

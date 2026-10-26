@@ -92,17 +92,21 @@ public final class BuildPrompts {
                 sb.append('\n').append(reference.strip());
             }
         }
-        String checklist = Archetypes.checklist(p.kind, sheet.era);
+        // A mountain-village house follows its card, not the general (western) house checklist and variations.
+        boolean village = References.villageHouse(sheet, p);
+        String checklist = village ? "" : Archetypes.checklist(p.kind, sheet.era);
         if (!checklist.isEmpty()) {
             sb.append('\n').append(checklist);
         }
-        sb.append('\n').append(Archetypes.FACADE);
-        String variant = Archetypes.variant(sheet, p);
+        if (!village) {
+            sb.append('\n').append(Archetypes.FACADE);
+        }
+        String variant = village ? "" : Archetypes.variant(sheet, p);
         if (!variant.isEmpty()) {
             sb.append('\n').append(variant);
         }
         sb.append('\n').append(Archetypes.condition(p.condition));
-        sb.append('\n').append(Archetypes.yard(p));
+        sb.append('\n').append(village ? References.VILLAGE_YARD : Archetypes.yard(p));
         if (!p.scenes.isEmpty()) {
             sb.append("\nScenes that happen here (leave room for the investigators): ").append(String.join("; ", p.scenes)).append('.');
         }
@@ -128,6 +132,8 @@ public final class BuildPrompts {
             case "square" -> "a stone fountain for a town square";
             case "beach" -> "an overturned wooden rowing boat with oars on the sand";
             case "cave" -> "a cave mouth: a low mound of grey stone with a dark opening, moss and hanging roots over it";
+            case "pyeongsang" -> "a Korean 평상: a low, wide wooden platform (about 4x3, 1 block high: spruce or oak slabs on fence"
+                + " posts) where villagers sit, with a woven straw mat on it and a small low wooden table";
             default -> "a fitting centrepiece for " + p.kind + " \"" + p.name + "\"";
         };
         return what + " (" + sheet.era + (sheet.mood.isBlank() ? "" : ", " + sheet.mood) + ")" + (p.notes.isBlank() ? "" : ". " + p.notes);

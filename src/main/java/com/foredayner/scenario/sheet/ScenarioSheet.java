@@ -66,6 +66,8 @@ public final class ScenarioSheet {
         public String refImage = "";
         /** What the AI saw in that picture, as building directions (made when the picture is set). */
         public String refDescription = "";
+        /** Built from the same design as this other place (rows of identical houses): one AI design, placed again. */
+        public String sameAs = "";
     }
 
     public static final class Room {
@@ -229,6 +231,7 @@ public final class ScenarioSheet {
             if (p.refDescription == null) {
                 p.refDescription = "";
             }
+            p.sameAs = p.sameAs == null ? "" : slug(p.sameAs);
             if (p.rooms == null) {
                 p.rooms = new ArrayList<>();
             }
@@ -237,6 +240,12 @@ public final class ScenarioSheet {
             }
             if (p.name == null || p.name.isBlank()) {
                 p.name = p.id;
+            }
+        }
+        for (Place p : places) {
+            if (!p.sameAs.isEmpty() && (p.sameAs.equals(p.id) || !ids.contains(p.sameAs))) {
+                problems.add("place " + p.id + " is the same as '" + p.sameAs + "', which is not another place");
+                p.sameAs = "";
             }
         }
         for (Npc c : npcs) {

@@ -99,6 +99,10 @@ public class ScenarioBench implements FabricClientGameTest {
         config.openAiWebSearchEnabled = false;
         config.autoRetries = 2;
         config.ticksPerBlock = 1;
+        // How many designs at once, whether to photograph each building, whether to keep the world.
+        BuildService.parallel = Math.max(1, Integer.parseInt(System.getenv().getOrDefault("SCN_BENCH_PARALLEL", "3").trim()));
+        boolean photos = !"0".equals(System.getenv().getOrDefault("SCN_BENCH_PHOTOS", "1").trim());
+        boolean keepWorld = "1".equals(System.getenv().getOrDefault("SCN_BENCH_WORLD", "0").trim());
         // End to end (SCN_BENCH_E2E = a scenario text in the test resources): the AI reads the scenario
         // into a sheet, lays out the town, writes the guide and builds it; nothing is hand-made.
         String e2e = System.getenv().getOrDefault("SCN_BENCH_E2E", "").trim();
@@ -117,7 +121,19 @@ public class ScenarioBench implements FabricClientGameTest {
             sheet.npcs.removeIf(n -> !wanted.contains(n.place));
             sheet.clues.removeIf(c -> !wanted.contains(c.place));
             sheet.links.removeIf(l -> !wanted.contains(l.from) || !wanted.contains(l.to));
-            layout = TownLayout.auto(sheet);
+            sheet.places.forEach(p -> {
+                if (!wanted.contains(p.sameAs)) {
+                    p.sameAs = ""; // its model is not being built: design it on its own
+                }
+            });
+            // A hand-made layout (traced from the scenario's map) when the sheet has one, else the automatic one.
+            if (ScenarioBench.class.getResource("/scenarios/" + sheetName + ".layout.json") != null) {
+                layout = TownLayout.fromJson(ScenarioGameTests.resource("/scenarios/" + sheetName + ".layout.json"));
+                layout.sites.removeIf(s -> !wanted.contains(s.id));
+                write("layout_check.txt", String.join("\n", layout.check(sheet)));
+            } else {
+                layout = TownLayout.auto(sheet);
+            }
             write("layout.json", layout.toJson());
         }
         TownLayout madeLayout = layout;
@@ -271,7 +287,7 @@ public class ScenarioBench implements FabricClientGameTest {
                 return ok;
             });
             for (TownLayout.Site s : finalLayout.sites) {
-                if (s.outdoor || !built.containsKey(s.id)) {
+                if (!photos || s.outdoor || !built.containsKey(s.id)) {
                     continue;
                 }
                 // Tall buildings (towers, lighthouses) are framed by their height, not their footprint.
@@ -334,7 +350,7 @@ public class ScenarioBench implements FabricClientGameTest {
             context.takeScreenshot("bench_town");
             context.runOnClient(client -> client.options.hudHidden = false);
             game.getServer().runCommand("gamemode creative @a");
-            if (endToEnd) {
+            if (endToEnd || keepWorld) {
                 // The world itself, to open in single player (blocks only; no mod needed to look at it).
                 game.getServer().runCommand("tp @a " + (origin[0] + 80) + " " + (origin[1] + 2) + " " + (origin[2] + 80));
                 game.getServer().runCommand("save-all flush");

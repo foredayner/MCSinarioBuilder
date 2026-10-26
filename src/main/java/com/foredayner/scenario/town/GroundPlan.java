@@ -28,6 +28,8 @@ public final class GroundPlan {
     public final Cell[][] under;
     /** The middle line of main roads (5 wide or more), for road markings. */
     public final boolean[][] centre;
+    /** The middle column of each outdoor place, by id. */
+    public final java.util.Map<String, int[]> middles = new java.util.HashMap<>();
 
     private GroundPlan(int size) {
         this.size = size;
@@ -78,6 +80,9 @@ public final class GroundPlan {
         }
         for (TownLayout.Site s : layout.sites) {
             ScenarioSheet.Place p = sheet.place(s.id);
+            if (s.outdoor) {
+                g.middles.put(s.id, new int[] { s.x + s.w / 2, s.z + s.d / 2 });
+            }
             for (int x = Math.max(0, s.x); x < Math.min(g.size, s.x + s.w); x++) {
                 for (int z = Math.max(0, s.z); z < Math.min(g.size, s.z + s.d); z++) {
                     if (s.outdoor) {

@@ -1,0 +1,378 @@
+{
+  "title": "흡혈귀곡 - 메이골",
+  "era": "1950s (early 1950s)",
+  "setting": "메이골, a small isolated mountain village (산골 마을) deep in the mountains of Gangwon-do, Korea",
+  "mood": "a quiet, isolated mountain village with an uneasy stillness at dusk",
+  "timeOfDay": "dusk",
+  "weather": "clear",
+  "style": "1950년대 강원도 산골 너와집 마을: 통나무 귀틀벽과 흙벽, 돌로 눌러 둔 나무 너와 지붕, 낮은 돌 기단과 툇마루, 흙마당과 싸리 울타리, 장독대와 나뭇단. 전기 없음(등잔, 호롱불, 아궁이 불). 비포장 흙길, 둘레는 울창한 소나무 숲",
+  "styleGuide": "",
+  "places": [
+    {
+      "id": "shin_house",
+      "name": "신상헌의 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, neat and tidy; a young man lives here alone",
+      "filler": false,
+      "outdoor": false,
+      "condition": "kept",
+      "sameAs": ""
+    },
+    {
+      "id": "noh_house",
+      "name": "노은심의 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        },
+        {
+          "name": "작은 방",
+          "purpose": "아이 이부자리와 헝겊 인형"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, a young mother and her small daughter's home; a child's things about",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": ""
+    },
+    {
+      "id": "kim_house",
+      "name": "김종택의 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, a young man lived here alone; plain and sparsely furnished",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": ""
+    },
+    {
+      "id": "jang_house",
+      "name": "장길석·장태구의 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "마당",
+          "purpose": "울퉁불퉁한 흙마당, 작은 편; 집 옆에 붙은 바깥 변소 하나, 변소 옆에 마대 자루 두 개"
+        },
+        {
+          "name": "거실",
+          "purpose": "연한 황토색 마루가 깔린 넓은 방, 부엌과 이어짐, 간단한 세간살이"
+        },
+        {
+          "name": "부엌",
+          "purpose": "불 꺼진 아궁이 두 개와 솥, 벽에 걸린 식기와 선반, 구석에 농기구 두어 개, 손이 겨우 닿는 높은 선반의 작은 사기 단지들"
+        },
+        {
+          "name": "웃방",
+          "purpose": "침구를 방 모서리에 가지런히 개어 둠, 짙은 갈색 3단 서랍장, 여닫이 옷장, 책이 꽂힌 책상"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, a father and his young son; plan from the scenario: outhouse at the back-left corner, the kitchen on the left, the upper room at the back right, the big living room in front of it, the yard across the front",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": ""
+    },
+    {
+      "id": "bae_house",
+      "name": "배길옥의 집",
+      "kind": "house",
+      "size": "L",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "대청마루",
+          "purpose": "집 앞을 가로지르는 가장 넓은 마루, 마을 사람들이 모여 앉는 곳"
+        },
+        {
+          "name": "안방",
+          "purpose": "어르신의 방, 반닫이와 이불장, 등잔"
+        },
+        {
+          "name": "아이 방",
+          "purpose": "작은 여자아이의 이부자리"
+        },
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 큰 아궁이와 가마솥, 찬장, 물독"
+        },
+        {
+          "name": "광",
+          "purpose": "곡식 자루와 항아리, 농기구"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, the biggest 너와집 of the village, home of the village elder (an old woman), with a wide front 마루 she stands on; well kept",
+      "filler": false,
+      "outdoor": false,
+      "condition": "kept",
+      "sameAs": ""
+    },
+    {
+      "id": "moon_house",
+      "name": "문창수·천향자의 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, a married couple's home",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": ""
+    },
+    {
+      "id": "house_w1",
+      "name": "마을 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, an ordinary villager's home; nothing in it matters to the story",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": ""
+    },
+    {
+      "id": "house_e1",
+      "name": "마을 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, an ordinary villager's home; nothing in it matters to the story",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": "house_w1"
+    },
+    {
+      "id": "house_e2",
+      "name": "마을 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, an ordinary villager's home; nothing in it matters to the story",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": "house_w1"
+    },
+    {
+      "id": "house_e3",
+      "name": "마을 집",
+      "kind": "house",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "정지(부엌)",
+          "purpose": "흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독"
+        },
+        {
+          "name": "안방",
+          "purpose": "온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔"
+        },
+        {
+          "name": "웃방",
+          "purpose": "작은 방, 반닫이와 횃대에 걸린 옷"
+        },
+        {
+          "name": "마루",
+          "purpose": "앞쪽 툇마루, 짚신과 바구니"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, an ordinary villager's home; nothing in it matters to the story",
+      "filler": false,
+      "outdoor": false,
+      "condition": "worn",
+      "sameAs": "house_w1"
+    },
+    {
+      "id": "pyeongsang",
+      "name": "평상",
+      "kind": "pyeongsang",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "rooms": [],
+      "scenes": [],
+      "notes": "the wooden platform in the middle of the village where villagers gather and talk",
+      "filler": false,
+      "outdoor": true,
+      "condition": "worn",
+      "sameAs": ""
+    },
+    {
+      "id": "pine",
+      "name": "소나무",
+      "kind": "pine",
+      "size": "S",
+      "floors": 1,
+      "basement": false,
+      "rooms": [],
+      "scenes": [],
+      "notes": "a big old pine just left of the village entrance; small bells hang from its boughs",
+      "filler": false,
+      "outdoor": true,
+      "condition": "kept",
+      "sameAs": ""
+    }
+  ],
+  "npcs": [],
+  "clues": [],
+  "links": [],
+  "terrain": {
+    "coast": "none",
+    "woods": "none",
+    "notes": "a steep mountain hollow surrounded by dense pine forest; a steep path in from the south (the village entrance) and an overgrown back path out to the north-west"
+  }
+}

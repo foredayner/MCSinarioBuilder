@@ -200,6 +200,10 @@ public final class BuildService {
         final Deque<String> waiting = new ArrayDeque<>();
         int designing;
         final Map<String, AiBuildApi.Design> ready = new LinkedHashMap<>();
+        /** Designs that came back well, by place (identical houses reuse them). */
+        final Map<String, AiBuildApi.Design> designs = new HashMap<>();
+        /** Places waiting for the design of the place they are the same as. */
+        final Deque<String> later = new ArrayDeque<>();
         final Map<String, UUID> placing = new HashMap<>();
         final Set<Long> forced = new HashSet<>();
         boolean cancelled;
@@ -219,7 +223,7 @@ public final class BuildService {
 
         boolean finished() {
             return capture == null && restore == null && clears.isEmpty() && (ground == null || ground.done()) && waiting.isEmpty()
-                && designing == 0 && placing.isEmpty() && (ready.isEmpty() || cancelled);
+                && later.isEmpty() && designing == 0 && placing.isEmpty() && (ready.isEmpty() || cancelled);
         }
     }
 
@@ -411,6 +415,10 @@ public final class BuildService {
             job.state.place(p).state = "stopped";
         }
         job.waiting.clear();
+        for (String p : job.later) {
+            job.state.place(p).state = "stopped";
+        }
+        job.later.clear();
         for (var e : job.placing.entrySet()) {
             BuildTaskQueue.clear(e.getValue());
             job.state.place(e.getKey()).state = "stopped";
@@ -557,6 +565,7 @@ public final class BuildService {
                 job.state.message = "오류: " + e.getMessage();
                 job.cancelled = true;
                 job.waiting.clear();
+                job.later.clear();
                 job.ready.clear();
                 job.capture = null;
                 job.restore = null;
@@ -611,6 +620,9 @@ public final class BuildService {
                 job.dirty = true;
             }
         }
+        for (int n = job.later.size(); n > 0 && !job.cancelled; n--) {
+            design(job, job.later.poll()); // goes back on the list while its model is still being designed
+        }
         while (!job.cancelled && job.designing < parallel && !job.waiting.isEmpty()) {
             design(job, job.waiting.poll());
         }
@@ -640,6 +652,35 @@ public final class BuildService {
             bp.error = "배치도에 자리가 없어요";
             job.dirty = true;
             return;
+        }
+        if (s.outdoor && "pine".equals(p.kind)) {
+            // The ground work grows the tree itself; nothing to design.
+            bp.state = "done";
+            bp.error = "";
+            bp.min = new int[] { job.origin.getX() + s.x, job.origin.getY(), job.origin.getZ() + s.z };
+            bp.max = new int[] { job.origin.getX() + s.x + s.w - 1, job.origin.getY() + 18, job.origin.getZ() + s.z + s.d - 1 };
+            job.dirty = true;
+            return;
+        }
+        ScenarioSheet.Place model0 = p.sameAs.isEmpty() ? null : job.sheet.place(p.sameAs);
+        if (model0 != null && !s.outdoor && !model0.outdoor) {
+            // The same house as another place: wait for that design and place it again here.
+            AiBuildApi.Design same = job.designs.get(model0.id);
+            String other = job.state.place(model0.id).state;
+            boolean pending = "waiting".equals(other) || "designing".equals(other);
+            if (same != null) {
+                bp.state = "placing";
+                bp.error = "";
+                job.ready.put(placeId, same);
+                job.dirty = true;
+                return;
+            }
+            if (pending) {
+                bp.state = "waiting";
+                job.later.add(placeId);
+                return;
+            }
+            // Its model failed or was built before this run: design this one on its own.
         }
         bp.state = "designing";
         bp.error = "";
@@ -681,6 +722,7 @@ public final class BuildService {
                 return;
             }
             bp.state = "placing";
+            job.designs.put(placeId, design);
             job.ready.put(placeId, design);
         }));
     }

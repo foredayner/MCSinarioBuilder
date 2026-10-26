@@ -24,6 +24,21 @@ class BuildPromptsTest {
         assertTrue(Archetypes.modern("modern"));
         assertTrue(Archetypes.modern("1980년대"));
         assertTrue(Archetypes.modern("현대"));
+        assertFalse(Archetypes.modern("1950s (early 1950s)"), "a 1950s village has no asphalt or street lights");
+    }
+
+    @Test
+    void aMountainVillageBuildsLogAndShingleHousesNotWesternOnes() throws Exception {
+        ScenarioSheet sheet = ScenarioSheet.fromJson(Files.readString(Path.of("src/gametest/resources/scenarios/meigol.sheet.json")));
+        assertEquals(List.of(), sheet.normalize());
+        assertTrue(References.mountainVillage(sheet));
+        String extra = BuildPrompts.extra(sheet, sheet.place("jang_house"), 15);
+        assertTrue(extra.contains("너와집"), extra);
+        assertTrue(extra.contains("장독대"), extra);
+        assertFalse(extra.contains("shutters (trapdoors)"), "no western facade rules: " + extra);
+        assertFalse(extra.contains("mailbox by the path"), extra);
+        assertEquals("house_w1", sheet.place("house_e2").sameAs);
+        assertTrue(BuildPrompts.prop(sheet, sheet.place("pyeongsang")).contains("평상"));
     }
 
     @Test
@@ -88,5 +103,16 @@ class BuildPromptsTest {
         }
         assertTrue(seen.size() >= 5, "a street of houses is not all alike: " + seen.size());
         assertEquals("", Archetypes.variant(sheet, sheet.place("church")), "landmarks are not varied");
+    }
+
+    @Test
+    void sameAsMustNameAnotherPlace() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        sheet.places.get(0).sameAs = sheet.places.get(0).id;
+        sheet.places.get(1).sameAs = "nowhere";
+        List<String> problems = sheet.normalize();
+        assertEquals("", sheet.places.get(0).sameAs);
+        assertEquals("", sheet.places.get(1).sameAs);
+        assertEquals(2L, problems.stream().filter(p -> p.contains("same as")).count(), problems.toString());
     }
 }
