@@ -1,5 +1,6 @@
 package com.foredayner.scenario.town;
 
+import com.foredayner.scenario.sheet.Period;
 import com.foredayner.scenario.sheet.ScenarioSheet;
 import org.junit.jupiter.api.Test;
 
@@ -84,7 +85,7 @@ class BuildPromptsTest {
         String withPhoto = BuildPrompts.extra(korea, korea.place("police"), 15);
         assertTrue(withPhoto.contains("PHOTO REFERENCE") && withPhoto.contains("navy band"), "the keeper's photo is followed");
         assertFalse(withPhoto.contains("REFERENCE (how such"), "and replaces the general card");
-        korea.era = "1920s";
+        korea.period = Period.EAST_MODERN;
         assertTrue(References.card(korea, korea.place("church")).contains("Gothic"), "colonial-era cards for the 1920s");
     }
 
@@ -103,6 +104,61 @@ class BuildPromptsTest {
         }
         assertTrue(seen.size() >= 5, "a street of houses is not all alike: " + seen.size());
         assertEquals("", Archetypes.variant(sheet, sheet.place("church")), "landmarks are not varied");
+    }
+
+    @Test
+    void thePeriodIsGuessedForSheetsWithoutOne() {
+        assertEquals(Period.WEST_MODERN, Period.guess("1920s", "Greymouth, a harbour town in Massachusetts", "", ""));
+        assertEquals(Period.WEST_CONTEMPORARY, Period.guess("modern (2020s)", "a suburb of Ohio", "", ""));
+        assertEquals(Period.WEST_MEDIEVAL, Period.guess("1340s", "a village in Bavaria", "", ""));
+        assertEquals(Period.EAST_MEDIEVAL, Period.guess("조선 후기", "a village in Joseon", "", ""));
+        assertEquals(Period.EAST_MODERN, Period.guess("1930s", "경성, Korea", "", ""));
+        assertEquals(Period.EAST_POSTWAR, Period.guess("1950s", "a mountain village in Gangwon-do, Korea", "", ""));
+        assertEquals(Period.EAST_POSTWAR, Period.guess("1960년대", "서울 변두리", "", ""));
+        assertEquals(Period.EAST_CONTEMPORARY, Period.guess("modern (2020s)", "Gyeonggi-do, South Korea", "", ""));
+        assertEquals(Period.OTHER, Period.guess("unknown", "a fantasy kingdom of elves", "", ""));
+        ScenarioSheet sheet = new ScenarioSheet();
+        sheet.era = "1920s";
+        sheet.period = "nonsense";
+        sheet.normalize();
+        assertEquals(Period.WEST_MODERN, sheet.period, "an unknown period is replaced by a guess");
+    }
+
+    @Test
+    void eachPeriodHasItsOwnChecklistAndOtherHasNone() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        ScenarioSheet.Place church = sheet.place("church");
+        java.util.Map<String, String> seen = new java.util.HashMap<>();
+        for (String period : Period.ALL) {
+            sheet.period = period;
+            String extra = BuildPrompts.extra(sheet, church, 21);
+            if (Period.OTHER.equals(period)) {
+                assertFalse(extra.contains("MUST HAVE"), "no checklist: " + extra);
+                assertFalse(extra.contains("FACADE RULES"), extra);
+                assertFalse(extra.contains("Around the building"), extra);
+                assertTrue(extra.contains("CONDITION"), "the condition still shows: " + extra);
+            } else {
+                assertTrue(extra.contains("MUST HAVE"), period + ": " + extra);
+                assertTrue(extra.contains("FACADE RULES"), period + ": " + extra);
+                seen.put(Archetypes.checklist("church", period), period);
+            }
+        }
+        // Contemporary west and east share the modern checklist; the other five differ.
+        assertEquals(6, seen.size(), seen.toString());
+        assertTrue(Archetypes.checklist("church", Period.EAST_MEDIEVAL).contains("temple"));
+        assertTrue(Archetypes.checklist("house", Period.EAST_POSTWAR).contains("slate"));
+        assertTrue(Archetypes.checklist("house", Period.WEST_MEDIEVAL).contains("timber-framed"));
+        assertFalse(Archetypes.checklist("house", Period.EAST_MEDIEVAL).contains("mailbox"));
+        assertTrue(Archetypes.furniture("안방", Period.EAST_POSTWAR).contains("no bed blocks"));
+        assertTrue(Archetypes.furniture("bedroom", Period.WEST_MODERN).contains("a bed"));
+        assertTrue(Archetypes.yard(church, Period.EAST_MEDIEVAL).contains("jar terrace"));
+        ScenarioSheet.Place graves = new ScenarioSheet.Place();
+        graves.kind = "cemetery";
+        graves.outdoor = true;
+        sheet.period = Period.EAST_MEDIEVAL;
+        assertTrue(BuildPrompts.prop(sheet, graves).contains("mound"), "eastern graves are mounds");
+        sheet.period = Period.WEST_MODERN;
+        assertTrue(BuildPrompts.prop(sheet, graves).contains("angel"));
     }
 
     @Test

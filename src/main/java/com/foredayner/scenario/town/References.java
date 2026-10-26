@@ -1,5 +1,6 @@
 package com.foredayner.scenario.town;
 
+import com.foredayner.scenario.sheet.Period;
 import com.foredayner.scenario.sheet.ScenarioSheet;
 
 import java.util.Locale;
@@ -16,16 +17,19 @@ public final class References {
     private References() {
     }
 
-    /** Whether the scenario is set in Korea. */
+    /**
+     * Whether the cards fit: an East Asian period, not set in Japan or China (the cards are written
+     * from Korean buildings).
+     */
     public static boolean korean(ScenarioSheet sheet) {
-        String s = (sheet.setting + " " + sheet.title + " " + sheet.style + " " + sheet.terrain.notes).toLowerCase(Locale.ROOT);
-        for (String w : new String[] { "korea", "한국", "서울", "seoul", "경기", "gyeonggi", "부산", "busan", "인천", "대구", "대전", "광주",
-            "경성", "gyeongseong", "keijo", "조선", "joseon", "chosen", "강원", "gangwon" }) {
-            if (s.contains(w)) {
-                return true;
-            }
+        if (!Period.east(sheet.period())) {
+            return false;
         }
-        return false;
+        String s = (sheet.setting + " " + sheet.title + " " + sheet.style + " " + sheet.terrain.notes).toLowerCase(Locale.ROOT);
+        boolean elsewhere = has(s, "japan", "일본", "tokyo", "도쿄", "kyoto", "교토", "osaka", "오사카", "china", "중국", "beijing", "베이징",
+            "shanghai", "상하이", "taiwan", "대만", "hong kong", "홍콩");
+        boolean korea = has(s, "korea", "한국", "조선", "joseon", "경성", "서울", "seoul");
+        return korea || !elsewhere;
     }
 
     /**
@@ -33,7 +37,7 @@ public final class References {
      * follow their own card instead of the general house checklist, variations and yard.
      */
     public static boolean mountainVillage(ScenarioSheet sheet) {
-        if (!korean(sheet) || Archetypes.modern(sheet.era)) {
+        if (!korean(sheet) || Period.contemporary(sheet.period())) {
             return false;
         }
         String s = (sheet.setting + " " + sheet.title + " " + sheet.style + " " + sheet.terrain.notes).toLowerCase(Locale.ROOT);
@@ -67,8 +71,15 @@ public final class References {
             return "";
         }
         String t = (p.kind + " " + p.name + " " + p.notes).toLowerCase(Locale.ROOT);
-        boolean modern = Archetypes.modern(sheet.era);
-        String card = villageHouse(sheet, p) ? NEOWAJIP : modern ? modernKorea(p.kind, t) : colonialKorea(p.kind, t);
+        String card = villageHouse(sheet, p) ? NEOWAJIP : switch (sheet.period()) {
+            case Period.EAST_CONTEMPORARY -> modernKorea(p.kind, t);
+            case Period.EAST_MODERN -> colonialKorea(p.kind, t);
+            // Joseon and before: the hanok card for homes and inns; the checklist covers the rest.
+            case Period.EAST_MEDIEVAL -> "house".equals(p.kind) || "inn".equals(p.kind) || "farm".equals(p.kind) || p.filler
+                ? colonialKorea("house", t) : "";
+            // 1945-80s: the checklist describes them; mountain villages use the 너와집 card above.
+            default -> "";
+        };
         return card.isEmpty() ? "" : "REFERENCE (how such a building really looks; follow it, scaled to the site):\n" + card;
     }
 

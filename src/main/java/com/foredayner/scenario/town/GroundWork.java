@@ -34,6 +34,8 @@ public final class GroundWork {
     private final GroundPlan plan;
     /** A modern town: asphalt roads with a centre line and curbs, sidewalks, tall street lights. */
     private final boolean modern;
+    /** The town's period ({@link com.foredayner.scenario.sheet.Period}): what streets and lights look like. */
+    private final String period;
     private final int x0, z0, x1, z1;
     private Phase phase = Phase.PAINT;
     private int next;
@@ -44,11 +46,12 @@ public final class GroundWork {
      * @param x0 first plan column (inclusive) to work on, and so on (a whole town or one site)
      */
     public GroundWork(ServerWorld world, BlockPos origin, GroundPlan plan, int x0, int z0, int x1, int z1) {
-        this(world, origin, plan, x0, z0, x1, z1, false);
+        this(world, origin, plan, x0, z0, x1, z1, com.foredayner.scenario.sheet.Period.WEST_MODERN);
     }
 
-    public GroundWork(ServerWorld world, BlockPos origin, GroundPlan plan, int x0, int z0, int x1, int z1, boolean modern) {
-        this.modern = modern;
+    public GroundWork(ServerWorld world, BlockPos origin, GroundPlan plan, int x0, int z0, int x1, int z1, String period) {
+        this.period = period == null ? "" : period;
+        this.modern = com.foredayner.scenario.sheet.Period.contemporary(this.period);
         this.world = world;
         this.ox = origin.getX();
         this.y0 = origin.getY();
@@ -131,6 +134,12 @@ public final class GroundWork {
                     top = plan.centre[x][z] ? Blocks.YELLOW_CONCRETE.getDefaultState()
                         : roadEdge(x, z) ? Blocks.SMOOTH_STONE.getDefaultState() : Blocks.GRAY_CONCRETE.getDefaultState();
                     soil = Blocks.STONE.getDefaultState();
+                } else if (unpaved()) {
+                    // Earth roads: worn dirt, rougher at the edges (and the odd cobble in a medieval street).
+                    int n = GroundPlan.noise(x, z, 46);
+                    top = roadEdge(x, z) ? (n < 50 ? Blocks.COARSE_DIRT.getDefaultState() : Blocks.DIRT_PATH.getDefaultState())
+                        : com.foredayner.scenario.sheet.Period.WEST_MEDIEVAL.equals(period) && n < 25 ? Blocks.COBBLESTONE.getDefaultState()
+                        : n < 12 ? Blocks.COARSE_DIRT.getDefaultState() : Blocks.DIRT_PATH.getDefaultState();
                 } else {
                     top = roadEdge(x, z) ? Blocks.COBBLESTONE.getDefaultState() : Blocks.GRAVEL.getDefaultState();
                     soil = Blocks.COBBLESTONE.getDefaultState(); // gravel must not fall into holes
@@ -423,6 +432,14 @@ public final class GroundWork {
     }
 
     private void grave(int x, int z) {
+        if (com.foredayner.scenario.sheet.Period.east(period) && !modern) {
+            // Burial mounds: a grassy hump with a small stone in front.
+            if (x % 4 == 1 && z % 5 == 1 && GroundPlan.noise(x, z, 20) < 80) {
+                set(x, y0, z, Blocks.GRASS_BLOCK.getDefaultState());
+                setIfAir(x, y0, z + 1, Blocks.STONE_BRICK_WALL.getDefaultState());
+            }
+            return;
+        }
         if (x % 3 == 1 && z % 4 == 1 && GroundPlan.noise(x, z, 20) < 85) {
             int n = GroundPlan.noise(x, z, 21);
             set(x, y0, z, n < 40 ? Blocks.STONE_BRICK_WALL.getDefaultState()
@@ -515,13 +532,22 @@ public final class GroundWork {
         }
     }
 
-    /** Street lamps beside main roads, every so often. */
+    /** Medieval and postwar East Asian streets are earth, not gravel. */
+    private boolean unpaved() {
+        return com.foredayner.scenario.sheet.Period.medieval(period) || com.foredayner.scenario.sheet.Period.EAST_POSTWAR.equals(period);
+    }
+
+    /** Street lamps beside main roads, every so often (none in a medieval town). */
     private boolean lampHere(int x, int z) {
+        if (com.foredayner.scenario.sheet.Period.medieval(period)) {
+            return false;
+        }
         boolean byRoad = false;
         for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
             byRoad |= plan.at(x + d[0], z + d[1]) == GroundPlan.Cell.ROAD;
         }
-        return byRoad && Math.floorMod(x * 7 + z * 13, modern ? 13 : 17) == 0;
+        boolean poles = com.foredayner.scenario.sheet.Period.EAST_POSTWAR.equals(period);
+        return byRoad && Math.floorMod(x * 7 + z * 13, modern ? 13 : poles ? 23 : 17) == 0;
     }
 
     private void lamp(int x, int z) {
@@ -538,6 +564,21 @@ public final class GroundWork {
             }
             set(x, y0 + 5, z, Blocks.SMOOTH_STONE_SLAB.getDefaultState());
             set(x + toRoad[0], y0 + 5, z + toRoad[1], Blocks.SMOOTH_STONE_SLAB.getDefaultState());
+            set(x + toRoad[0], y0 + 4, z + toRoad[1], Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, true));
+            return;
+        }
+        if (com.foredayner.scenario.sheet.Period.EAST_POSTWAR.equals(period) || com.foredayner.scenario.sheet.Period.EAST_MODERN.equals(period)) {
+            // A wooden electric pole with one bare bulb hanging from a short arm.
+            for (int y = 0; y < 6; y++) {
+                set(x, y0 + y, z, Blocks.STRIPPED_SPRUCE_LOG.getDefaultState());
+            }
+            int[] toRoad = { 0, 0 };
+            for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                if (plan.at(x + d[0], z + d[1]) == GroundPlan.Cell.ROAD) {
+                    toRoad = d;
+                }
+            }
+            set(x + toRoad[0], y0 + 5, z + toRoad[1], Blocks.SPRUCE_FENCE.getDefaultState());
             set(x + toRoad[0], y0 + 4, z + toRoad[1], Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, true));
             return;
         }

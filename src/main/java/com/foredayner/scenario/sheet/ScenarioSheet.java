@@ -29,6 +29,8 @@ public final class ScenarioSheet {
     public String title = "";
     /** "1920s" or "modern" (or another era the scenario names). */
     public String era = "1920s";
+    /** Period and culture of the buildings ({@link Period}): picks checklists, reference cards and the ground. */
+    public String period = "";
     public String setting = "";
     public String mood = "";
     public String timeOfDay = "night";
@@ -194,6 +196,9 @@ public final class ScenarioSheet {
         if (style == null) {
             style = "";
         }
+        if (!Period.known(period)) {
+            period = Period.guess(era, setting, title, style);
+        }
         terrain.coast = SIDES.contains(lower(terrain.coast)) ? lower(terrain.coast) : "none";
         terrain.woods = SIDES.contains(lower(terrain.woods)) ? lower(terrain.woods) : "none";
         if (places.isEmpty()) {
@@ -283,6 +288,11 @@ public final class ScenarioSheet {
             }
         }
         return problems;
+    }
+
+    /** The sheet's period, or a guess from its words when it has none. */
+    public String period() {
+        return Period.known(period) ? period : Period.guess(era, setting, title, style);
     }
 
     public Place place(String id) {

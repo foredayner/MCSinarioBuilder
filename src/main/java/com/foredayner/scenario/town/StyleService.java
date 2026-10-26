@@ -49,7 +49,11 @@ public final class StyleService {
         for (ScenarioSheet.Place p : sheet.places) {
             kinds.add(p.kind);
         }
-        String user = "TOWN: " + sheet.title + "\nERA: " + sheet.era + "\nSETTING: " + sheet.setting + "\nMOOD: " + sheet.mood
+        String period = sheet.period();
+        String user = "TOWN: " + sheet.title + "\nERA: " + sheet.era + "\nPERIOD AND CULTURE: " + period
+            + (com.foredayner.scenario.sheet.Period.OTHER.equals(period)
+                ? " (no real-world period: invent a consistent architecture from the setting; the buildings get no other rules)"
+                : "") + "\nSETTING: " + sheet.setting + "\nMOOD: " + sheet.mood
             + "\nTIME AND WEATHER: " + sheet.timeOfDay + ", " + sheet.weather
             + "\nTERRAIN: coast " + sheet.terrain.coast + ", woods " + sheet.terrain.woods + ". " + sheet.terrain.notes
             + "\nSTYLE NOTES FROM THE SCENARIO:\n" + sheet.style

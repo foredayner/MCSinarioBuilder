@@ -460,7 +460,7 @@ public final class TownLayout {
         int east = "east".equals(woodsLocal) ? SIZE - 16 : SIZE - MARGIN - 2;
         int streetZ = Math.min(south - 36, (north + south) / 2 + 12);
         // Modern towns get wider main streets: curb, two lanes, a middle line, two lanes, curb.
-        boolean modern = com.foredayner.scenario.town.Archetypes.modern(sheet.era);
+        boolean modern = com.foredayner.scenario.sheet.Period.contemporary(sheet.period());
         int roadWidth = modern ? 7 : 5;
         int half = roadWidth / 2;
         List<int[]> streets = new ArrayList<>();

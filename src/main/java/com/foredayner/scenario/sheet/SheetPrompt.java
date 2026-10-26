@@ -15,6 +15,7 @@ public final class SheetPrompt {
         JSON shape (all keys required; use [] for none):
         {
           "title": "...", "era": "1920s" or "modern" (or the era the scenario names), "setting": "where and when, one line",
+          "period": "west_medieval|west_modern|west_contemporary|east_medieval|east_modern|east_postwar|east_contemporary|other",
           "mood": "a few words", "timeOfDay": "day" | "dusk" | "night", "weather": "clear" | "rain" | "thunder",
           "style": "building style rules for the whole town, 3-6 short lines, naming Minecraft blocks",
           "places": [ { "id": "short_ascii_id", "name": "name as in the scenario", "kind": "house|inn|shop|church|library|
@@ -42,6 +43,11 @@ public final class SheetPrompt {
         - Clues: the physical things the investigators can find. form: book (journal, ledger, letters), note (one
           page), map (chart, plan), item (object). Give the text the clue reveals. hidden = behind or inside something.
         - Links: roads between places, paths to outdoor places, and secret passages (kind "secret") the scenario names.
+        - Period: the period and culture of the buildings. west_medieval = Europe before 1800; west_modern = the West
+          1800-1959 (the classic 1920s town); west_contemporary = the West from 1960; east_medieval = East Asia before 1900
+          (Joseon, Edo); east_modern = East Asia 1900-1945 (Korea under Japanese rule); east_postwar = East Asia 1945 to
+          the 1980s (Korea of the 1950s-60s); east_contemporary = East Asia from 1990; other = fantasy, science fiction or
+          anything none of these fits.
         - Condition: how the place looks as the investigators find it: kept (lived in, cared for), worn (old, shabby),
           abandoned (empty, decaying), sinister (something is wrong here). Follow the scenario.
         - Style: fit the era and place. For a 1920s New England town for example: clapboard houses of spruce and birch

@@ -225,6 +225,18 @@ public class ScenarioScreen extends Screen {
                 ? "모든 건물이 따르는 시대·지역 건축 규칙. 눌러서 보고 고치기."
                 : "아직 없어요. 짓기를 시작하면 AI가 먼저 만들어요. 미리 만들고 고칠 수도 있어요.")));
             addDrawableChild(style);
+            // The period and culture: picks the building checklists, reference cards and the streets.
+            String period = sheet.period();
+            WoodUi.WoodButton periodButton = new WoodUi.WoodButton(right() - 352, y, 82, 18,
+                fit(com.foredayner.scenario.sheet.Period.label(period), 82), b -> {
+                    var all = com.foredayner.scenario.sheet.Period.ALL;
+                    sheet.period = all.get((all.indexOf(period) + 1) % all.size());
+                    ScenarioClientState.saveSheet();
+                    clearAndInit();
+                }, false);
+            periodButton.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("시대·문화권: "
+                + com.foredayner.scenario.sheet.Period.description(period) + "\n눌러서 바꾸기. 건물 체크리스트, 참고 설명, 길과 가로등이 따라 바뀌어요.")));
+            addDrawableChild(periodButton);
         }
         if (sheet != null) {
             int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
@@ -977,7 +989,7 @@ public class ScenarioScreen extends Screen {
             ctx.drawText(this.textRenderer, "아직 시트가 없어요. \"AI로 다시 읽기\"를 누르면 AI가 시나리오를 읽고 만들어요.", l, bodyTop() + 40,
                 WoodUi.INK_SOFT, false);
         } else {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 284),
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 370),
                 l, bodyTop() + 11, WoodUi.INK, false);
             String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
                 + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;

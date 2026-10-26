@@ -42,10 +42,19 @@ public final class BuildPrompts {
     }
 
     public static List<String> rooms(ScenarioSheet.Place p) {
+        return rooms(com.foredayner.scenario.sheet.Period.WEST_MODERN, p);
+    }
+
+    public static List<String> rooms(ScenarioSheet sheet, ScenarioSheet.Place p) {
+        return rooms(sheet.period(), p);
+    }
+
+    private static List<String> rooms(String period, ScenarioSheet.Place p) {
         List<String> out = new ArrayList<>();
         for (ScenarioSheet.Room r : p.rooms) {
             String room = r.purpose.isBlank() ? r.name : r.name + ": " + r.purpose;
-            String furniture = Archetypes.furniture(r.name + " " + r.purpose);
+            String furniture = com.foredayner.scenario.sheet.Period.OTHER.equals(period) ? ""
+                : Archetypes.furniture(r.name + " " + r.purpose, period);
             out.add(furniture.isEmpty() ? room : room + " (furnish with " + furniture + ")");
         }
         return out;
@@ -94,19 +103,24 @@ public final class BuildPrompts {
         }
         // A mountain-village house follows its card, not the general (western) house checklist and variations.
         boolean village = References.villageHouse(sheet, p);
-        String checklist = village ? "" : Archetypes.checklist(p.kind, sheet.era);
+        String period = sheet.period();
+        String checklist = village ? "" : Archetypes.checklist(p.kind, period);
         if (!checklist.isEmpty()) {
             sb.append('\n').append(checklist);
         }
-        if (!village) {
-            sb.append('\n').append(Archetypes.FACADE);
+        String facade = village ? "" : Archetypes.facade(period);
+        if (!facade.isEmpty()) {
+            sb.append('\n').append(facade);
         }
         String variant = village ? "" : Archetypes.variant(sheet, p);
         if (!variant.isEmpty()) {
             sb.append('\n').append(variant);
         }
         sb.append('\n').append(Archetypes.condition(p.condition));
-        sb.append('\n').append(village ? References.VILLAGE_YARD : Archetypes.yard(p));
+        String yard = village ? References.VILLAGE_YARD : Archetypes.yard(p, period);
+        if (!yard.isEmpty()) {
+            sb.append('\n').append(yard);
+        }
         if (!p.scenes.isEmpty()) {
             sb.append("\nScenes that happen here (leave room for the investigators): ").append(String.join("; ", p.scenes)).append('.');
         }
@@ -125,11 +139,18 @@ public final class BuildPrompts {
 
     /** The prop for an outdoor place (stands in its middle). */
     public static String prop(ScenarioSheet sheet, ScenarioSheet.Place p) {
+        String period = sheet.period();
+        boolean east = com.foredayner.scenario.sheet.Period.east(period);
+        boolean other = com.foredayner.scenario.sheet.Period.OTHER.equals(period);
         String what = switch (p.kind) {
             case "dock" -> "a pile of weathered wooden crates, barrels, a coil of rope and a fishing net for a harbour dock";
-            case "cemetery" -> "a weathered stone angel statue on a mossy pedestal for an old cemetery";
-            case "woods" -> "an old moss-covered standing stone with strange carvings in a forest clearing";
-            case "square" -> "a stone fountain for a town square";
+            case "cemetery" -> east ? "a burial mound: a low round grassy mound (grass and moss blocks) with a small stone tablet and a"
+                + " stone offering table in front of it" : other ? "a fitting grave marker for " + p.name
+                : "a weathered stone angel statue on a mossy pedestal for an old cemetery";
+            case "woods" -> east ? "a small cairn of piled stones (cobblestone walls and stone buttons) by a forest path"
+                : other ? "a fitting landmark for " + p.name : "an old moss-covered standing stone with strange carvings in a forest clearing";
+            case "square" -> east ? "a village well with a stone rim, a wooden frame and a bucket" : other ? "a fitting centrepiece for " + p.name
+                : "a stone fountain for a town square";
             case "beach" -> "an overturned wooden rowing boat with oars on the sand";
             case "cave" -> "a cave mouth: a low mound of grey stone with a dark opening, moss and hanging roots over it";
             case "pyeongsang" -> "a Korean 평상: a low, wide wooden platform (about 4x3, 1 block high: spruce or oak slabs on fence"

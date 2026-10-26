@@ -303,7 +303,7 @@ public final class BuildService {
                     job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX(), low, job.origin.getZ()),
                         job.origin.add(TownLayout.SIZE - 1, GroundWork.CLEAR - 1, TownLayout.SIZE - 1));
                 }
-                job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1, Archetypes.modern(job.sheet.era));
+                job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1, job.sheet.period());
                 state.ground = "working";
                 state.groundPercent = 0;
             }
@@ -362,7 +362,7 @@ public final class BuildService {
             for (int i = 0; i < rects.size(); i++) {
                 int[] r = rects.get(i);
                 boolean last = i == rects.size() - 1;
-                job.clears.add(new Clear(new GroundWork(job.world, job.origin, job.plan, r[0], r[1], r[2], r[3], Archetypes.modern(job.sheet.era)), !last ? null : () -> {
+                job.clears.add(new Clear(new GroundWork(job.world, job.origin, job.plan, r[0], r[1], r[2], r[3], job.sheet.period()), !last ? null : () -> {
                     if (!tag.isEmpty()) {
                         AiBuildApi.removeTagged(job.world, tag);
                     }
@@ -693,7 +693,7 @@ public final class BuildService {
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
-                BuildPrompts.rooms(p), BuildPrompts.marks(job.sheet, p), BuildPrompts.extra(job.sheet, p, s.w), model);
+                BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p), BuildPrompts.extra(job.sheet, p, s.w), model);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }
         future.whenComplete((design, error) -> job.world.getServer().execute(() -> {
