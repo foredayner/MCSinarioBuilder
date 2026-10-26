@@ -319,6 +319,36 @@ public class ScenarioScreen extends Screen {
         return mapX() + mapSize() + 10;
     }
 
+    private static final int ENTRY = 11;
+
+    private int entriesTop() {
+        return bodyTop() + 30;
+    }
+
+    private int entryWidth() {
+        return (right() - 12 - panelX()) / 2;
+    }
+
+    /** Where the place list ends and the picked place's buttons go. */
+    private int controlsY() {
+        var layout = ScenarioClientState.layout();
+        int n = layout == null ? 0 : layout.sites.size();
+        return entriesTop() + (n + 1) / 2 * ENTRY + 4;
+    }
+
+    /** The place list entry under the mouse (index into the sites), or -1. */
+    private int entryAt(double mx, double my) {
+        var layout = ScenarioClientState.layout();
+        if (layout == null || mx < panelX() || my < entriesTop()) {
+            return -1;
+        }
+        int rows = (layout.sites.size() + 1) / 2;
+        int col = (int) ((mx - panelX()) / entryWidth());
+        int row = (int) ((my - entriesTop()) / ENTRY);
+        int i = col * rows + row;
+        return col <= 1 && row < rows && i < layout.sites.size() ? i : -1;
+    }
+
     private void initLayoutTab() {
         int px = panelX(), y = bodyTop() + 6, pw = right() - 12 - px;
         int bw = (pw - 8) / 3;
@@ -337,7 +367,7 @@ public class ScenarioScreen extends Screen {
         var site = layout.site(picked);
         var place = site == null ? null : sheet.place(site.id);
         if (site != null && place != null) {
-            int by = y + 48;
+            int by = controlsY();
             addDrawableChild(new WoodUi.WoodButton(px, by, 78, 18, Text.literal("입구 " + sideKo(site.front)), b -> {
                 int i = com.foredayner.scenario.layout.TownLayout.FRONTS.indexOf(site.front);
                 site.front = com.foredayner.scenario.layout.TownLayout.FRONTS.get((i + 1) % 4);
@@ -387,6 +417,11 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (tab == Tab.LAYOUT && button == 0 && entryAt(mx, my) >= 0) {
+            picked = ScenarioClientState.layout().sites.get(entryAt(mx, my)).id;
+            clearAndInit();
+            return true;
+        }
         if (tab == Tab.LAYOUT && button == 0 && mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize()) {
             var s = siteAt(mx, my);
             picked = s == null ? "" : s.id;
@@ -493,7 +528,8 @@ public class ScenarioScreen extends Screen {
             }
         }
         com.foredayner.scenario.layout.TownLayout.Site hover = siteAt(mouseX, mouseY);
-        for (var s : layout.sites) {
+        for (int n = 0; n < layout.sites.size(); n++) {
+            var s = layout.sites.get(n);
             int sx = toScreenX(s.x), sz = toScreenZ(s.z), ex = toScreenX(s.x + s.w), ez = toScreenZ(s.z + s.d);
             boolean sel = s.id.equals(picked);
             ctx.fill(sx, sz, ex, ez, sel ? 0xFF2B1D10 : 0xFF4A3420);
@@ -505,36 +541,59 @@ public class ScenarioScreen extends Screen {
                 case "west" -> ctx.fill(sx, sz + 1, sx + 2, ez - 1, edge);
                 default -> ctx.fill(sx + 1, ez - 2, ex - 1, ez, edge);
             }
-            var place = sheet.place(s.id);
-            String label = place == null ? s.id : place.name;
-            var m = ctx.getMatrices();
-            m.push();
-            m.translate(sx + 2, sz + 3, 0);
-            m.scale(0.5F, 0.5F, 1);
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(label, (ex - sx - 3) * 2), 0, 0, 0xFF1E140A, false);
-            m.pop();
+            // The place's number (its name is in the list beside the map).
+            String num = String.valueOf(n + 1);
+            int tw = this.textRenderer.getWidth(num);
+            if (tw + 2 <= ex - sx) {
+                ctx.drawText(this.textRenderer, num, (sx + ex - tw) / 2 + 1, (sz + ez) / 2 - 3, 0xFF1E140A, false);
+            } else {
+                var m = ctx.getMatrices();
+                m.push();
+                m.translate((sx + ex) / 2.0F - tw / 4.0F, (sz + ez) / 2.0F - 2, 0);
+                m.scale(0.5F, 0.5F, 1);
+                ctx.drawText(this.textRenderer, num, 0, 0, 0xFF1E140A, false);
+                m.pop();
+            }
         }
         ctx.disableScissor();
-        // Side panel: the picked place and the check.
-        var site = layout.site(picked);
-        int ty = bodyTop() + 30;
-        if (site != null && sheet.place(site.id) != null) {
-            var place = sheet.place(site.id);
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(place.name, right() - 12 - px), px, ty, WoodUi.INK, false);
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(place.kind + " · " + site.w + "x" + site.d + " · (" + site.x + ", " + site.z + ")",
-                right() - 12 - px), px, ty + 10, WoodUi.INK_SOFT, false);
-            ty += 44;
-        } else {
-            ctx.drawText(this.textRenderer, "장소를 눌러 고르고 끌어서 옮기세요.", px, ty, WoodUi.INK_SOFT, false);
-            ctx.drawText(this.textRenderer, "밝은 쪽 테두리가 입구예요.", px, ty + 10, WoodUi.INK_SOFT, false);
-            ty += 26;
+        // Side panel: the numbered place list, the picked place's buttons and the check.
+        int ew = entryWidth(), rows = (layout.sites.size() + 1) / 2;
+        int hoverEntry = entryAt(mouseX, mouseY);
+        for (int n = 0; n < layout.sites.size(); n++) {
+            var s = layout.sites.get(n);
+            var place = sheet.place(s.id);
+            int ex = px + (n / rows) * ew, ey = entriesTop() + (n % rows) * ENTRY;
+            if (s.id.equals(picked)) {
+                ctx.fill(ex - 2, ey - 2, ex + ew - 4, ey + ENTRY - 2, 0x60C28A4E);
+            } else if (n == hoverEntry) {
+                ctx.fill(ex - 2, ey - 2, ex + ew - 4, ey + ENTRY - 2, 0x30C28A4E);
+            }
+            String label = (n + 1) + " " + (place == null ? s.id : place.name);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(label, ew - 6), ex, ey, WoodUi.INK, false);
         }
-        ty += 2;
-        if (layoutProblems.isEmpty()) {
-            ctx.drawText(this.textRenderer, "검사: 문제 없음", px, ty, 0xFF2E6B2E, false);
+        var site = layout.site(picked);
+        int ty = controlsY();
+        int statusX = px;
+        if (site != null && sheet.place(site.id) != null) {
+            statusX = px + 150;
+            ty += 5;
         } else {
-            ctx.drawText(this.textRenderer, "검사: 확인할 것 " + layoutProblems.size() + "개", px, ty, 0xFF8E2A1E, false);
-            int ly = ty + 11;
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("지도에서 끌어 옮기기 · 밝은 테두리 = 입구", right() - 12 - px),
+                px, ty, WoodUi.INK_SOFT, false);
+            ty += 11;
+        }
+        String status = layoutProblems.isEmpty() ? "검사: 문제 없음" : "검사: 확인할 것 " + layoutProblems.size() + "개";
+        ctx.drawText(this.textRenderer, status, statusX, ty, layoutProblems.isEmpty() ? 0xFF2E6B2E : 0xFF8E2A1E, false);
+        boolean overStatus = mouseX >= statusX && mouseX < statusX + this.textRenderer.getWidth(status) && mouseY >= ty - 1 && mouseY < ty + 9;
+        if (!layoutProblems.isEmpty()) {
+            if (overStatus) {
+                List<OrderedText> tip = new java.util.ArrayList<>();
+                for (String problem : layoutProblems) {
+                    tip.addAll(this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), 220));
+                }
+                ctx.drawOrderedTooltip(this.textRenderer, tip, mouseX, mouseY);
+            }
+            int ly = Math.max(ty, controlsY() + 18) + 11;
             for (String problem : layoutProblems) {
                 for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), right() - 12 - px)) {
                     if (ly > bottom() - 58) {
@@ -547,8 +606,9 @@ public class ScenarioScreen extends Screen {
         }
         if (hover != null && !dragging) {
             var place = sheet.place(hover.id);
-            ctx.drawTooltip(this.textRenderer, Text.literal(place == null ? hover.id : place.name + " (" + place.size + ", 입구 " + sideKo(hover.front) + ")"),
-                mouseX, mouseY);
+            int n = layout.sites.indexOf(hover) + 1;
+            ctx.drawTooltip(this.textRenderer, Text.literal(n + " " + (place == null ? hover.id : place.name + " (" + place.kind + ", "
+                + hover.w + "x" + hover.d + ", 입구 " + sideKo(hover.front) + ")")), mouseX, mouseY);
         }
     }
 

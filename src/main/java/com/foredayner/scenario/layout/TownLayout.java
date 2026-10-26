@@ -281,7 +281,8 @@ public final class TownLayout {
     /**
      * A plain layout without AI: the sea and the woods along their edges, a main street across the
      * town parallel to the coast, buildings in rows on both sides with their fronts on the street
-     * (a second street further in when a row is full), outdoor places at the ends.
+     * (a second street further in when a row is full) and spread out along it, outdoor places
+     * joined by paths, and the ground left over filled with gardens and fields.
      */
     public static TownLayout auto(ScenarioSheet sheet) {
         TownLayout l = new TownLayout();
@@ -357,6 +358,7 @@ public final class TownLayout {
         List<int[]> streets = new ArrayList<>();
         int cursorA = west, cursorB = west; // A: north of the street, B: south of it
         int depthA = 0, depthB = 0;
+        java.util.Map<Integer, List<Site>> rows = new java.util.TreeMap<>(); // street * 2 + side -> sites
         for (ScenarioSheet.Place p : buildings) {
             int f = ScenarioSheet.footprint(p.size);
             boolean toA = cursorA <= cursorB;
@@ -380,26 +382,35 @@ public final class TownLayout {
                 s.front = "south";
                 cursorA += f + 5;
                 depthA = Math.max(depthA, f);
+                rows.computeIfAbsent(streets.size() * 2, k -> new ArrayList<>()).add(s);
             } else {
                 s.x = cursorB;
                 s.z = streetZ + 4;
                 s.front = "north";
                 cursorB += f + 5;
                 depthB = Math.max(depthB, f);
+                rows.computeIfAbsent(streets.size() * 2 + 1, k -> new ArrayList<>()).add(s);
             }
             l.sites.add(s);
         }
         streets.add(new int[] { streetZ, west, Math.max(cursorA, cursorB) });
-        // Centre the buildings between the west and east edges.
-        int minX = SIZE, maxX = 0, minZ = SIZE;
-        for (Site s : l.sites) {
-            minX = Math.min(minX, s.x);
-            maxX = Math.max(maxX, s.x + s.w);
-            minZ = Math.min(minZ, s.z);
+        // Spread each row along its street (wider gaps when there are few buildings), centred.
+        for (List<Site> row : rows.values()) {
+            int sum = 0;
+            for (Site s : row) {
+                sum += s.w;
+            }
+            int lo = west + 3; // clear of the lane along the west
+            int gap = Math.max(5, Math.min(22, (east - lo - sum) / (row.size() + 1)));
+            int x = (lo + east) / 2 - (sum + gap * (row.size() - 1)) / 2;
+            for (Site s : row) {
+                s.x = Math.max(lo, x);
+                x = s.x + s.w + gap;
+            }
         }
-        int shift = l.sites.isEmpty() ? 0 : Math.max(0, (west + east) / 2 - (minX + maxX) / 2);
+        int minZ = SIZE;
         for (Site s : l.sites) {
-            s.x += shift;
+            minZ = Math.min(minZ, s.z);
         }
         // Outdoor places: docks and beaches on the shore, the rest in a band inland of all
         // buildings; each where a straight path reaches the nearest street without crossing a building.
@@ -453,7 +464,7 @@ public final class TownLayout {
             paths.add(path);
         }
         // Streets run across the whole town; a lane along the west joins them.
-        int spineX = west - 1 + Math.max(0, shift - 3);
+        int spineX = west - 1;
         for (int[] st : streets) {
             Road r = new Road();
             r.width = 5;
@@ -469,8 +480,66 @@ public final class TownLayout {
             l.roads.add(spine);
         }
         l.roads.addAll(paths);
+        l.fillGround(west, east, north, south, streets);
         l.turn(turns);
         return l;
+    }
+
+    /**
+     * Fill the open ground (no site, street or zone near) with gardens near the streets and
+     * fields further out, in cells of 12 blocks joined along each row.
+     */
+    private void fillGround(int west, int east, int north, int south, List<int[]> streets) {
+        final int cell = 12;
+        boolean[][] road = roadGrid();
+        List<Zone> added = new ArrayList<>();
+        for (int z = north + MARGIN; z + cell <= south - MARGIN; z += cell) {
+            Zone run = null;
+            for (int x = west; x + cell <= east; x += cell) {
+                boolean free = true;
+                for (Site s : sites) {
+                    if (overlaps(x, z, cell, cell, s.x, s.z, s.w, s.d, 3)) {
+                        free = false;
+                        break;
+                    }
+                }
+                for (Zone o : zones) {
+                    if (free && overlaps(x, z, cell, cell, o.x, o.z, o.w, o.d, 0)) {
+                        free = false;
+                    }
+                }
+                for (int dx = -2; free && dx < cell + 2; dx++) {
+                    for (int dz = -2; dz < cell + 2; dz++) {
+                        int gx = x + dx, gz = z + dz;
+                        if (gx >= 0 && gz >= 0 && gx < size && gz < size && road[gx][gz]) {
+                            free = false;
+                            break;
+                        }
+                    }
+                }
+                if (!free) {
+                    run = null;
+                    continue;
+                }
+                int near = Integer.MAX_VALUE;
+                for (int[] st : streets) {
+                    near = Math.min(near, Math.abs(z + cell / 2 - st[0]));
+                }
+                String kind = near < 34 ? "garden" : "field";
+                if (run != null && run.kind.equals(kind)) {
+                    run.w += cell;
+                } else {
+                    run = new Zone();
+                    run.kind = kind;
+                    run.x = x;
+                    run.z = z;
+                    run.w = cell;
+                    run.d = cell;
+                    added.add(run);
+                }
+            }
+        }
+        zones.addAll(added);
     }
 
     private static String rotateSide(String side, int turns) {
