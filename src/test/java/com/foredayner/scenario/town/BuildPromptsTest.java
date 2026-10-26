@@ -52,6 +52,23 @@ class BuildPromptsTest {
     }
 
     @Test
+    void koreanPlacesGetReferenceCards() throws Exception {
+        ScenarioSheet korea = ScenarioSheet.fromJson(Files.readString(Path.of("src/gametest/resources/scenarios/modern_korea.sheet.json")));
+        korea.normalize();
+        assertTrue(References.korean(korea));
+        assertTrue(References.card(korea, korea.place("police")).contains("파출소"));
+        assertTrue(References.card(korea, korea.place("convenience_store")).contains("convenience store"));
+        assertTrue(References.card(korea, korea.place("church")).contains("red cross"));
+        assertTrue(References.card(korea, korea.place("villa_a")).contains("pilotis"));
+        assertTrue(BuildPrompts.extra(korea, korea.place("police"), 15).contains("REFERENCE"));
+        ScenarioSheet harbour = greymouth();
+        assertFalse(References.korean(harbour), "a New England town gets no Korean cards");
+        assertEquals("", References.card(harbour, harbour.place("church")));
+        korea.era = "1920s";
+        assertTrue(References.card(korea, korea.place("church")).contains("Gothic"), "colonial-era cards for the 1920s");
+    }
+
+    @Test
     void ordinaryHousesVaryButStayTheSame() throws Exception {
         ScenarioSheet sheet = greymouth();
         ScenarioSheet.Place store = sheet.place("general_store");

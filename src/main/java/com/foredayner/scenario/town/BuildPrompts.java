@@ -82,6 +82,10 @@ public final class BuildPrompts {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.ROOT, "The building takes most of the %dx%d site (leave 2-3 blocks around it for the yard); it may be"
             + " up to %d blocks high.", size, size, maxHeight(p)));
+        String reference = References.card(sheet, p);
+        if (!reference.isEmpty()) {
+            sb.append('\n').append(reference.strip());
+        }
         String checklist = Archetypes.checklist(p.kind, sheet.era);
         if (!checklist.isEmpty()) {
             sb.append('\n').append(checklist);
