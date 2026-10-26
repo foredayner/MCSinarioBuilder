@@ -106,6 +106,9 @@ public final class BuildPrompts {
         if (!p.scenes.isEmpty()) {
             sb.append("\nScenes that happen here (leave room for the investigators): ").append(String.join("; ", p.scenes)).append('.');
         }
+        if (!p.notes.isBlank()) {
+            sb.append("\nColours named in the description (sign bands, walls, awnings) are the keeper's choice: use exactly those.");
+        }
         if (p.basement) {
             sb.append("\nThe scenario has a cellar here. The site cannot go below ground, so put the cellar rooms at the back of the")
                 .append(" ground floor behind a heavy door, built like a cellar (stone walls, no windows, dim light).");

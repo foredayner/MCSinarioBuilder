@@ -155,7 +155,9 @@ public final class Archetypes {
             case "worn" -> "CONDITION worn (old and shabby), which MUST show:\n"
                 + "- about 1 wall block in 6 swapped for a weathered one: stone -> mossy_cobblestone, mossy_stone_bricks or"
                 + " cracked_stone_bricks; bricks -> a few cobblestone or granite patches (bricks have no mossy form); planks -> a darker or mismatched plank or a"
-                + " stripped log (" + PICK + ", N = 6)\n"
+                + " stripped log; concrete, terracotta or tile -> a slightly darker or stained shade of the same colour"
+                + " (white_concrete -> white_terracotta or light_gray_concrete, light_gray -> stone or andesite), never black,"
+                + " so it reads as grime, not a pattern (" + PICK + ", N = 6)\n"
                 + "- a foundation row mixing cobblestone and mossy_cobblestone\n"
                 + "- 2-3 cobwebs in upper inside corners, one patched spot on the roof in a different stair block\n"
                 + "- fewer lights: one lantern per room";
