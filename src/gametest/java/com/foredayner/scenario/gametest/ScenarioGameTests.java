@@ -61,6 +61,29 @@ public class ScenarioGameTests implements FabricGameTest {
     }
 
     @GameTest(templateName = EMPTY_STRUCTURE)
+    public void layoutsAreCheckedAndSaved(TestContext context) throws Exception {
+        Path root = Files.createTempDirectory("scenario_layout_test");
+        ScenarioStore.useRoot(root);
+        try {
+            ScenarioStore.Info info = ScenarioStore.save("그레이머스의 등불", testScenario(), false);
+            var sheet = com.foredayner.scenario.sheet.ScenarioSheet.fromJson(testSheet());
+            sheet.normalize();
+            com.foredayner.scenario.sheet.SheetService.save(info.id, sheet);
+            var layout = com.foredayner.scenario.layout.TownLayout.auto(sheet);
+            var problems = layout.check(sheet);
+            check(problems.isEmpty(), "the automatic layout of the test town passes: " + problems);
+            com.foredayner.scenario.layout.LayoutService.save(info.id, layout);
+            var back = com.foredayner.scenario.layout.LayoutService.load(info.id);
+            check(back != null && back.sites.size() == sheet.places.size(), "the layout is saved and read back");
+            check(back.check(sheet).isEmpty(), "and still passes");
+            check("layout".equals(ScenarioStore.info(info.id).stage), "the scenario moved on to the layout step");
+        } finally {
+            ScenarioStore.useRoot(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("scenario_builder"));
+        }
+        context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
     public void loadsWithTheAiBuildAssistant(TestContext context) {
         check(AiBuildApi.VERSION >= ScenarioBuilderMod.NEEDS_API, "the AI Build Assistant API is new enough");
         check(Registries.ITEM.containsId(ScenarioContent.GM_HANDBOOK_ID), "the GM handbook item exists");

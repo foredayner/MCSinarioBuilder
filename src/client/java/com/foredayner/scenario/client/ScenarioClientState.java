@@ -28,6 +28,8 @@ public final class ScenarioClientState {
     private static int uploadId = 1;
     private static com.foredayner.scenario.sheet.ScenarioSheet sheet;
     private static String sheetId = "";
+    private static com.foredayner.scenario.layout.TownLayout layout;
+    private static String layoutId = "";
     private static com.foredayner.scenario.store.ScenarioConfig config = new com.foredayner.scenario.store.ScenarioConfig();
 
     private ScenarioClientState() {
@@ -40,6 +42,15 @@ public final class ScenarioClientState {
                 sheetId = p.id();
             } catch (IOException | RuntimeException e) {
                 message = "시트를 읽지 못했어요: " + e.getMessage();
+            }
+            refresh();
+        }));
+        ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.LayoutPayload.ID, (p, ctx) -> ctx.client().execute(() -> {
+            try {
+                layout = p.data().length == 0 ? null : com.foredayner.scenario.layout.TownLayout.fromJson(ScenarioNet.gunzip(p.data()));
+                layoutId = p.id();
+            } catch (IOException | RuntimeException e) {
+                message = "배치를 읽지 못했어요: " + e.getMessage();
             }
             refresh();
         }));
@@ -89,6 +100,9 @@ public final class ScenarioClientState {
         if (!id.equals(sheetId)) {
             sheet = null;
         }
+        if (!id.equals(layoutId)) {
+            layout = null;
+        }
         if (ClientPlayNetworking.canSend(ScenarioNet.RequestC2S.ID)) {
             ClientPlayNetworking.send(new ScenarioNet.RequestC2S("open", id));
         }
@@ -98,6 +112,39 @@ public final class ScenarioClientState {
     /** The sheet of the selected scenario, or null if it has none yet. */
     public static com.foredayner.scenario.sheet.ScenarioSheet sheet() {
         return selected.equals(sheetId) ? sheet : null;
+    }
+
+    /** The layout of the selected scenario, or null if it has none yet. */
+    public static com.foredayner.scenario.layout.TownLayout layout() {
+        return selected.equals(layoutId) ? layout : null;
+    }
+
+    /** Lay out the town: with the AI, or the plain automatic layout. */
+    public static void makeLayout(boolean ai) {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S(ai ? "layout" : "layout_auto", selected));
+        }
+    }
+
+    public static void reviseLayout(String instruction) {
+        if (!selected.isEmpty() && instruction != null && !instruction.isBlank()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("layout_revise", selected + "\n" + instruction.trim()));
+        }
+    }
+
+    /** Save the GM's own change to the layout. */
+    public static void saveLayout() {
+        com.foredayner.scenario.layout.TownLayout l = layout();
+        if (l != null) {
+            ClientPlayNetworking.send(new ScenarioNet.LayoutPayload(selected, ScenarioNet.gzip(l.toJson())));
+        }
+    }
+
+    /** Tests: show a layout as if the server had sent it. */
+    public static void showLayoutForTests(String id, com.foredayner.scenario.layout.TownLayout l) {
+        layoutId = id;
+        layout = l;
+        refresh();
     }
 
     public static ScenarioStore.Info selectedInfo() {

@@ -88,6 +88,18 @@ public final class ScenarioNet {
         }
     }
 
+    /** Both ways: a scenario's town layout (gzipped JSON). Server -> client to show it; client -> server to save the GM's edits. */
+    public record LayoutPayload(String id, byte[] data) implements CustomPayload {
+        public static final Id<LayoutPayload> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "layout"));
+        public static final PacketCodec<RegistryByteBuf, LayoutPayload> CODEC = PacketCodec.tuple(
+            PacketCodecs.STRING, LayoutPayload::id, PacketCodecs.BYTE_ARRAY, LayoutPayload::data, LayoutPayload::new);
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
+    }
+
     /** Server -> client: the model settings (JSON of ScenarioConfig). */
     public record ConfigS2C(String json) implements CustomPayload {
         public static final Id<ConfigS2C> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "config"));
@@ -120,6 +132,9 @@ public final class ScenarioNet {
         PayloadTypeRegistry.playS2C().register(SheetPayload.ID, SheetPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(SheetPayload.ID, SheetPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ConfigS2C.ID, ConfigS2C.CODEC);
+        PayloadTypeRegistry.playS2C().register(LayoutPayload.ID, LayoutPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(LayoutPayload.ID, LayoutPayload.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(LayoutPayload.ID, (p, ctx) -> ctx.server().execute(() -> saveLayout(ctx.player(), p)));
         ServerPlayNetworking.registerGlobalReceiver(SheetPayload.ID, (p, ctx) -> ctx.server().execute(() -> saveSheet(ctx.player(), p)));
         ServerPlayNetworking.registerGlobalReceiver(UploadC2S.ID, (p, ctx) -> ctx.server().execute(() -> receive(ctx.player(), p)));
         ServerPlayNetworking.registerGlobalReceiver(RequestC2S.ID, (p, ctx) -> ctx.server().execute(() -> request(ctx.player(), p)));
@@ -158,12 +173,22 @@ public final class ScenarioNet {
                     com.foredayner.scenario.sheet.SheetService.revise(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
                 }
             }
+            case "layout" -> com.foredayner.scenario.layout.LayoutService.make(player, p.arg());
+            case "layout_auto" -> com.foredayner.scenario.layout.LayoutService.auto(player, p.arg());
+            case "layout_revise" -> {
+                int nl = p.arg().indexOf('\n');
+                if (nl > 0) {
+                    com.foredayner.scenario.layout.LayoutService.revise(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
+                }
+            }
             case "open" -> {
                 try {
                     var sheet = com.foredayner.scenario.sheet.SheetService.load(p.arg());
                     if (sheet != null) {
                         sheet(player, p.arg(), sheet);
                     }
+                    var layout = com.foredayner.scenario.layout.LayoutService.load(p.arg());
+                    ServerPlayNetworking.send(player, new LayoutPayload(p.arg(), layout == null ? new byte[0] : gzip(layout.toJson())));
                     status(player, "", p.arg());
                 } catch (IOException e) {
                     status(player, "열지 못했어요: " + e.getMessage(), "");
@@ -183,6 +208,32 @@ public final class ScenarioNet {
 
     public static void sheet(ServerPlayerEntity player, String id, com.foredayner.scenario.sheet.ScenarioSheet sheet) {
         ServerPlayNetworking.send(player, new SheetPayload(id, gzip(sheet.toJson())));
+    }
+
+    public static void layout(ServerPlayerEntity player, String id, com.foredayner.scenario.layout.TownLayout layout) {
+        ServerPlayNetworking.send(player, new LayoutPayload(id, gzip(layout.toJson())));
+    }
+
+    /** The GM moved things on the layout: check it and save it (problems are reported, not blocked). */
+    private static void saveLayout(ServerPlayerEntity player, LayoutPayload p) {
+        if (!allowed(player)) {
+            return;
+        }
+        try {
+            var sheet = com.foredayner.scenario.sheet.SheetService.load(p.id());
+            if (sheet == null) {
+                status(player, "시트가 없어요.", p.id());
+                return;
+            }
+            sheet.normalize();
+            var layout = com.foredayner.scenario.layout.TownLayout.fromJson(gunzip(p.data()));
+            java.util.List<String> problems = layout.check(sheet);
+            com.foredayner.scenario.layout.LayoutService.save(p.id(), layout);
+            layout(player, p.id(), layout);
+            status(player, problems.isEmpty() ? "배치를 저장했어요." : "저장했지만 확인할 것이 있어요: " + problems.get(0), p.id());
+        } catch (IOException | RuntimeException e) {
+            status(player, "배치를 저장하지 못했어요: " + e.getMessage(), p.id());
+        }
     }
 
     /** The GM edited the sheet: check it and save it. */

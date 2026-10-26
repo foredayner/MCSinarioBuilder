@@ -41,6 +41,14 @@ public class ScenarioScreen extends Screen {
     }
     private TextFieldWidget nameField;
 
+    /** Tests: pick a place on the open layout. */
+    public static void pickForTests(String id) {
+        if (net.minecraft.client.MinecraftClient.getInstance().currentScreen instanceof ScenarioScreen s) {
+            s.picked = id;
+            s.clearAndInit();
+        }
+    }
+
     public ScenarioScreen() {
         super(Text.literal("AI 시나리오 공방"));
     }
@@ -89,6 +97,7 @@ public class ScenarioScreen extends Screen {
             boolean ready = switch (t) { // later steps open as the earlier ones are done
                 case SCENARIO -> true;
                 case SHEET -> !ScenarioClientState.selected().isEmpty();
+                case LAYOUT -> ScenarioClientState.sheet() != null;
                 default -> false;
             };
             WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(t.label), b -> {
@@ -102,10 +111,15 @@ public class ScenarioScreen extends Screen {
         if (tab == Tab.SHEET && ScenarioClientState.selected().isEmpty()) {
             tab = Tab.SCENARIO;
         }
+        if (tab == Tab.LAYOUT && ScenarioClientState.sheet() == null) {
+            tab = ScenarioClientState.selected().isEmpty() ? Tab.SCENARIO : Tab.SHEET;
+        }
         if (tab == Tab.SCENARIO) {
             initScenarioTab();
         } else if (tab == Tab.SHEET) {
             initSheetTab();
+        } else if (tab == Tab.LAYOUT) {
+            initLayoutTab();
         }
     }
 
@@ -261,12 +275,280 @@ public class ScenarioScreen extends Screen {
                 ScenarioClientState.revise(askField.getText());
                 askField.setText("");
             }, false));
-            WoodUi.WoodButton next = new WoodUi.WoodButton(right() - 148, bottom() - 44, 136, 18, Text.literal("배치도 만들기 (다음 단계)"),
-                b -> { }, false);
-            next.active = false; // step 5
-            addDrawableChild(next);
+            boolean hasLayout = ScenarioClientState.layout() != null;
+            addDrawableChild(new WoodUi.WoodButton(right() - 148, bottom() - 44, 136, 18,
+                Text.literal(hasLayout ? "배치도 보기 →" : "AI로 배치도 만들기 →"), b -> {
+                    if (!hasLayout) {
+                        ScenarioClientState.makeLayout(true);
+                    }
+                    tab = Tab.LAYOUT;
+                    clearAndInit();
+                }, false));
         } else {
             askField = null;
+        }
+    }
+
+    // ------------------------------------------------------------------ 배치도
+
+    private static final int GROUND = 0xFF8DAA63;
+    private String picked = "";
+    private boolean dragging;
+    private boolean dragMoved;
+    private int dragDx;
+    private int dragDz;
+    private List<String> layoutProblems = List.of();
+
+    private int mapX() {
+        return left() + 12;
+    }
+
+    private int mapY() {
+        return bodyTop() + 6;
+    }
+
+    private int mapSize() {
+        return Math.max(60, Math.min(bottom() - 26 - mapY(), (right() - left()) / 2));
+    }
+
+    private float scale() {
+        return mapSize() / (float) com.foredayner.scenario.layout.TownLayout.SIZE;
+    }
+
+    private int panelX() {
+        return mapX() + mapSize() + 10;
+    }
+
+    private void initLayoutTab() {
+        int px = panelX(), y = bodyTop() + 6, pw = right() - 12 - px;
+        int bw = (pw - 8) / 3;
+        addDrawableChild(new WoodUi.WoodButton(px, y, bw, 18, fit("AI로 배치", bw), b -> ScenarioClientState.makeLayout(true), false));
+        addDrawableChild(new WoodUi.WoodButton(px + bw + 4, y, bw, 18, fit("기본 배치", bw), b -> ScenarioClientState.makeLayout(false), false));
+        addDrawableChild(new WoodUi.WoodButton(px + 2 * (bw + 4), y, bw, 18, fit("모델 설정", bw),
+            b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
+        var layout = ScenarioClientState.layout();
+        var sheet = ScenarioClientState.sheet();
+        if (layout == null || sheet == null) {
+            askField = null;
+            layoutProblems = List.of();
+            return;
+        }
+        layoutProblems = layout.check(sheet);
+        var site = layout.site(picked);
+        var place = site == null ? null : sheet.place(site.id);
+        if (site != null && place != null) {
+            int by = y + 48;
+            addDrawableChild(new WoodUi.WoodButton(px, by, 78, 18, Text.literal("입구 " + sideKo(site.front)), b -> {
+                int i = com.foredayner.scenario.layout.TownLayout.FRONTS.indexOf(site.front);
+                site.front = com.foredayner.scenario.layout.TownLayout.FRONTS.get((i + 1) % 4);
+                ScenarioClientState.saveLayout();
+                clearAndInit();
+            }, false));
+            addDrawableChild(new WoodUi.WoodButton(px + 82, by, 62, 18, Text.literal("크기 " + place.size), b -> {
+                int s = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.indexOf(place.size);
+                place.size = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.get((s + 1) % 4);
+                ScenarioClientState.saveSheet();
+                layout.check(sheet);
+                ScenarioClientState.saveLayout();
+                clearAndInit();
+            }, false));
+        }
+        askField = new TextFieldWidget(this.textRenderer, px + 1, bottom() - 42, pw - 52, 14, Text.literal("요청"));
+        askField.setMaxLength(300);
+        askField.setPlaceholder(Text.literal("AI에게 배치 고쳐 달라고 하기"));
+        addDrawableChild(askField);
+        addDrawableChild(new WoodUi.WoodButton(right() - 60, bottom() - 44, 48, 18, Text.literal("요청"), b -> {
+            ScenarioClientState.reviseLayout(askField.getText());
+            askField.setText("");
+        }, false));
+    }
+
+    private int toScreenX(int x) {
+        return mapX() + Math.round(x * scale());
+    }
+
+    private int toScreenZ(int z) {
+        return mapY() + Math.round(z * scale());
+    }
+
+    private com.foredayner.scenario.layout.TownLayout.Site siteAt(double mx, double my) {
+        var layout = ScenarioClientState.layout();
+        if (layout == null) {
+            return null;
+        }
+        for (int i = layout.sites.size() - 1; i >= 0; i--) {
+            var s = layout.sites.get(i);
+            if (mx >= toScreenX(s.x) && mx < toScreenX(s.x + s.w) && my >= toScreenZ(s.z) && my < toScreenZ(s.z + s.d)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public boolean mouseClicked(double mx, double my, int button) {
+        if (tab == Tab.LAYOUT && button == 0 && mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize()) {
+            var s = siteAt(mx, my);
+            picked = s == null ? "" : s.id;
+            if (s != null) {
+                dragging = true;
+                dragMoved = false;
+                dragDx = (int) Math.floor((mx - mapX()) / scale()) - s.x;
+                dragDz = (int) Math.floor((my - mapY()) / scale()) - s.z;
+            }
+            clearAndInit();
+            return true;
+        }
+        return super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (tab == Tab.LAYOUT && dragging) {
+            var layout = ScenarioClientState.layout();
+            var s = layout == null ? null : layout.site(picked);
+            if (s != null) {
+                int size = com.foredayner.scenario.layout.TownLayout.SIZE;
+                int nx = Math.max(0, Math.min(size - s.w, (int) Math.floor((mx - mapX()) / scale()) - dragDx));
+                int nz = Math.max(0, Math.min(size - s.d, (int) Math.floor((my - mapY()) / scale()) - dragDz));
+                if (nx != s.x || nz != s.z) {
+                    s.x = nx;
+                    s.z = nz;
+                    dragMoved = true;
+                }
+            }
+            return true;
+        }
+        return super.mouseDragged(mx, my, button, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        if (tab == Tab.LAYOUT && dragging) {
+            dragging = false;
+            if (dragMoved) {
+                ScenarioClientState.saveLayout();
+                clearAndInit();
+            }
+            return true;
+        }
+        return super.mouseReleased(mx, my, button);
+    }
+
+    private static int zoneColor(String kind) {
+        return switch (kind) {
+            case "water" -> 0xFF3E6E9C;
+            case "beach" -> 0xFFD9CB98;
+            case "woods" -> 0xFF2F5B2E;
+            case "cemetery" -> 0xFF6F7466;
+            case "square" -> 0xFFA99D86;
+            case "garden" -> 0xFF5F9449;
+            default -> 0xFFB7A660; // field
+        };
+    }
+
+    private void renderLayout(DrawContext ctx, int mouseX, int mouseY) {
+        int px = panelX();
+        var layout = ScenarioClientState.layout();
+        var sheet = ScenarioClientState.sheet();
+        int x0 = mapX(), y0 = mapY(), size = mapSize();
+        String message = ScenarioClientState.message();
+        if (!message.isEmpty()) {
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, right() - left() - 32), left() + 12, bottom() - 18, WoodUi.INK, false);
+        }
+        if (layout == null || sheet == null) {
+            ctx.fill(x0, y0, x0 + size, y0 + size, 0xFF6E7F57);
+            ctx.drawText(this.textRenderer, "아직 배치가 없어요.", px, bodyTop() + 32, WoodUi.INK, false);
+            List<OrderedText> lines = this.textRenderer.wrapLines(StringVisitable.plain(
+                "\"AI로 배치\"는 AI가 이야기에 맞게, \"기본 배치\"는 AI 없이 바로 만들어요."), right() - 12 - px);
+            int ty = bodyTop() + 46;
+            for (OrderedText line : lines) {
+                ctx.drawText(this.textRenderer, line, px, ty, WoodUi.INK_SOFT, false);
+                ty += 10;
+            }
+            return;
+        }
+        float k = scale();
+        ctx.fill(x0, y0, x0 + size, y0 + size, GROUND);
+        ctx.enableScissor(x0, y0, x0 + size, y0 + size);
+        for (var z : layout.zones) {
+            ctx.fill(toScreenX(z.x), toScreenZ(z.z), toScreenX(z.x + z.w), toScreenZ(z.z + z.d), zoneColor(z.kind));
+        }
+        for (var r : layout.roads) {
+            int color = "path".equals(r.kind) ? 0xFFA3845A : 0xFF7E776C;
+            int half = Math.max(1, r.width) / 2;
+            for (int i = 0; i + 1 < r.points.size(); i++) {
+                int[] a = r.points.get(i), b = r.points.get(i + 1);
+                if (a[0] == b[0] || a[1] == b[1]) {
+                    int ax = Math.min(a[0], b[0]) - half, bx = Math.max(a[0], b[0]) + half + 1;
+                    int az = Math.min(a[1], b[1]) - half, bz = Math.max(a[1], b[1]) + half + 1;
+                    ctx.fill(toScreenX(ax), toScreenZ(az), toScreenX(bx), toScreenZ(bz), color);
+                } else {
+                    int steps = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+                    for (int s = 0; s <= steps; s++) {
+                        int cx = a[0] + (b[0] - a[0]) * s / steps, cz = a[1] + (b[1] - a[1]) * s / steps;
+                        ctx.fill(toScreenX(cx - half), toScreenZ(cz - half), toScreenX(cx + half + 1), toScreenZ(cz + half + 1), color);
+                    }
+                }
+            }
+        }
+        com.foredayner.scenario.layout.TownLayout.Site hover = siteAt(mouseX, mouseY);
+        for (var s : layout.sites) {
+            int sx = toScreenX(s.x), sz = toScreenZ(s.z), ex = toScreenX(s.x + s.w), ez = toScreenZ(s.z + s.d);
+            boolean sel = s.id.equals(picked);
+            ctx.fill(sx, sz, ex, ez, sel ? 0xFF2B1D10 : 0xFF4A3420);
+            ctx.fill(sx + 1, sz + 1, ex - 1, ez - 1, s.outdoor ? 0xFF9D8C69 : sel ? 0xFFE0B25A : 0xFFC28A4E);
+            int edge = 0xFFFFF4D6;
+            switch (s.front) {
+                case "north" -> ctx.fill(sx + 1, sz, ex - 1, sz + 2, edge);
+                case "east" -> ctx.fill(ex - 2, sz + 1, ex, ez - 1, edge);
+                case "west" -> ctx.fill(sx, sz + 1, sx + 2, ez - 1, edge);
+                default -> ctx.fill(sx + 1, ez - 2, ex - 1, ez, edge);
+            }
+            var place = sheet.place(s.id);
+            String label = place == null ? s.id : place.name;
+            var m = ctx.getMatrices();
+            m.push();
+            m.translate(sx + 2, sz + 3, 0);
+            m.scale(0.5F, 0.5F, 1);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(label, (ex - sx - 3) * 2), 0, 0, 0xFF1E140A, false);
+            m.pop();
+        }
+        ctx.disableScissor();
+        // Side panel: the picked place and the check.
+        var site = layout.site(picked);
+        int ty = bodyTop() + 30;
+        if (site != null && sheet.place(site.id) != null) {
+            var place = sheet.place(site.id);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(place.name, right() - 12 - px), px, ty, WoodUi.INK, false);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(place.kind + " · " + site.w + "x" + site.d + " · (" + site.x + ", " + site.z + ")",
+                right() - 12 - px), px, ty + 10, WoodUi.INK_SOFT, false);
+            ty += 44;
+        } else {
+            ctx.drawText(this.textRenderer, "장소를 눌러 고르고 끌어서 옮기세요.", px, ty, WoodUi.INK_SOFT, false);
+            ctx.drawText(this.textRenderer, "밝은 쪽 테두리가 입구예요.", px, ty + 10, WoodUi.INK_SOFT, false);
+            ty += 26;
+        }
+        ty += 2;
+        if (layoutProblems.isEmpty()) {
+            ctx.drawText(this.textRenderer, "검사: 문제 없음", px, ty, 0xFF2E6B2E, false);
+        } else {
+            ctx.drawText(this.textRenderer, "검사: 확인할 것 " + layoutProblems.size() + "개", px, ty, 0xFF8E2A1E, false);
+            int ly = ty + 11;
+            for (String problem : layoutProblems) {
+                for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), right() - 12 - px)) {
+                    if (ly > bottom() - 58) {
+                        break;
+                    }
+                    ctx.drawText(this.textRenderer, line, px, ly, WoodUi.INK_SOFT, false);
+                    ly += 9;
+                }
+            }
+        }
+        if (hover != null && !dragging) {
+            var place = sheet.place(hover.id);
+            ctx.drawTooltip(this.textRenderer, Text.literal(place == null ? hover.id : place.name + " (" + place.size + ", 입구 " + sideKo(hover.front) + ")"),
+                mouseX, mouseY);
         }
     }
 
@@ -390,6 +672,10 @@ public class ScenarioScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         if (tab == Tab.SHEET) {
             renderSheet(ctx);
+            return;
+        }
+        if (tab == Tab.LAYOUT) {
+            renderLayout(ctx, mouseX, mouseY);
             return;
         }
         if (tab != Tab.SCENARIO) {
