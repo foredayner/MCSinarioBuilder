@@ -31,6 +31,14 @@ public class ScenarioScreen extends Screen {
     }
 
     private static Tab tab = Tab.SCENARIO;
+
+    /** Tests: switch the open workshop to a tab. */
+    public static void showTab(Tab t) {
+        tab = t;
+        if (net.minecraft.client.MinecraftClient.getInstance().currentScreen instanceof ScenarioScreen s) {
+            s.clearAndInit();
+        }
+    }
     private TextFieldWidget nameField;
 
     public ScenarioScreen() {
@@ -64,7 +72,11 @@ public class ScenarioScreen extends Screen {
     /** Rebuild the widgets after the state changed. */
     public void refresh() {
         String name = nameField == null ? null : nameField.getText();
+        String ask = askField == null ? null : askField.getText();
         clearAndInit();
+        if (ask != null && askField != null) {
+            askField.setText(ask);
+        }
         if (name != null && nameField != null && ScenarioClientState.loaded() != null) {
             nameField.setText(name);
         }
@@ -74,7 +86,11 @@ public class ScenarioScreen extends Screen {
     protected void init() {
         int x = left() + 6;
         for (Tab t : Tab.values()) {
-            boolean ready = t == Tab.SCENARIO; // later steps open as the earlier ones are done
+            boolean ready = switch (t) { // later steps open as the earlier ones are done
+                case SCENARIO -> true;
+                case SHEET -> !ScenarioClientState.selected().isEmpty();
+                default -> false;
+            };
             WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(t.label), b -> {
                 tab = t;
                 clearAndInit();
@@ -83,8 +99,13 @@ public class ScenarioScreen extends Screen {
             addDrawableChild(button);
             x += 74;
         }
+        if (tab == Tab.SHEET && ScenarioClientState.selected().isEmpty()) {
+            tab = Tab.SCENARIO;
+        }
         if (tab == Tab.SCENARIO) {
             initScenarioTab();
+        } else if (tab == Tab.SHEET) {
+            initSheetTab();
         }
     }
 
@@ -125,10 +146,230 @@ public class ScenarioScreen extends Screen {
                 b -> ScenarioClientState.delete(info.id), true));
             ry += 21;
         }
-        WoodUi.WoodButton next = new WoodUi.WoodButton(rx, bottom() - 44, right() - rx - 10, 18, Text.literal("시트 만들기 (다음 단계)"),
-            b -> { }, false);
-        next.active = false; // step 4
+        boolean hasSheet = ScenarioClientState.selectedInfo() != null && !"text".equals(ScenarioClientState.selectedInfo().stage);
+        WoodUi.WoodButton next = new WoodUi.WoodButton(rx, bottom() - 44, right() - rx - 10, 18,
+            Text.literal(hasSheet ? "시트 보기 →" : "AI로 시트 만들기 →"), b -> {
+                if (!hasSheet) {
+                    ScenarioClientState.analyze();
+                }
+                tab = Tab.SHEET;
+                clearAndInit();
+            }, false);
+        next.active = !ScenarioClientState.selected().isEmpty();
         addDrawableChild(next);
+    }
+
+    // ------------------------------------------------------------------ 시트
+
+    private static final int ROW = 20;
+    private int[] scroll = new int[3];
+    private TextFieldWidget modelField;
+    private TextFieldWidget askField;
+
+    private int colWidth() {
+        return (right() - left() - 24) / 3;
+    }
+
+    private int colX(int i) {
+        return left() + 12 + i * (colWidth() + 2);
+    }
+
+    private int listTop() {
+        return bodyTop() + 70;
+    }
+
+    private int listBottom() {
+        return bottom() - 52;
+    }
+
+    private void initSheetTab() {
+        int l = left() + 12, y = bodyTop() + 6;
+        addDrawableChild(new WoodUi.WoodButton(right() - 104, y, 92, 18, Text.literal("AI로 다시 읽기"),
+            b -> ScenarioClientState.analyze(), false));
+        modelField = new TextFieldWidget(this.textRenderer, right() - 300, y + 2, 150, 14, Text.literal("분석 모델"));
+        modelField.setMaxLength(60);
+        modelField.setText(ScenarioClientState.config().analysisModel);
+        modelField.setPlaceholder(Text.literal("기본 모델(AI 공방 설정)"));
+        addDrawableChild(modelField);
+        addDrawableChild(new WoodUi.WoodButton(right() - 146, y, 38, 18, Text.literal("저장"), b -> {
+            var c = ScenarioClientState.config();
+            ScenarioClientState.saveModels(modelField.getText(), c.layoutModel, c.buildingModel);
+        }, false));
+        var sheet = ScenarioClientState.sheet();
+        if (sheet != null) {
+            int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
+            // Places: name (details on hover), size, remove.
+            int cx = colX(0), w = colWidth();
+            int i = 0;
+            for (int k = scroll[0]; k < sheet.places.size() && i < maxRows; k++, i++) {
+                var p = sheet.places.get(k);
+                int ry = listTop() + i * ROW;
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 58, 18, Text.literal(p.name + (p.filler ? " ·" : "")), b -> { }, false);
+                name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(placeDetail(p))));
+                addDrawableChild(name);
+                addDrawableChild(new WoodUi.WoodButton(cx + w - 56, ry, 32, 18, Text.literal(p.size), b -> {
+                    int s = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.indexOf(p.size);
+                    p.size = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.get((s + 1) % 4);
+                    ScenarioClientState.saveSheet();
+                }, false));
+                addDrawableChild(new WoodUi.WoodButton(cx + w - 22, ry, 20, 18, Text.literal("X"), b -> {
+                    sheet.places.remove(p);
+                    ScenarioClientState.saveSheet();
+                }, true));
+            }
+            // NPCs.
+            cx = colX(1);
+            i = 0;
+            for (int k = scroll[1]; k < sheet.npcs.size() && i < maxRows; k++, i++) {
+                var n = sheet.npcs.get(k);
+                int ry = listTop() + i * ROW;
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 24, 18, Text.literal(n.name), b -> { }, false);
+                name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(n.name + " (" + n.role + ")\n장소: "
+                    + placeName(sheet, n.place) + (n.room.isBlank() ? "" : " / " + n.room) + (n.notes.isBlank() ? "" : "\n" + n.notes))));
+                addDrawableChild(name);
+                addDrawableChild(new WoodUi.WoodButton(cx + w - 22, ry, 20, 18, Text.literal("X"), b -> {
+                    sheet.npcs.remove(n);
+                    ScenarioClientState.saveSheet();
+                }, true));
+            }
+            // Clues: name, hidden or not, remove.
+            cx = colX(2);
+            i = 0;
+            for (int k = scroll[2]; k < sheet.clues.size() && i < maxRows; k++, i++) {
+                var c = sheet.clues.get(k);
+                int ry = listTop() + i * ROW;
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 62, 18, Text.literal(c.name), b -> { }, false);
+                name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(c.name + " [" + formKo(c.form) + "]\n장소: "
+                    + placeName(sheet, c.place) + (c.room.isBlank() ? "" : " / " + c.room) + "\n" + c.text)));
+                addDrawableChild(name);
+                addDrawableChild(new WoodUi.WoodButton(cx + w - 60, ry, 36, 18, Text.literal(c.hidden ? "숨김" : "보임"), b -> {
+                    c.hidden = !c.hidden;
+                    ScenarioClientState.saveSheet();
+                }, false));
+                addDrawableChild(new WoodUi.WoodButton(cx + w - 22, ry, 20, 18, Text.literal("X"), b -> {
+                    sheet.clues.remove(c);
+                    ScenarioClientState.saveSheet();
+                }, true));
+            }
+            // Ask the AI to change it.
+            askField = new TextFieldWidget(this.textRenderer, l + 2, bottom() - 42, right() - l - 210, 14, Text.literal("요청"));
+            askField.setMaxLength(300);
+            askField.setPlaceholder(Text.literal("AI에게 고쳐 달라고 하기 (예: 잡화점을 하나 더, 교회는 크게)"));
+            addDrawableChild(askField);
+            addDrawableChild(new WoodUi.WoodButton(right() - 202, bottom() - 44, 50, 18, Text.literal("요청"), b -> {
+                ScenarioClientState.revise(askField.getText());
+                askField.setText("");
+            }, false));
+            WoodUi.WoodButton next = new WoodUi.WoodButton(right() - 148, bottom() - 44, 136, 18, Text.literal("배치도 만들기 (다음 단계)"),
+                b -> { }, false);
+            next.active = false; // step 5
+            addDrawableChild(next);
+        } else {
+            askField = null;
+        }
+    }
+
+    private static String placeName(com.foredayner.scenario.sheet.ScenarioSheet sheet, String id) {
+        var p = sheet.place(id);
+        return p == null ? id : p.name;
+    }
+
+    private static String formKo(String form) {
+        return switch (form) {
+            case "book" -> "책";
+            case "map" -> "지도";
+            case "item" -> "물건";
+            default -> "쪽지";
+        };
+    }
+
+    private static String placeDetail(com.foredayner.scenario.sheet.ScenarioSheet.Place p) {
+        StringBuilder s = new StringBuilder(p.name + " (" + p.kind + ", " + p.size + " " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(p.size)
+            + "칸, " + p.floors + "층" + (p.basement ? " + 지하" : "") + (p.outdoor ? ", 야외" : "") + ")");
+        if (!p.rooms.isEmpty()) {
+            s.append("\n방: ");
+            for (int i = 0; i < p.rooms.size(); i++) {
+                s.append(i == 0 ? "" : ", ").append(p.rooms.get(i).name);
+            }
+        }
+        if (!p.scenes.isEmpty()) {
+            s.append("\n장면: ").append(String.join(", ", p.scenes));
+        }
+        if (p.notes != null && !p.notes.isBlank()) {
+            s.append("\n").append(p.notes);
+        }
+        return s.toString();
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        if (tab == Tab.SHEET && ScenarioClientState.sheet() != null && mouseY >= listTop() && mouseY <= listBottom()) {
+            var sheet = ScenarioClientState.sheet();
+            int[] sizes = { sheet.places.size(), sheet.npcs.size(), sheet.clues.size() };
+            for (int c = 0; c < 3; c++) {
+                if (mouseX >= colX(c) && mouseX < colX(c) + colWidth()) {
+                    int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
+                    scroll[c] = Math.max(0, Math.min(Math.max(0, sizes[c] - maxRows), scroll[c] - (int) Math.signum(vertical)));
+                    clearAndInit();
+                    return true;
+                }
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
+    }
+
+    private void renderSheet(DrawContext ctx) {
+        int l = left() + 12;
+        ctx.drawText(this.textRenderer, "분석 모델", right() - 352, bodyTop() + 11, WoodUi.INK, false);
+        var sheet = ScenarioClientState.sheet();
+        var info = ScenarioClientState.selectedInfo();
+        String name = info == null ? "" : info.name;
+        if (sheet == null) {
+            ctx.drawText(this.textRenderer, name, l, bodyTop() + 11, WoodUi.INK, false);
+            ctx.drawText(this.textRenderer, "아직 시트가 없어요. \"AI로 다시 읽기\"를 누르면 AI가 시나리오를 읽고 만들어요.", l, bodyTop() + 40,
+                WoodUi.INK_SOFT, false);
+        } else {
+            ctx.drawText(this.textRenderer, sheet.title.isBlank() ? name : sheet.title, l, bodyTop() + 11, WoodUi.INK, false);
+            String line = sheet.era + " · " + sheet.setting;
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(line, right() - l - 20), l, bodyTop() + 30, WoodUi.INK_SOFT, false);
+            String mood = "분위기: " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
+                + " · 바다: " + sideKo(sheet.terrain.coast) + " · 숲: " + sideKo(sheet.terrain.woods);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(mood, right() - l - 20), l, bodyTop() + 42, WoodUi.INK_SOFT, false);
+            String[] heads = { "장소 " + sheet.places.size(), "NPC " + sheet.npcs.size(), "단서 " + sheet.clues.size() };
+            for (int c = 0; c < 3; c++) {
+                ctx.drawText(this.textRenderer, heads[c], colX(c) + 2, listTop() - 12, WoodUi.INK, false);
+            }
+        }
+        String message = ScenarioClientState.message();
+        if (!message.isEmpty()) {
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, right() - l - 20), l, bottom() - 18, WoodUi.INK, false);
+        }
+    }
+
+    private static String timeKo(String t) {
+        return switch (t == null ? "" : t) {
+            case "day" -> "낮";
+            case "dusk" -> "해 질 녘";
+            default -> "밤";
+        };
+    }
+
+    private static String weatherKo(String w) {
+        return switch (w == null ? "" : w) {
+            case "clear" -> "맑음";
+            case "thunder" -> "뇌우";
+            default -> "비";
+        };
+    }
+
+    private static String sideKo(String s) {
+        return switch (s == null ? "" : s) {
+            case "north" -> "북";
+            case "east" -> "동";
+            case "south" -> "남";
+            case "west" -> "서";
+            default -> "없음";
+        };
     }
 
     @Override
@@ -137,7 +378,10 @@ public class ScenarioScreen extends Screen {
         WoodUi.frame(ctx, left(), top(), right(), bottom());
         WoodUi.plaque(ctx, this.textRenderer, "AI 시나리오 공방", this.width / 2, top() - 14, WoodUi.PAPER);
         WoodUi.inset(ctx, left() + 6, bodyTop(), right() - 6, bottom() - 6, WoodUi.PARCHMENT);
-        if (tab == Tab.SCENARIO && ScenarioClientState.loaded() != null) {
+        if (tab == Tab.SHEET && ScenarioClientState.sheet() != null) {
+            WoodUi.inset(ctx, left() + 10, listTop() - 16, right() - 10, listBottom() + 2, WoodUi.PARCHMENT_DEEP);
+        }
+                if (tab == Tab.SCENARIO && ScenarioClientState.loaded() != null) {
             WoodUi.inset(ctx, left() + 12, bodyTop() + 48, mid() - 6, bottom() - 50, WoodUi.PAPER);
         }
     }
@@ -145,6 +389,10 @@ public class ScenarioScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
+        if (tab == Tab.SHEET) {
+            renderSheet(ctx);
+            return;
+        }
         if (tab != Tab.SCENARIO) {
             return;
         }

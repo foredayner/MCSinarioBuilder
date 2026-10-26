@@ -26,11 +26,30 @@ public final class ScenarioClientState {
     private static String message = "";
     private static String selected = "";
     private static int uploadId = 1;
+    private static com.foredayner.scenario.sheet.ScenarioSheet sheet;
+    private static String sheetId = "";
+    private static com.foredayner.scenario.store.ScenarioConfig config = new com.foredayner.scenario.store.ScenarioConfig();
 
     private ScenarioClientState() {
     }
 
     public static void register() {
+        ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.SheetPayload.ID, (p, ctx) -> ctx.client().execute(() -> {
+            try {
+                sheet = com.foredayner.scenario.sheet.ScenarioSheet.fromJson(ScenarioNet.gunzip(p.data()));
+                sheetId = p.id();
+            } catch (IOException | RuntimeException e) {
+                message = "시트를 읽지 못했어요: " + e.getMessage();
+            }
+            refresh();
+        }));
+        ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.ConfigS2C.ID, (p, ctx) -> ctx.client().execute(() -> {
+            try {
+                config = com.foredayner.scenario.store.ScenarioConfig.fromJson(p.json());
+            } catch (RuntimeException ignored) {
+            }
+            refresh();
+        }));
         ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.StatusS2C.ID, (p, ctx) -> ctx.client().execute(() -> {
             try {
                 ScenarioStore.Info[] list = new Gson().fromJson(p.scenarios(), ScenarioStore.Info[].class);
@@ -67,6 +86,68 @@ public final class ScenarioClientState {
 
     public static void select(String id) {
         selected = id;
+        if (!id.equals(sheetId)) {
+            sheet = null;
+        }
+        if (ClientPlayNetworking.canSend(ScenarioNet.RequestC2S.ID)) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("open", id));
+        }
+        refresh();
+    }
+
+    /** The sheet of the selected scenario, or null if it has none yet. */
+    public static com.foredayner.scenario.sheet.ScenarioSheet sheet() {
+        return selected.equals(sheetId) ? sheet : null;
+    }
+
+    public static ScenarioStore.Info selectedInfo() {
+        for (ScenarioStore.Info i : stored) {
+            if (i.id.equals(selected)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    public static com.foredayner.scenario.store.ScenarioConfig config() {
+        return config;
+    }
+
+    public static void saveModels(String analysis, String layout, String building) {
+        com.foredayner.scenario.store.ScenarioConfig c = new com.foredayner.scenario.store.ScenarioConfig();
+        c.analysisModel = analysis == null ? "" : analysis.trim();
+        c.layoutModel = layout == null ? "" : layout.trim();
+        c.buildingModel = building == null ? "" : building.trim();
+        ClientPlayNetworking.send(new ScenarioNet.RequestC2S("models", c.toJson()));
+    }
+
+    /** Have the AI read the selected scenario into a sheet. */
+    public static void analyze() {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("analyze", selected));
+        }
+    }
+
+    /** Have the AI change the sheet as asked. */
+    public static void revise(String instruction) {
+        if (!selected.isEmpty() && instruction != null && !instruction.isBlank()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("revise", selected + "\n" + instruction.trim()));
+        }
+    }
+
+    /** Save the GM's own change to the sheet. */
+    public static void saveSheet() {
+        com.foredayner.scenario.sheet.ScenarioSheet s = sheet();
+        if (s != null) {
+            ClientPlayNetworking.send(new ScenarioNet.SheetPayload(selected, ScenarioNet.gzip(s.toJson())));
+        }
+    }
+
+    /** Tests: show a sheet as if the server had sent it. */
+    public static void showSheetForTests(String id, com.foredayner.scenario.sheet.ScenarioSheet s) {
+        selected = id;
+        sheetId = id;
+        sheet = s;
         refresh();
     }
 

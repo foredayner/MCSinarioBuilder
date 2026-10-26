@@ -34,6 +34,32 @@ public class ScenarioGameTests implements FabricGameTest {
         }
     }
 
+    /** The hand-written sheet of the test scenario (what a good AI answer looks like). */
+    static String testSheet() {
+        try (InputStream in = ScenarioGameTests.class.getResourceAsStream("/scenarios/greymouth.sheet.json")) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new GameTestException("test sheet missing: " + e);
+        }
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void sheetsAreCheckedAndSaved(TestContext context) throws Exception {
+        Path root = Files.createTempDirectory("scenario_sheet_test");
+        ScenarioStore.useRoot(root);
+        ScenarioStore.Info info = ScenarioStore.save("그레이머스의 등불", testScenario(), false);
+        var sheet = com.foredayner.scenario.sheet.ScenarioSheet.fromAnswer("```json\n" + testSheet() + "\n```");
+        var problems = sheet.normalize();
+        check(problems.isEmpty(), "the test sheet is consistent: " + problems);
+        check(sheet.places.size() == 6 && sheet.clues.size() == 5 && sheet.npcs.size() == 5, "everything was read");
+        com.foredayner.scenario.sheet.SheetService.save(info.id, sheet);
+        var back = com.foredayner.scenario.sheet.SheetService.load(info.id);
+        check(back != null && back.place("mansion").basement, "the sheet is saved and read back");
+        check("sheet".equals(ScenarioStore.info(info.id).stage), "the scenario moved on to the sheet step");
+        ScenarioStore.useRoot(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("scenario_builder"));
+        context.complete();
+    }
+
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void loadsWithTheAiBuildAssistant(TestContext context) {
         check(AiBuildApi.VERSION >= ScenarioBuilderMod.NEEDS_API, "the AI Build Assistant API is new enough");

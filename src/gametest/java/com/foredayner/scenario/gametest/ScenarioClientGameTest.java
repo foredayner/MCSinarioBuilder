@@ -41,6 +41,16 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> com.foredayner.scenario.client.ScenarioClientState.upload());
             context.waitTicks(20);
             context.takeScreenshot("03_scenario_saved");
+            // The sheet tab, with the hand-written sheet of the test scenario.
+            context.runOnClient(client -> {
+                var sheet = com.foredayner.scenario.sheet.ScenarioSheet.fromJson(ScenarioGameTests.testSheet());
+                sheet.normalize();
+                String id = com.foredayner.scenario.client.ScenarioClientState.selected();
+                com.foredayner.scenario.client.ScenarioClientState.showSheetForTests(id.isEmpty() ? "test" : id, sheet);
+                ScenarioScreen.showTab(ScenarioScreen.Tab.SHEET);
+            });
+            context.waitTicks(3);
+            context.takeScreenshot("03b_sheet");
             context.setScreen(HandbookScreen::new);
             context.waitTicks(5);
             context.takeScreenshot("04_gm_handbook");
