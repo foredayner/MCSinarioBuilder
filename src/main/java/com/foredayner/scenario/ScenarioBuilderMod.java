@@ -25,6 +25,7 @@ public final class ScenarioBuilderMod implements ModInitializer {
                 + ", found " + AiBuildApi.VERSION + ")");
         }
         ScenarioContent.register();
+        com.foredayner.scenario.net.ScenarioNet.register();
         LOG.info("AI Scenario Builder ready (AI Build Assistant API {})", AiBuildApi.VERSION);
     }
 }

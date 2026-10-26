@@ -21,11 +21,13 @@ public final class ScenarioClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ScenarioClientState.register();
         openKey = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.scenario-builder.open", InputUtil.Type.KEYSYM,
             GLFW.GLFW_KEY_K, "key.categories.scenario-builder"));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openKey.wasPressed()) {
                 if (isOperator(client)) {
+                    ScenarioClientState.requestList();
                     client.setScreen(new ScenarioScreen());
                 }
             }
