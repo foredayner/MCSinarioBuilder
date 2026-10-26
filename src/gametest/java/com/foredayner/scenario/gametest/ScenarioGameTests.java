@@ -21,6 +21,7 @@ public class ScenarioGameTests implements FabricGameTest {
 
     static void check(boolean ok, String message) {
         if (!ok) {
+            ScenarioBuilderMod.LOG.error("Game test check failed: {}", message);
             throw new GameTestException(message);
         }
     }

@@ -82,6 +82,7 @@ jobs:
           cp -r build/clientgametest/crash-reports "$out/logs/" 2>/dev/null || true
           tail -c 200000 clienttest-gradle.log > "$out/logs/client-gradle.log" 2>/dev/null || true
           cp build/gametest/logs/latest.log "$out/logs/server-gametest.log" 2>/dev/null || true
+          cp build/gametest/junit.xml "$out/logs/gametest-junit.xml" 2>/dev/null || true
           echo "${GITHUB_SHA} client-test=${{ steps.clienttest.outcome }}" > "$out/RUN.txt"
           cd "$out"
           git init -q
