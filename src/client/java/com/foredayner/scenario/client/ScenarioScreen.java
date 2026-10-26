@@ -362,6 +362,8 @@ public class ScenarioScreen extends Screen {
     private boolean resetArmed;
     /** "Remove from the layout" was pressed for this built place: ask whether to clear it in the world too. */
     private String removeAsk = "";
+    /** The map toggle sits on the preview, which is drawn after the widgets: drawn again on top. */
+    private WoodUi.WoodButton overlayButton;
     private int listScroll;
 
     private int entriesTop() {
@@ -462,6 +464,7 @@ public class ScenarioScreen extends Screen {
         reset.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
             "장소 자리, 길, 구역을 모두 지우고 빈 배치도로 돌아가요 (두 번 누르기). 지어진 마을은 그대로예요.")));
         addDrawableChild(reset);
+        overlayButton = null;
         if (sheet != null && MapOverlay.available()) {
             WoodUi.WoodButton overlay = new WoodUi.WoodButton(mapX() + 2, mapY() + 2, 44, 14, Text.literal(showMap ? "지도 ✓" : "지도"), b -> {
                 showMap = !showMap;
@@ -469,6 +472,7 @@ public class ScenarioScreen extends Screen {
             }, false);
             overlay.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("참고 지도를 배치도 위에 흐리게 겹쳐 보기")));
             addDrawableChild(overlay);
+            overlayButton = overlay;
         }
         if (layout == null || sheet == null) {
             askField = null;
@@ -619,6 +623,9 @@ public class ScenarioScreen extends Screen {
             picked = listed().get(entryAt(mx, my)).id;
             clearAndInit();
             return true;
+        }
+        if (tab == Tab.LAYOUT && overlayButton != null && overlayButton.isMouseOver(mx, my)) {
+            return super.mouseClicked(mx, my, button);
         }
         if (tab == Tab.LAYOUT && button == 0 && mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize()) {
             var s = siteAt(mx, my);
@@ -1149,6 +1156,9 @@ public class ScenarioScreen extends Screen {
         }
         if (tab == Tab.LAYOUT) {
             renderLayout(ctx, mouseX, mouseY);
+            if (overlayButton != null) {
+                overlayButton.render(ctx, mouseX, mouseY, delta);
+            }
             return;
         }
         if (tab == Tab.BUILD) {
