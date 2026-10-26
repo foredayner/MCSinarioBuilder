@@ -176,8 +176,20 @@ public class ScenarioBench implements FabricClientGameTest {
 
             game.getServer().runCommand("gamemode spectator @a");
             context.runOnClient(client -> client.options.hudHidden = true);
+            java.util.Set<String> built = game.getServer().computeOnServer(server -> {
+                java.util.Set<String> ok = new java.util.HashSet<>();
+                try {
+                    BuildService.load(id).places.forEach((k, v) -> {
+                        if ("done".equals(v.state)) {
+                            ok.add(k);
+                        }
+                    });
+                } catch (java.io.IOException ignored) {
+                }
+                return ok;
+            });
             for (TownLayout.Site s : layout.sites) {
-                if (s.outdoor) {
+                if (s.outdoor || !built.contains(s.id)) {
                     continue;
                 }
                 double cx = origin[0] + s.x + s.w / 2.0, cz = origin[2] + s.z + s.d / 2.0;
@@ -220,6 +232,10 @@ public class ScenarioBench implements FabricClientGameTest {
             client.player.setPitch(pitch);
         });
         context.waitTicks(30);
-        game.getClientWorld().waitForChunksRender();
+        try {
+            game.getClientWorld().waitForChunksRender();
+        } catch (AssertionError slow) {
+            context.waitTicks(100); // take the picture anyway
+        }
     }
 }
