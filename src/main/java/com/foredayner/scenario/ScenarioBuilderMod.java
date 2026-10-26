@@ -26,6 +26,8 @@ public final class ScenarioBuilderMod implements ModInitializer {
         }
         ScenarioContent.register();
         com.foredayner.scenario.net.ScenarioNet.register();
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(com.foredayner.scenario.town.BuildService::tick);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> com.foredayner.scenario.town.BuildService.reset());
         LOG.info("AI Scenario Builder ready (AI Build Assistant API {})", AiBuildApi.VERSION);
     }
 }

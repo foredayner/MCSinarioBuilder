@@ -100,6 +100,19 @@ public final class ScenarioNet {
         }
     }
 
+    /** Server -> client: how building a scenario's town goes (gzipped BuildState JSON), and whether it can be undone. */
+    public record BuildPayload(String id, byte[] data, boolean undo) implements CustomPayload {
+        public static final Id<BuildPayload> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "build"));
+        public static final PacketCodec<RegistryByteBuf, BuildPayload> CODEC = PacketCodec.tuple(
+            PacketCodecs.STRING, BuildPayload::id, PacketCodecs.BYTE_ARRAY, BuildPayload::data, PacketCodecs.BOOLEAN, BuildPayload::undo,
+            BuildPayload::new);
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
+    }
+
     /** Server -> client: the model settings (JSON of ScenarioConfig). */
     public record ConfigS2C(String json) implements CustomPayload {
         public static final Id<ConfigS2C> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "config"));
@@ -133,6 +146,7 @@ public final class ScenarioNet {
         PayloadTypeRegistry.playC2S().register(SheetPayload.ID, SheetPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ConfigS2C.ID, ConfigS2C.CODEC);
         PayloadTypeRegistry.playS2C().register(LayoutPayload.ID, LayoutPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(BuildPayload.ID, BuildPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(LayoutPayload.ID, LayoutPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(LayoutPayload.ID, (p, ctx) -> ctx.server().execute(() -> saveLayout(ctx.player(), p)));
         ServerPlayNetworking.registerGlobalReceiver(SheetPayload.ID, (p, ctx) -> ctx.server().execute(() -> saveSheet(ctx.player(), p)));
@@ -173,6 +187,21 @@ public final class ScenarioNet {
                     com.foredayner.scenario.sheet.SheetService.revise(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
                 }
             }
+            case "build_here" -> com.foredayner.scenario.town.BuildService.here(player, p.arg());
+            case "build_start" -> com.foredayner.scenario.town.BuildService.start(player, p.arg());
+            case "build_stop" -> com.foredayner.scenario.town.BuildService.stop(player, p.arg());
+            case "build_undo" -> com.foredayner.scenario.town.BuildService.undo(player, p.arg());
+            case "build_redo", "build_clear", "build_tp" -> {
+                int nl = p.arg().indexOf('\n');
+                if (nl > 0) {
+                    String id = p.arg().substring(0, nl), place = p.arg().substring(nl + 1);
+                    switch (p.action()) {
+                        case "build_redo" -> com.foredayner.scenario.town.BuildService.rebuild(player, id, place);
+                        case "build_clear" -> com.foredayner.scenario.town.BuildService.clear(player, id, place);
+                        default -> com.foredayner.scenario.town.BuildService.teleport(player, id, place);
+                    }
+                }
+            }
             case "layout" -> com.foredayner.scenario.layout.LayoutService.make(player, p.arg());
             case "layout_auto" -> com.foredayner.scenario.layout.LayoutService.auto(player, p.arg());
             case "layout_revise" -> {
@@ -189,6 +218,8 @@ public final class ScenarioNet {
                     }
                     var layout = com.foredayner.scenario.layout.LayoutService.load(p.arg());
                     ServerPlayNetworking.send(player, new LayoutPayload(p.arg(), layout == null ? new byte[0] : gzip(layout.toJson())));
+                    build(player, p.arg(), com.foredayner.scenario.town.BuildService.current(p.arg()),
+                        com.foredayner.scenario.town.BuildService.canUndo(p.arg()));
                     status(player, "", p.arg());
                 } catch (IOException e) {
                     status(player, "열지 못했어요: " + e.getMessage(), "");
@@ -208,6 +239,10 @@ public final class ScenarioNet {
 
     public static void sheet(ServerPlayerEntity player, String id, com.foredayner.scenario.sheet.ScenarioSheet sheet) {
         ServerPlayNetworking.send(player, new SheetPayload(id, gzip(sheet.toJson())));
+    }
+
+    public static void build(ServerPlayerEntity player, String id, com.foredayner.scenario.town.BuildState state, boolean undo) {
+        ServerPlayNetworking.send(player, new BuildPayload(id, gzip(state.toJson()), undo));
     }
 
     public static void layout(ServerPlayerEntity player, String id, com.foredayner.scenario.layout.TownLayout layout) {

@@ -28,6 +28,9 @@ public final class ScenarioClientState {
     private static int uploadId = 1;
     private static com.foredayner.scenario.sheet.ScenarioSheet sheet;
     private static String sheetId = "";
+    private static com.foredayner.scenario.town.BuildState build;
+    private static String buildId = "";
+    private static boolean canUndo;
     private static com.foredayner.scenario.layout.TownLayout layout;
     private static String layoutId = "";
     private static com.foredayner.scenario.store.ScenarioConfig config = new com.foredayner.scenario.store.ScenarioConfig();
@@ -51,6 +54,16 @@ public final class ScenarioClientState {
                 layoutId = p.id();
             } catch (IOException | RuntimeException e) {
                 message = "배치를 읽지 못했어요: " + e.getMessage();
+            }
+            refresh();
+        }));
+        ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.BuildPayload.ID, (p, ctx) -> ctx.client().execute(() -> {
+            try {
+                build = com.foredayner.scenario.town.BuildState.fromJson(ScenarioNet.gunzip(p.data()));
+                buildId = p.id();
+                canUndo = p.undo();
+            } catch (IOException | RuntimeException e) {
+                message = "짓기 상태를 읽지 못했어요: " + e.getMessage();
             }
             refresh();
         }));
@@ -103,6 +116,9 @@ public final class ScenarioClientState {
         if (!id.equals(layoutId)) {
             layout = null;
         }
+        if (!id.equals(buildId)) {
+            build = null;
+        }
         if (ClientPlayNetworking.canSend(ScenarioNet.RequestC2S.ID)) {
             ClientPlayNetworking.send(new ScenarioNet.RequestC2S("open", id));
         }
@@ -117,6 +133,30 @@ public final class ScenarioClientState {
     /** The layout of the selected scenario, or null if it has none yet. */
     public static com.foredayner.scenario.layout.TownLayout layout() {
         return selected.equals(layoutId) ? layout : null;
+    }
+
+    /** How building the selected scenario's town goes, or null. */
+    public static com.foredayner.scenario.town.BuildState build() {
+        return selected.equals(buildId) ? build : null;
+    }
+
+    public static boolean canUndo() {
+        return canUndo && selected.equals(buildId);
+    }
+
+    /** build_here, build_start, build_stop, build_undo (the scenario), or build_redo, build_clear, build_tp (a place). */
+    public static void buildAction(String action, String place) {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S(action, place == null ? selected : selected + "\n" + place));
+        }
+    }
+
+    /** Tests: show a build state as if the server had sent it. */
+    public static void showBuildForTests(String id, com.foredayner.scenario.town.BuildState s, boolean undo) {
+        buildId = id;
+        build = s;
+        canUndo = undo;
+        refresh();
     }
 
     /** Lay out the town: with the AI, or the plain automatic layout. */

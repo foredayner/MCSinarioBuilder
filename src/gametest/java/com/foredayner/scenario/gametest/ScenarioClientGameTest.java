@@ -89,6 +89,54 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             });
             context.waitTicks(3);
             context.takeScreenshot("03e_layout_crowded");
+            // Build the test town around the player (a fixed house in place of the AI), then look at it.
+            String id = context.computeOnClient(client -> com.foredayner.scenario.client.ScenarioClientState.selected());
+            game.getServer().runOnServer(server -> {
+                var sheet = com.foredayner.scenario.sheet.ScenarioSheet.fromJson(ScenarioGameTests.testSheet());
+                sheet.normalize();
+                try {
+                    com.foredayner.scenario.sheet.SheetService.save(id, sheet);
+                    com.foredayner.scenario.layout.LayoutService.save(id, com.foredayner.scenario.layout.TownLayout.auto(sheet));
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+                com.example.config.AiBuilderConfig.get().ticksPerBlock = 1;
+                com.foredayner.scenario.town.BuildService.designer = new FixedDesigner();
+                com.foredayner.scenario.town.BuildService.columnsPerTick = 1500;
+                var player = server.getPlayerManager().getPlayerList().get(0);
+                com.foredayner.scenario.town.BuildService.here(player, id);
+                com.foredayner.scenario.town.BuildService.start(player, id);
+            });
+            for (int i = 0; i < 150; i++) {
+                context.waitTicks(10);
+                if (game.getServer().computeOnServer(server -> com.foredayner.scenario.town.BuildService.idle(id))) {
+                    break;
+                }
+            }
+            context.runOnClient(client -> com.foredayner.scenario.client.ScenarioClientState.select(id));
+            context.waitTicks(10);
+            context.runOnClient(client -> ScenarioScreen.showTab(ScenarioScreen.Tab.BUILD));
+            context.waitTicks(3);
+            context.takeScreenshot("03f_build_tab");
+            context.setScreen(() -> null);
+            int[] mid = game.getServer().computeOnServer(server -> {
+                try {
+                    var s = com.foredayner.scenario.town.BuildService.load(id);
+                    return new int[] { s.originX + 80, s.originY, s.originZ + 80 };
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            game.getServer().runCommand("gamemode spectator @a");
+            game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 110) + " " + mid[2] + " 0 90");
+            context.waitTicks(40);
+            game.getClientWorld().waitForChunksRender();
+            context.takeScreenshot("05_town_from_above");
+            game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 28) + " " + (mid[2] + 95) + " 180 22");
+            context.waitTicks(40);
+            game.getClientWorld().waitForChunksRender();
+            context.takeScreenshot("05b_town_view");
+            game.getServer().runCommand("gamemode creative @a");
             context.setScreen(HandbookScreen::new);
             context.waitTicks(5);
             context.takeScreenshot("04_gm_handbook");

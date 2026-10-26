@@ -99,7 +99,7 @@ public class ScenarioScreen extends Screen {
                 case SCENARIO -> true;
                 case SHEET -> !ScenarioClientState.selected().isEmpty();
                 case LAYOUT -> ScenarioClientState.sheet() != null;
-                default -> false;
+                case BUILD -> ScenarioClientState.layout() != null;
             };
             WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(t.label), b -> {
                 tab = t;
@@ -112,6 +112,9 @@ public class ScenarioScreen extends Screen {
         if (tab == Tab.SHEET && ScenarioClientState.selected().isEmpty()) {
             tab = Tab.SCENARIO;
         }
+        if (tab == Tab.BUILD && ScenarioClientState.layout() == null) {
+            tab = Tab.LAYOUT;
+        }
         if (tab == Tab.LAYOUT && ScenarioClientState.sheet() == null) {
             tab = ScenarioClientState.selected().isEmpty() ? Tab.SCENARIO : Tab.SHEET;
         }
@@ -121,6 +124,8 @@ public class ScenarioScreen extends Screen {
             initSheetTab();
         } else if (tab == Tab.LAYOUT) {
             initLayoutTab();
+        } else if (tab == Tab.BUILD) {
+            initBuildTab();
         }
     }
 
@@ -661,8 +666,13 @@ public class ScenarioScreen extends Screen {
         int statusX = px;
         if (pickedPlace != null) {
             // The picked place's south-west corner (bottom left on the map) and size.
-            String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) + "x" + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) : "좌하단 (" + site.x + ", " + (site.z + site.d - 1) + ") · "
-                + site.w + "x" + site.d;
+            var build = ScenarioClientState.build();
+            boolean world = build != null && build.placed;
+            int cx = site == null ? 0 : site.x + (world ? build.originX : 0);
+            int cz = site == null ? 0 : site.z + site.d - 1 + (world ? build.originZ : 0);
+            String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) + "x"
+                + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size)
+                : (world ? "좌하단 월드 (" : "좌하단 (") + cx + ", " + cz + ") · " + site.w + "x" + site.d;
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 22, WoodUi.INK_SOFT, false);
             statusX = px + 150;
             ty += 5;
@@ -701,6 +711,169 @@ public class ScenarioScreen extends Screen {
         }
     }
 
+    // ------------------------------------------------------------------ 짓기
+
+    private static final int BUILD_ROW = 16;
+    private int buildScroll;
+
+    private int buildListTop() {
+        return bodyTop() + 54;
+    }
+
+    /** Rows: the ground, then every place of the sheet. */
+    private int buildRows() {
+        var sheet = ScenarioClientState.sheet();
+        return 1 + (sheet == null ? 0 : sheet.places.size());
+    }
+
+    private int buildVisible() {
+        return Math.max(2, (bottom() - 24 - buildListTop()) / BUILD_ROW);
+    }
+
+    private static String stateKo(String s) {
+        return switch (s == null ? "" : s) {
+            case "designing" -> "설계 중";
+            case "placing" -> "짓는 중";
+            case "done" -> "완료";
+            case "failed" -> "실패";
+            case "stopped" -> "멈춤";
+            case "cleared" -> "치움";
+            case "working" -> "진행 중";
+            default -> "대기";
+        };
+    }
+
+    private static int stateColor(String s) {
+        return switch (s == null ? "" : s) {
+            case "done" -> 0xFF2E6B2E;
+            case "failed" -> 0xFF8E2A1E;
+            case "designing", "placing", "working" -> 0xFF8A5A10;
+            default -> WoodUi.INK_SOFT;
+        };
+    }
+
+    private void initBuildTab() {
+        int l = left() + 12, r = right() - 12, y = bodyTop() + 6;
+        var build = ScenarioClientState.build();
+        boolean busy = build != null && build.busy();
+        boolean placed = build != null && build.placed;
+        WoodUi.WoodButton here = new WoodUi.WoodButton(r - 118, y, 118, 18, fit("내 위치를 한가운데로", 118),
+            b -> ScenarioClientState.buildAction("build_here", null), false);
+        here.active = !busy;
+        here.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+            "지금 서 있는 곳이 160x160 마을의 한가운데가 돼요. 그 안의 언덕·나무는 깎이고 땅이 평평해져요.")));
+        addDrawableChild(here);
+        int by = y + 26;
+        boolean started = build != null && ("done".equals(build.ground) || build.places.values().stream().anyMatch(p -> !"waiting".equals(p.state)));
+        WoodUi.WoodButton start = new WoodUi.WoodButton(l, by, 92, 18, fit(started ? "이어서 짓기" : "짓기 시작", 92),
+            b -> ScenarioClientState.buildAction("build_start", null), false);
+        start.active = placed && !busy;
+        addDrawableChild(start);
+        WoodUi.WoodButton stop = new WoodUi.WoodButton(l + 96, by, 60, 18, Text.literal("멈추기"),
+            b -> ScenarioClientState.buildAction("build_stop", null), true);
+        stop.active = busy;
+        addDrawableChild(stop);
+        WoodUi.WoodButton undo = new WoodUi.WoodButton(l + 160, by, 92, 18, fit("전체 되돌리기", 92),
+            b -> ScenarioClientState.buildAction("build_undo", null), true);
+        undo.active = !busy && ScenarioClientState.canUndo();
+        undo.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(ScenarioClientState.canUndo()
+            ? "마을을 짓기 전의 땅으로 되돌려요." : "원래 땅의 기록이 없어요 (짓기 전이거나 서버를 다시 켰어요).")));
+        addDrawableChild(undo);
+        // Per place: go there, build again, clear.
+        var sheet = ScenarioClientState.sheet();
+        if (sheet == null || build == null) {
+            return;
+        }
+        buildScroll = Math.max(0, Math.min(buildScroll, buildRows() - buildVisible()));
+        for (int row = 0; row < buildVisible(); row++) {
+            int n = row + buildScroll - 1; // -1: the ground row
+            if (n < 0 || n >= sheet.places.size()) {
+                continue;
+            }
+            var place = sheet.places.get(n);
+            int ry = buildListTop() + row * BUILD_ROW;
+            var state = build.places.get(place.id);
+            boolean built = state != null && ("done".equals(state.state) || state.min != null);
+            WoodUi.WoodButton go = new WoodUi.WoodButton(r - 110, ry - 2, 34, 14, Text.literal("이동"),
+                b -> ScenarioClientState.buildAction("build_tp", place.id), false);
+            go.active = placed;
+            addDrawableChild(go);
+            WoodUi.WoodButton redo = new WoodUi.WoodButton(r - 74, ry - 2, 34, 14, Text.literal("다시"),
+                b -> ScenarioClientState.buildAction("build_redo", place.id), false);
+            redo.active = placed && !busy && "done".equals(build.ground);
+            addDrawableChild(redo);
+            WoodUi.WoodButton clear = new WoodUi.WoodButton(r - 38, ry - 2, 38, 14, Text.literal("치우기"),
+                b -> ScenarioClientState.buildAction("build_clear", place.id), true);
+            clear.active = placed && !busy && built;
+            addDrawableChild(clear);
+        }
+    }
+
+    private void renderBuild(DrawContext ctx, int mouseX, int mouseY) {
+        int l = left() + 12, r = right() - 12, y = bodyTop() + 6;
+        var build = ScenarioClientState.build();
+        var sheet = ScenarioClientState.sheet();
+        String message = ScenarioClientState.message();
+        if (!message.isEmpty()) {
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, r - l), l, bottom() - 18, WoodUi.INK, false);
+        }
+        if (build == null || !build.placed) {
+            ctx.drawText(this.textRenderer, "마을을 지을 곳을 정하세요.", l, y + 1, WoodUi.INK, false);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("한가운데에 서서 오른쪽 버튼을 누르면 돼요.", r - l - 124), l, y + 12,
+                WoodUi.INK_SOFT, false);
+            return;
+        }
+        int half = com.foredayner.scenario.layout.TownLayout.SIZE / 2;
+        ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("한가운데 (" + (build.originX + half) + ", " + (build.originY - 1) + ", "
+            + (build.originZ + half) + ")", r - l - 124), l, y + 1, WoodUi.INK, false);
+        ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("범위 (" + build.originX + ", " + build.originZ + ") ~ ("
+            + (build.originX + com.foredayner.scenario.layout.TownLayout.SIZE - 1) + ", " + (build.originZ + com.foredayner.scenario.layout.TownLayout.SIZE - 1) + ")", r - l - 124), l, y + 12, WoodUi.INK_SOFT, false);
+        int[] c = build.counts();
+        String progress = "완료 " + c[0] + "/" + c[2] + (c[1] > 0 ? " · 실패 " + c[1] : "") + " · 토큰 " + build.tokensIn + "/" + build.tokensOut;
+        ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(progress, r - l - 258), l + 258, y + 31, WoodUi.INK_SOFT, false);
+        if (sheet == null) {
+            return;
+        }
+        String tip = null;
+        for (int row = 0; row < buildVisible(); row++) {
+            int n = row + buildScroll - 1;
+            if (n >= sheet.places.size()) {
+                break;
+            }
+            int ry = buildListTop() + row * BUILD_ROW;
+            String name;
+            String state;
+            String error = "";
+            if (n < 0) {
+                name = "땅 준비";
+                state = build.ground;
+            } else {
+                var place = sheet.places.get(n);
+                var bp = build.places.get(place.id);
+                name = (n + 1) + " " + place.name;
+                state = bp == null ? "waiting" : bp.state;
+                error = bp == null ? "" : bp.error;
+            }
+            String stateText = stateKo(state) + ("working".equals(state) ? " " + build.groundPercent + "%" : "")
+                + (error.isBlank() ? "" : " ⚠");
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(name, r - l - 200), l, ry + 1, WoodUi.INK, false);
+            ctx.drawText(this.textRenderer, stateText, r - 190, ry + 1, stateColor(state), false);
+            if (!error.isBlank() && mouseY >= ry - 2 && mouseY < ry + BUILD_ROW - 2 && mouseX >= l && mouseX < r - 112) {
+                tip = error;
+            }
+        }
+        if (buildRows() > buildVisible()) {
+            int top = buildListTop() - 2, h = buildVisible() * BUILD_ROW;
+            int barH = Math.max(6, h * buildVisible() / buildRows());
+            int barY = top + (h - barH) * buildScroll / Math.max(1, buildRows() - buildVisible());
+            ctx.fill(right() - 9, top, right() - 7, top + h, 0x40000000);
+            ctx.fill(right() - 9, barY, right() - 7, barY + barH, 0xFF6B4A2B);
+        }
+        if (tip != null) {
+            ctx.drawOrderedTooltip(this.textRenderer, this.textRenderer.wrapLines(StringVisitable.plain(tip), 220), mouseX, mouseY);
+        }
+    }
+
     private static String placeName(com.foredayner.scenario.sheet.ScenarioSheet sheet, String id) {
         var p = sheet.place(id);
         return p == null ? id : p.name;
@@ -735,6 +908,11 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        if (tab == Tab.BUILD && mouseY >= buildListTop() && buildRows() > buildVisible()) {
+            buildScroll = Math.max(0, Math.min(buildRows() - buildVisible(), buildScroll - (int) Math.signum(vertical)));
+            clearAndInit();
+            return true;
+        }
         if (tab == Tab.LAYOUT && mouseX >= panelX() && mouseY >= entriesTop() && mouseY < controlsY() && listRows() > visibleRows()) {
             listScroll -= (int) Math.signum(vertical);
             clampListScroll();
@@ -830,6 +1008,10 @@ public class ScenarioScreen extends Screen {
         }
         if (tab == Tab.LAYOUT) {
             renderLayout(ctx, mouseX, mouseY);
+            return;
+        }
+        if (tab == Tab.BUILD) {
+            renderBuild(ctx, mouseX, mouseY);
             return;
         }
         if (tab != Tab.SCENARIO) {
