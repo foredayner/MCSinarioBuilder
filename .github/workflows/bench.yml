@@ -10,7 +10,7 @@ on:
         description: Model id for the guide and the buildings
         default: claude-sonnet-5-5
       sheet:
-        description: Test sheet (greymouth = 1920s harbour town, modern_korea = modern Korean street)
+        description: Test sheet (greymouth = 1920s harbour town, modern_korea = modern Korean street, e2e = the whole way from the scenario text)
         default: greymouth
       places:
         description: Comma-separated place ids (empty = every place of the sheet)
@@ -24,7 +24,7 @@ permissions:
 jobs:
   bench:
     runs-on: ubuntu-22.04
-    timeout-minutes: 75
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -68,6 +68,7 @@ jobs:
           SCN_BENCH_ONLY: "1"
           SCN_BENCH_MODEL: ${{ github.event.inputs.model || 'claude-sonnet-5-5' }}
           SCN_BENCH_SHEET: ${{ github.event.inputs.sheet || 'greymouth' }}
+          SCN_BENCH_E2E: ${{ (github.event.inputs.sheet || 'greymouth') == 'e2e' && 'greymouth' || '' }}
           SCN_BENCH_PLACES: ${{ github.event.inputs.places || '' }}
           SCN_BENCH_REF: ${{ (github.event.inputs.sheet || 'greymouth') == 'modern_korea' && 'police=ref_police.jpg' || '' }}
         with:
@@ -82,6 +83,7 @@ jobs:
           out=$(mktemp -d)
           cp -r build/clientgametest/bench "$out/" 2>/dev/null || true
           cp -r build/clientgametest/screenshots "$out/" 2>/dev/null || true
+          if [ -d "$out/bench/world" ]; then (cd "$out/bench" && zip -qr town_world.zip world && rm -rf world); fi
           mkdir -p "$out/bench"; cp build/clientgametest/ref_police.jpg build/clientgametest/ref_police.txt "$out/bench/" 2>/dev/null || true
           mkdir -p "$out/logs"
           # Never publish the key: drop any line that could contain it.

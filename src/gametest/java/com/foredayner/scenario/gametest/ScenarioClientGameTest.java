@@ -1,13 +1,12 @@
 package com.foredayner.scenario.gametest;
 
-import com.foredayner.scenario.client.HandbookScreen;
 import com.foredayner.scenario.client.ScenarioScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screen.world.WorldCreator;
 
-/** A real client: the workshop and the handbook, photographed for review (CI keeps the pictures). */
+/** A real client: the workshop and a built town, photographed for review (CI keeps the pictures). */
 public class ScenarioClientGameTest implements FabricClientGameTest {
 
     @Override
@@ -176,9 +175,6 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
             context.takeScreenshot("05c_town_street");
             game.getServer().runCommand("gamemode creative @a");
-            context.setScreen(HandbookScreen::new);
-            context.waitTicks(5);
-            context.takeScreenshot("04_gm_handbook");
             context.setScreen(() -> null);
         }
     }

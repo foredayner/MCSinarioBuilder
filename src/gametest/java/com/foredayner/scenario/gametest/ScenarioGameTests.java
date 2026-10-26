@@ -2,7 +2,6 @@ package com.foredayner.scenario.gametest;
 
 import com.example.api.AiBuildApi;
 import com.foredayner.scenario.ScenarioBuilderMod;
-import com.foredayner.scenario.content.ScenarioContent;
 import com.foredayner.scenario.input.ScenarioText;
 import com.foredayner.scenario.store.ScenarioStore;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
@@ -212,8 +211,6 @@ public class ScenarioGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void loadsWithTheAiBuildAssistant(TestContext context) {
         check(AiBuildApi.VERSION >= ScenarioBuilderMod.NEEDS_API, "the AI Build Assistant API is new enough");
-        check(Registries.ITEM.containsId(ScenarioContent.GM_HANDBOOK_ID), "the GM handbook item exists");
-        check(ScenarioContent.GM_HANDBOOK.getMaxCount() == 1, "one handbook per stack");
         context.complete();
     }
 

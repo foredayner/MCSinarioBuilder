@@ -99,20 +99,28 @@ public class ScenarioBench implements FabricClientGameTest {
         config.openAiWebSearchEnabled = false;
         config.autoRetries = 2;
         config.ticksPerBlock = 1;
+        // End to end (SCN_BENCH_E2E = a scenario text in the test resources): the AI reads the scenario
+        // into a sheet, lays out the town, writes the guide and builds it; nothing is hand-made.
+        String e2e = System.getenv().getOrDefault("SCN_BENCH_E2E", "").trim();
+        boolean endToEnd = !e2e.isEmpty();
 
-        // The test town with only the chosen places, and no guide yet: the AI writes it.
-        ScenarioSheet sheet = ScenarioSheet.fromJson(ScenarioGameTests.resource("/scenarios/" + sheetName + ".sheet.json"));
-        sheet.normalize();
-        sheet.styleGuide = "";
-        if (wanted.isEmpty()) {
-            sheet.places.forEach(p -> wanted.add(p.id)); // every place of the sheet
+        // Otherwise: the test town with only the chosen places, and no guide yet: the AI writes it.
+        ScenarioSheet sheet = endToEnd ? null : ScenarioSheet.fromJson(ScenarioGameTests.resource("/scenarios/" + sheetName + ".sheet.json"));
+        TownLayout layout = null;
+        if (!endToEnd) {
+            sheet.normalize();
+            sheet.styleGuide = "";
+            if (wanted.isEmpty()) {
+                sheet.places.forEach(p -> wanted.add(p.id)); // every place of the sheet
+            }
+            sheet.places.removeIf(p -> !wanted.contains(p.id));
+            sheet.npcs.removeIf(n -> !wanted.contains(n.place));
+            sheet.clues.removeIf(c -> !wanted.contains(c.place));
+            sheet.links.removeIf(l -> !wanted.contains(l.from) || !wanted.contains(l.to));
+            layout = TownLayout.auto(sheet);
+            write("layout.json", layout.toJson());
         }
-        sheet.places.removeIf(p -> !wanted.contains(p.id));
-        sheet.npcs.removeIf(n -> !wanted.contains(n.place));
-        sheet.clues.removeIf(c -> !wanted.contains(c.place));
-        sheet.links.removeIf(l -> !wanted.contains(l.from) || !wanted.contains(l.to));
-        TownLayout layout = TownLayout.auto(sheet);
-        write("layout.json", layout.toJson());
+        TownLayout madeLayout = layout;
 
         try (TestSingleplayerContext game = context.worldBuilder()
                 .adjustSettings(creator -> creator.setGameMode(WorldCreator.Mode.CREATIVE))
@@ -128,11 +136,17 @@ public class ScenarioBench implements FabricClientGameTest {
                 var player = server.getPlayerManager().getPlayerList().get(0);
                 server.getPlayerManager().getOpList().add(new net.minecraft.server.OperatorEntry(player.getGameProfile(), 4, false));
                 try {
-                    ScenarioStore.Info info = ScenarioStore.save("bench", ScenarioGameTests.testScenario(), false);
-                    SheetService.save(info.id, sheet);
-                    LayoutService.save(info.id, layout);
                     BuildService.designer = new Recorder();
                     BuildService.columnsPerTick = 1500;
+                    if (endToEnd) {
+                        ScenarioStore.Info info = ScenarioStore.save("e2e", ScenarioGameTests.resource("/scenarios/" + e2e + ".txt"), false);
+                        BuildService.here(player, info.id);
+                        com.foredayner.scenario.sheet.SheetService.analyze(player, info.id);
+                        return info.id;
+                    }
+                    ScenarioStore.Info info = ScenarioStore.save("bench", ScenarioGameTests.testScenario(), false);
+                    SheetService.save(info.id, sheet);
+                    LayoutService.save(info.id, madeLayout);
                     BuildService.here(player, info.id);
                     // A real photo for one place (SCN_BENCH_REF = "place=path"): the AI reads it before building.
                     String ref = System.getenv().getOrDefault("SCN_BENCH_REF", "");
@@ -160,8 +174,38 @@ public class ScenarioBench implements FabricClientGameTest {
                     throw new RuntimeException(e);
                 }
             });
-            // Up to 40 minutes for the guide and the buildings.
-            for (int i = 0; i < 40 * 60; i++) {
+            if (endToEnd) {
+                StringBuilder log = new StringBuilder();
+                long t0 = System.currentTimeMillis();
+                boolean sheetOk = waitUntil(context, game, 15 * 60, () -> SheetService.load(id) != null);
+                stage(log, "sheet", t0, sheetOk, context);
+                if (sheetOk) {
+                    game.getServer().runOnServer(server -> {
+                        try {
+                            write("e2e_sheet.json", SheetService.load(id).toJson());
+                        } catch (java.io.IOException e) {
+                            write("e2e_sheet.json", e.toString());
+                        }
+                        LayoutService.make(server.getPlayerManager().getPlayerList().get(0), id);
+                    });
+                    long t1 = System.currentTimeMillis();
+                    boolean layoutOk = waitUntil(context, game, 15 * 60, () -> LayoutService.load(id) != null);
+                    stage(log, "layout", t1, layoutOk, context);
+                    if (layoutOk) {
+                        game.getServer().runOnServer(server -> {
+                            try {
+                                write("layout.json", LayoutService.load(id).toJson());
+                            } catch (java.io.IOException e) {
+                                write("layout.json", e.toString());
+                            }
+                            BuildService.start(server.getPlayerManager().getPlayerList().get(0), id);
+                        });
+                    }
+                }
+                write("e2e_stages.txt", log.toString());
+            }
+            // Up to 40 minutes (100 end to end) for the guide and the buildings.
+            for (int i = 0; i < (endToEnd ? 100 : 40) * 60; i++) {
                 context.waitTicks(20);
                 if (i == 5 * 60 && game.getServer().computeOnServer(server -> {
                     try {
@@ -199,6 +243,17 @@ public class ScenarioBench implements FabricClientGameTest {
                 }
             });
 
+            TownLayout finalLayout = game.getServer().computeOnServer(server -> {
+                try {
+                    TownLayout l = LayoutService.load(id);
+                    return l == null ? new TownLayout() : l;
+                } catch (java.io.IOException e) {
+                    return new TownLayout();
+                }
+            });
+            if (endToEnd) {
+                write("e2e_report.txt", game.getServer().computeOnServer(server -> report(id)));
+            }
             game.getServer().runCommand("gamemode spectator @a");
             context.runOnClient(client -> client.options.hudHidden = true);
             java.util.Set<String> built = game.getServer().computeOnServer(server -> {
@@ -213,7 +268,7 @@ public class ScenarioBench implements FabricClientGameTest {
                 }
                 return ok;
             });
-            for (TownLayout.Site s : layout.sites) {
+            for (TownLayout.Site s : finalLayout.sites) {
                 if (s.outdoor || !built.contains(s.id)) {
                     continue;
                 }
@@ -262,8 +317,9 @@ public class ScenarioBench implements FabricClientGameTest {
                 context.takeScreenshot("bench_" + s.id + "_inside_back");
             }
             // Along the main street, at eye height.
-            if (!layout.roads.isEmpty() && layout.roads.get(0).points.size() >= 2) {
-                int[] a = layout.roads.get(0).points.get(0), b = layout.roads.get(0).points.get(layout.roads.get(0).points.size() - 1);
+            if (!finalLayout.roads.isEmpty() && finalLayout.roads.get(0).points.size() >= 2) {
+                var main = finalLayout.roads.get(0).points;
+                int[] a = main.get(0), b = main.get(main.size() - 1);
                 double sx = origin[0] + a[0] + (b[0] - a[0]) * 0.15, sz = origin[2] + a[1] + (b[1] - a[1]) * 0.15;
                 look(context, game, sx, origin[1] + 1.7, sz + 2, origin[0] + b[0], origin[1] + 1.2, origin[2] + b[1] + 2);
                 context.takeScreenshot("bench_street");
@@ -273,6 +329,95 @@ public class ScenarioBench implements FabricClientGameTest {
             context.takeScreenshot("bench_town");
             context.runOnClient(client -> client.options.hudHidden = false);
             game.getServer().runCommand("gamemode creative @a");
+            if (endToEnd) {
+                // The world itself, to open in single player (blocks only; no mod needed to look at it).
+                game.getServer().runCommand("tp @a " + (origin[0] + 80) + " " + (origin[1] + 2) + " " + (origin[2] + 80));
+                game.getServer().runCommand("save-all flush");
+                context.waitTicks(40);
+                game.getServer().runOnServer(server -> copyWorld(server.getSavePath(net.minecraft.util.WorldSavePath.ROOT), OUT.resolve("world")));
+            }
+        }
+    }
+
+    private interface Check {
+        boolean ok() throws java.io.IOException;
+    }
+
+    /** Poll on the server until the check holds or the time (seconds) is up. */
+    private static boolean waitUntil(ClientGameTestContext context, TestSingleplayerContext game, int seconds, Check check) {
+        for (int i = 0; i < seconds; i++) {
+            context.waitTicks(20);
+            if (game.getServer().computeOnServer(server -> {
+                try {
+                    return check.ok();
+                } catch (java.io.IOException e) {
+                    return false;
+                }
+            })) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void stage(StringBuilder log, String name, long since, boolean ok, ClientGameTestContext context) {
+        String message = context.computeOnClient(client -> com.foredayner.scenario.client.ScenarioClientState.message());
+        log.append(String.format(Locale.ROOT, "%s: %s in %d s - %s%n", name, ok ? "done" : "FAILED", (System.currentTimeMillis() - since) / 1000, message));
+    }
+
+    /** What the end-to-end run made: every place's state, and whether each clue has its spot. */
+    private static String report(String id) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            ScenarioSheet sheet = SheetService.load(id);
+            var state = BuildService.load(id);
+            int built = 0;
+            for (ScenarioSheet.Place p : sheet.places) {
+                var bp = state.places.get(p.id);
+                String st = bp == null ? "missing" : bp.state;
+                built += "done".equals(st) ? 1 : 0;
+                sb.append(String.format(Locale.ROOT, "place %s (%s, %s%s): %s %s%n", p.id, p.kind, p.size, p.outdoor ? ", outdoor" : "", st,
+                    bp == null ? "" : bp.error));
+            }
+            int marked = 0, clues = 0;
+            for (ScenarioSheet.Clue c : sheet.clues) {
+                ScenarioSheet.Place p = sheet.place(c.place);
+                if (p == null || p.outdoor) {
+                    continue;
+                }
+                clues++;
+                var bp = state.places.get(c.place);
+                boolean has = bp != null && bp.marks.containsKey(com.foredayner.scenario.town.BuildPrompts.clueMark(c));
+                marked += has ? 1 : 0;
+                sb.append(String.format(Locale.ROOT, "clue %s in %s: %s%n", c.id, c.place, has ? "spot marked" : "NO SPOT"));
+            }
+            sb.insert(0, String.format(Locale.ROOT, "places built %d/%d, clue spots %d/%d, tokens in %d out %d%n%n", built, sheet.places.size(),
+                marked, clues, state.tokensIn, state.tokensOut));
+        } catch (java.io.IOException | RuntimeException e) {
+            sb.append("report failed: ").append(e);
+        }
+        return sb.toString();
+    }
+
+    /** Copy a world folder (without its lock file). */
+    private static void copyWorld(Path world, Path to) {
+        Path from = world.toAbsolutePath().normalize();
+        try (var walk = Files.walk(from)) {
+            for (Path p : (Iterable<Path>) walk::iterator) {
+                Path rel = from.relativize(p);
+                if (rel.toString().equals("session.lock")) {
+                    continue;
+                }
+                Path target = to.resolve(rel.toString());
+                if (Files.isDirectory(p)) {
+                    Files.createDirectories(target);
+                } else {
+                    Files.createDirectories(target.getParent());
+                    Files.copy(p, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        } catch (java.io.IOException e) {
+            write("world_copy_failed.txt", e.toString());
         }
     }
 

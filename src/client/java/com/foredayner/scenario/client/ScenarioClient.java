@@ -1,18 +1,15 @@
 package com.foredayner.scenario.client;
 
-import com.foredayner.scenario.content.ScenarioContent;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
 import org.lwjgl.glfw.GLFW;
 
-/** K opens the AI Scenario Workshop (operators only); using the GM handbook opens it too. */
+/** K opens the AI Scenario Workshop (operators only). */
 public final class ScenarioClient implements ClientModInitializer {
 
     /** Same permission as the AI Build Assistant's workshop. */
@@ -31,16 +28,6 @@ public final class ScenarioClient implements ClientModInitializer {
                     client.setScreen(new ScenarioScreen());
                 }
             }
-        });
-        UseItemCallback.EVENT.register((player, world, hand) -> {
-            if (world.isClient && player.getStackInHand(hand).isOf(ScenarioContent.GM_HANDBOOK)) {
-                MinecraftClient client = MinecraftClient.getInstance();
-                if (isOperator(client)) {
-                    client.setScreen(new HandbookScreen());
-                }
-                return ActionResult.SUCCESS;
-            }
-            return ActionResult.PASS;
         });
     }
 

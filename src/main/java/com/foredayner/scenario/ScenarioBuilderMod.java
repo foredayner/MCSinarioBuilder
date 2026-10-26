@@ -1,7 +1,6 @@
 package com.foredayner.scenario;
 
 import com.example.api.AiBuildApi;
-import com.foredayner.scenario.content.ScenarioContent;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +23,6 @@ public final class ScenarioBuilderMod implements ModInitializer {
             throw new IllegalStateException("AI Scenario Builder needs a newer AI Build Assistant (API " + NEEDS_API
                 + ", found " + AiBuildApi.VERSION + ")");
         }
-        ScenarioContent.register();
         com.foredayner.scenario.net.ScenarioNet.register();
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(com.foredayner.scenario.town.BuildService::tick);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> com.foredayner.scenario.town.BuildService.reset());
