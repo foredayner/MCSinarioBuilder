@@ -37,10 +37,14 @@ public class ScenarioGameTests implements FabricGameTest {
 
     /** The hand-written sheet of the test scenario (what a good AI answer looks like). */
     static String testSheet() {
-        try (InputStream in = ScenarioGameTests.class.getResourceAsStream("/scenarios/greymouth.sheet.json")) {
+        return resource("/scenarios/greymouth.sheet.json");
+    }
+
+    static String resource(String path) {
+        try (InputStream in = ScenarioGameTests.class.getResourceAsStream(path)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new GameTestException("test sheet missing: " + e);
+            throw new GameTestException("test resource missing: " + path + " " + e);
         }
     }
 

@@ -39,7 +39,9 @@ public final class StyleService {
         Base it on real architecture of that era and region (e.g. 1920s New England: clapboard and shingle houses,
         gambrel and gable roofs, brick commercial blocks, white wooden churches; 1920s Gyeongseong: hanok with tiled
         roofs beside Japanese-colonial brick and stone offices; modern American small town: vinyl siding, asphalt
-        shingles, strip-mall shops). Use only real Minecraft block names (spruce_planks, deepslate_tiles...).
+        shingles, strip-mall shops; modern Korean city street: 3-5 storey red-brick and white-concrete villas with flat
+        roofs and rooftop railings, ground-floor shops with glass fronts and bright sign bands, tiled facades, metal
+        balcony railings, air-conditioner units, blue water tanks on roofs). Use only real Minecraft block names (spruce_planks, deepslate_tiles...).
         """;
 
     static AiPrompt prompt(ScenarioSheet sheet) {

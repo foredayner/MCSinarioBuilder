@@ -32,6 +32,8 @@ public final class GroundWork {
     private final ServerWorld world;
     private final int ox, y0, oz;
     private final GroundPlan plan;
+    /** A modern town: asphalt roads with a centre line and curbs, sidewalks, tall street lights. */
+    private final boolean modern;
     private final int x0, z0, x1, z1;
     private Phase phase = Phase.PAINT;
     private int next;
@@ -42,6 +44,11 @@ public final class GroundWork {
      * @param x0 first plan column (inclusive) to work on, and so on (a whole town or one site)
      */
     public GroundWork(ServerWorld world, BlockPos origin, GroundPlan plan, int x0, int z0, int x1, int z1) {
+        this(world, origin, plan, x0, z0, x1, z1, false);
+    }
+
+    public GroundWork(ServerWorld world, BlockPos origin, GroundPlan plan, int x0, int z0, int x1, int z1, boolean modern) {
+        this.modern = modern;
         this.world = world;
         this.ox = origin.getX();
         this.y0 = origin.getY();
@@ -120,10 +127,16 @@ public final class GroundWork {
         int depth = 3; // soil under the surface
         switch (cell) {
             case ROAD -> {
-                top = roadEdge(x, z) ? Blocks.COBBLESTONE.getDefaultState() : Blocks.GRAVEL.getDefaultState();
-                soil = Blocks.COBBLESTONE.getDefaultState(); // gravel must not fall into holes
+                if (modern) {
+                    top = plan.centre[x][z] ? Blocks.YELLOW_CONCRETE.getDefaultState()
+                        : roadEdge(x, z) ? Blocks.SMOOTH_STONE.getDefaultState() : Blocks.GRAY_CONCRETE.getDefaultState();
+                    soil = Blocks.STONE.getDefaultState();
+                } else {
+                    top = roadEdge(x, z) ? Blocks.COBBLESTONE.getDefaultState() : Blocks.GRAVEL.getDefaultState();
+                    soil = Blocks.COBBLESTONE.getDefaultState(); // gravel must not fall into holes
+                }
             }
-            case PATH -> top = Blocks.DIRT_PATH.getDefaultState();
+            case PATH -> top = modern ? Blocks.POLISHED_ANDESITE.getDefaultState() : Blocks.DIRT_PATH.getDefaultState();
             case WATER -> {
                 for (int y = y0 - 4; y < y0; y++) {
                     set(x, y, z, Blocks.WATER.getDefaultState());
@@ -160,7 +173,8 @@ public final class GroundWork {
                     default -> top = Blocks.GRASS_BLOCK.getDefaultState();
                 }
             }
-            default -> top = Blocks.GRASS_BLOCK.getDefaultState();
+            default -> top = modern && cell == GroundPlan.Cell.GRASS && nearRoad(x, z, 2) ? Blocks.POLISHED_ANDESITE.getDefaultState()
+                : Blocks.GRASS_BLOCK.getDefaultState();
         }
         set(x, y0 - 1, z, top);
         for (int y = y0 - 1 - depth; y < y0 - 1; y++) {
@@ -234,6 +248,8 @@ public final class GroundWork {
         } else if (cell == GroundPlan.Cell.GRASS) {
             if (lampHere(x, z)) {
                 lamp(x, z);
+            } else if (modern && nearRoad(x, z, 2)) {
+                // sidewalk: kept clear
             } else if (GroundPlan.noise(x, z, 15) < 7) {
                 set(x, y0, z, Blocks.SHORT_GRASS.getDefaultState());
             } else if (GroundPlan.noise(x, z, 15) < 8) {
@@ -356,16 +372,44 @@ public final class GroundWork {
         }
     }
 
+    /** Within {@code range} blocks of a main road. */
+    private boolean nearRoad(int x, int z, int range) {
+        for (int dx = -range; dx <= range; dx++) {
+            for (int dz = -range; dz <= range; dz++) {
+                if (plan.at(x + dx, z + dz) == GroundPlan.Cell.ROAD) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** Street lamps beside main roads, every so often. */
     private boolean lampHere(int x, int z) {
         boolean byRoad = false;
         for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
             byRoad |= plan.at(x + d[0], z + d[1]) == GroundPlan.Cell.ROAD;
         }
-        return byRoad && Math.floorMod(x * 7 + z * 13, 17) == 0;
+        return byRoad && Math.floorMod(x * 7 + z * 13, modern ? 13 : 17) == 0;
     }
 
     private void lamp(int x, int z) {
+        if (modern) {
+            // A tall pole with an arm reaching over the road and a light hanging from it.
+            for (int y = 0; y < 5; y++) {
+                set(x, y0 + y, z, Blocks.ANDESITE_WALL.getDefaultState());
+            }
+            int[] toRoad = { 0, 0 };
+            for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                if (plan.at(x + d[0], z + d[1]) == GroundPlan.Cell.ROAD) {
+                    toRoad = d;
+                }
+            }
+            set(x, y0 + 5, z, Blocks.SMOOTH_STONE_SLAB.getDefaultState());
+            set(x + toRoad[0], y0 + 5, z + toRoad[1], Blocks.SMOOTH_STONE_SLAB.getDefaultState());
+            set(x + toRoad[0], y0 + 4, z + toRoad[1], Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, true));
+            return;
+        }
         set(x, y0, z, Blocks.COBBLESTONE_WALL.getDefaultState());
         set(x, y0 + 1, z, Blocks.SPRUCE_FENCE.getDefaultState());
         set(x, y0 + 2, z, Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, false));

@@ -26,6 +26,8 @@ public final class GroundPlan {
     public final String[][] outdoorKind;
     /** What the zones made a column before a site or street covered it (a dock knows it stands in water). */
     public final Cell[][] under;
+    /** The middle line of main roads (5 wide or more), for road markings. */
+    public final boolean[][] centre;
 
     private GroundPlan(int size) {
         this.size = size;
@@ -33,6 +35,7 @@ public final class GroundPlan {
         this.outdoor = new String[size][size];
         this.outdoorKind = new String[size][size];
         this.under = new Cell[size][size];
+        this.centre = new boolean[size][size];
     }
 
     public Cell at(int x, int z) {
@@ -86,6 +89,19 @@ public final class GroundPlan {
             }
         }
         for (TownLayout.Road r : layout.roads) {
+            if (!"path".equals(r.kind) && r.width >= 5) {
+                for (int i = 0; i + 1 < r.points.size(); i++) {
+                    int[] a = r.points.get(i), b = r.points.get(i + 1);
+                    int steps = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+                    for (int k = 0; k <= steps; k++) {
+                        int cx = a[0] + (steps == 0 ? 0 : (b[0] - a[0]) * k / steps);
+                        int cz = a[1] + (steps == 0 ? 0 : (b[1] - a[1]) * k / steps);
+                        if (cx >= 0 && cz >= 0 && cx < g.size && cz < g.size) {
+                            g.centre[cx][cz] = true;
+                        }
+                    }
+                }
+            }
             TownLayout one = new TownLayout();
             one.size = layout.size;
             one.roads.add(r);

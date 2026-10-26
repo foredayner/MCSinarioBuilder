@@ -54,12 +54,12 @@ public final class BuildService {
     public static final Designer AI = new Designer() {
         @Override
         public CompletableFuture<AiBuildApi.Design> building(ServerWorld world, BlockPos near, AiBuildApi.Site site, AiBuildApi.BuildingRequest req) {
-            return AiBuildApi.designBuilding(world, near, site, req, line -> ScenarioBuilderMod.LOG.debug("{}", line));
+            return AiBuildApi.designBuilding(world, near, site, req, line -> ScenarioBuilderMod.LOG.info("Building design: {}", line));
         }
 
         @Override
         public CompletableFuture<AiBuildApi.Design> object(ServerWorld world, BlockPos near, String description, double maxSize, String model) {
-            return AiBuildApi.designObject(world, near, description, maxSize, model, line -> ScenarioBuilderMod.LOG.debug("{}", line));
+            return AiBuildApi.designObject(world, near, description, maxSize, model, line -> ScenarioBuilderMod.LOG.info("Prop design: {}", line));
         }
     };
 
@@ -299,7 +299,7 @@ public final class BuildService {
                     job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX(), low, job.origin.getZ()),
                         job.origin.add(TownLayout.SIZE - 1, GroundWork.CLEAR - 1, TownLayout.SIZE - 1));
                 }
-                job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1);
+                job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1, Archetypes.modern(job.sheet.era));
                 state.ground = "working";
                 state.groundPercent = 0;
             }
@@ -358,7 +358,7 @@ public final class BuildService {
             for (int i = 0; i < rects.size(); i++) {
                 int[] r = rects.get(i);
                 boolean last = i == rects.size() - 1;
-                job.clears.add(new Clear(new GroundWork(job.world, job.origin, job.plan, r[0], r[1], r[2], r[3]), !last ? null : () -> {
+                job.clears.add(new Clear(new GroundWork(job.world, job.origin, job.plan, r[0], r[1], r[2], r[3], Archetypes.modern(job.sheet.era)), !last ? null : () -> {
                     if (!tag.isEmpty()) {
                         AiBuildApi.removeTagged(job.world, tag);
                     }

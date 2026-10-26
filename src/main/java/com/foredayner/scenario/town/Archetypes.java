@@ -40,16 +40,27 @@ public final class Archetypes {
             case "inn" -> "an inn: a wide front with a porch, a hanging sign or banner over the door, a common room with a fireplace, a bar"
                 + " counter and tables on the ground floor, a staircase, guest rooms along a corridor upstairs, lit windows";
             case "shop" -> modern
-                ? "a shop: a large display window beside the door, an awning, a counter with a till, shelves along the walls, a back store room"
+                ? "a shop or convenience store: a wide glass front with a glass door, a bright coloured sign band above the"
+                    + " glass, a counter with a till by the door, rows of low shelves (aisles), drink fridges (glass in front of"
+                    + " quartz or white concrete) along the back wall, bright light everywhere, a back store room"
                 : "a shop: a false front (a tall flat facade hiding the roof), display windows either side of the door, an awning,"
                     + " a counter, shelves and barrels of goods, a back store room";
-            case "church" -> "a church: a steeple or bell tower over the entrance with a bell, tall pointed (lancet) windows of"
-                + " stained glass along the sides, a steep roof, double doors, inside a nave with rows of pews, an aisle, an altar"
-                + " on a raised step at the far end with candles";
+            case "church" -> modern
+                ? "a modern church: a slim tower or spire with a cross on top (a glowing red cross, redstone_lamp or red"
+                    + " concrete with a light), a wide glass or double-door entrance under a canopy, tall narrow windows, a sign"
+                    + " band with the church name, inside a hall with rows of pews, an aisle, a raised stage with a pulpit and a"
+                    + " cross on the wall"
+                : "a church: a steeple or bell tower over the entrance with a bell, tall pointed (lancet) windows of"
+                    + " stained glass along the sides, a steep roof, double doors, inside a nave with rows of pews, an aisle, an altar"
+                    + " on a raised step at the far end with candles";
             case "library" -> "a library: a stone or brick front with steps and columns or pilasters, tall windows, a reading"
                 + " room with long tables and lamps, rows of tall bookshelves, a librarian's desk, a locked special collection room";
-            case "police" -> "a police station: a solid brick or stone building, a lamp over the door, a front desk, an office,"
-                + " holding cells with iron bars";
+            case "police" -> modern
+                ? "a police station: a 2-storey building of light concrete or tile with a blue and white sign band over a"
+                    + " glass entrance, a blue light by the door, a parking space for a patrol car in front, a front desk,"
+                    + " offices with desks, a holding cell with iron bars"
+                : "a police station: a solid brick or stone building, a lamp over the door, a front desk, an office,"
+                    + " holding cells with iron bars";
             case "newspaper" -> "a newspaper office: a sign board over a display window, desks with typewriters (use lecterns or"
                 + " looms as stand-ins), filing cabinets, a press room at the back with a big printing press";
             case "school" -> "a school: a bell on the roof, a wide entrance with steps, rows of big windows, classrooms with"
@@ -170,7 +181,9 @@ public final class Archetypes {
         + "- a trim band (slabs or stairs of the trim block) between floors and under the roof\n"
         + "- the roof overhangs the walls by 1 block, made of stairs, with a visible ridge\n"
         + "- a 1-block foundation course of the foundation block, visible above the ground\n"
-        + "- on the street side: shutters (trapdoors) or sills under windows, a lamp by the door, steps up to the door";
+        + "- on the street side: shutters (trapdoors) or sills under windows, a lamp by the door, steps up to the door\n"
+        + "- towers (bell towers, spires, lighthouses): a window or opening at least every 4 blocks of height, and an open"
+        + " top storey (a belfry with arches and a bell, or a lantern room) under the roof; never a blank column";
 
     /** The kind's features as a checklist the script must tick off. */
     public static String checklist(String kind, String era) {

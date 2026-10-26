@@ -83,8 +83,9 @@ public class ScenarioBench implements FabricClientGameTest {
             return; // not a bench run
         }
         String model = System.getenv().getOrDefault("SCN_BENCH_MODEL", "claude-sonnet-5-5").trim();
+        String sheetName = System.getenv().getOrDefault("SCN_BENCH_SHEET", "greymouth").trim();
         List<String> wanted = new ArrayList<>();
-        for (String p : System.getenv().getOrDefault("SCN_BENCH_PLACES", "church,mansion,general_store").split(",")) {
+        for (String p : System.getenv().getOrDefault("SCN_BENCH_PLACES", "").split(",")) {
             if (!p.isBlank()) {
                 wanted.add(p.trim());
             }
@@ -100,9 +101,12 @@ public class ScenarioBench implements FabricClientGameTest {
         config.ticksPerBlock = 1;
 
         // The test town with only the chosen places, and no guide yet: the AI writes it.
-        ScenarioSheet sheet = ScenarioSheet.fromJson(ScenarioGameTests.testSheet());
+        ScenarioSheet sheet = ScenarioSheet.fromJson(ScenarioGameTests.resource("/scenarios/" + sheetName + ".sheet.json"));
         sheet.normalize();
         sheet.styleGuide = "";
+        if (wanted.isEmpty()) {
+            sheet.places.forEach(p -> wanted.add(p.id)); // every place of the sheet
+        }
         sheet.places.removeIf(p -> !wanted.contains(p.id));
         sheet.npcs.removeIf(n -> !wanted.contains(n.place));
         sheet.clues.removeIf(c -> !wanted.contains(c.place));
@@ -213,6 +217,13 @@ public class ScenarioBench implements FabricClientGameTest {
                 context.takeScreenshot("bench_" + s.id + "_inside");
                 look(context, game, cx, origin[1] + 1.6, cz, cx - ox * 10, origin[1] + 1.4, cz - oz * 10);
                 context.takeScreenshot("bench_" + s.id + "_inside_back");
+            }
+            // Along the main street, at eye height.
+            if (!layout.roads.isEmpty() && layout.roads.get(0).points.size() >= 2) {
+                int[] a = layout.roads.get(0).points.get(0), b = layout.roads.get(0).points.get(layout.roads.get(0).points.size() - 1);
+                double sx = origin[0] + a[0] + (b[0] - a[0]) * 0.15, sz = origin[2] + a[1] + (b[1] - a[1]) * 0.15;
+                look(context, game, sx, origin[1] + 1.7, sz + 2, origin[0] + b[0], origin[1] + 1.2, origin[2] + b[1] + 2);
+                context.takeScreenshot("bench_street");
             }
             double mx = origin[0] + 80, mz = origin[2] + 80;
             look(context, game, mx, origin[1] + 70, mz + 90, mx, origin[1], mz);

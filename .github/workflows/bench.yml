@@ -9,9 +9,12 @@ on:
       model:
         description: Model id for the guide and the buildings
         default: claude-sonnet-5-5
+      sheet:
+        description: Test sheet (greymouth = 1920s harbour town, modern_korea = modern Korean street)
+        default: greymouth
       places:
-        description: Comma-separated place ids of the test town
-        default: church,mansion,general_store
+        description: Comma-separated place ids (empty = every place of the sheet)
+        default: ""
   push:
     branches: [bench]
 
@@ -50,7 +53,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SCN_BENCH_ONLY: "1"
           SCN_BENCH_MODEL: ${{ github.event.inputs.model || 'claude-sonnet-5-5' }}
-          SCN_BENCH_PLACES: ${{ github.event.inputs.places || 'church,mansion,general_store' }}
+          SCN_BENCH_SHEET: ${{ github.event.inputs.sheet || 'greymouth' }}
+          SCN_BENCH_PLACES: ${{ github.event.inputs.places || '' }}
         with:
           run: |
             chmod +x gradlew
@@ -66,7 +70,7 @@ jobs:
           mkdir -p "$out/logs"
           # Never publish the key: drop any line that could contain it.
           grep -v -i "x-api-key\|authorization\|sk-ant" build/clientgametest/logs/latest.log > "$out/logs/client.log" 2>/dev/null || true
-          echo "${GITHUB_SHA} bench=${{ steps.bench.outcome }} model=${{ github.event.inputs.model || 'claude-sonnet-5-5' }}" > "$out/RUN.txt"
+          echo "${GITHUB_SHA} bench=${{ steps.bench.outcome }} model=${{ github.event.inputs.model || 'claude-sonnet-5-5' }} sheet=${{ github.event.inputs.sheet || 'greymouth' }}" > "$out/RUN.txt"
           cd "$out"
           git init -q
           git checkout -q -b bench-results

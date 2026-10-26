@@ -46,6 +46,28 @@ class GroundPlanTest {
     }
 
     @Test
+    void mainRoadsHaveAMiddleLineAndTheModernTestStreetLaysOut() throws Exception {
+        ScenarioSheet sheet = ScenarioSheet.fromJson(Files.readString(Path.of("src/gametest/resources/scenarios/modern_korea.sheet.json")));
+        assertTrue(sheet.normalize().isEmpty(), "the modern test sheet is consistent");
+        TownLayout layout = TownLayout.auto(sheet);
+        assertTrue(layout.check(sheet).isEmpty(), "and lays out: " + layout.check(sheet));
+        GroundPlan plan = GroundPlan.of(layout, sheet);
+        int centre = 0;
+        for (int x = 0; x < plan.size; x++) {
+            for (int z = 0; z < plan.size; z++) {
+                if (plan.centre[x][z]) {
+                    centre++;
+                    assertEquals(GroundPlan.Cell.ROAD, plan.cells[x][z], "the middle line lies on the road");
+                }
+            }
+        }
+        assertTrue(centre > 100, "a main street has a middle line: " + centre);
+        assertTrue(Archetypes.modern(sheet.era));
+        assertTrue(Archetypes.checklist("shop", sheet.era).contains("glass front"), "a modern shop is a glass-fronted store");
+        assertTrue(Archetypes.checklist("church", sheet.era).contains("cross"));
+    }
+
+    @Test
     void fieldsNeverFlood() {
         TownLayout layout = new TownLayout();
         TownLayout.Zone field = new TownLayout.Zone();
