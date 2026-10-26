@@ -435,14 +435,14 @@ public class ScenarioScreen extends Screen {
         var site = layout.site(picked);
         int by = controlsY();
         if (place != null && site != null) {
-            addDrawableChild(new WoodUi.WoodButton(px, by, 78, 18, Text.literal("입구 " + sideKo(site.front)), b -> {
+            addDrawableChild(new WoodUi.WoodButton(px, by, 66, 18, Text.literal("입구 " + sideKo(site.front)), b -> {
                 int i = com.foredayner.scenario.layout.TownLayout.FRONTS.indexOf(site.front);
                 site.front = com.foredayner.scenario.layout.TownLayout.FRONTS.get((i + 1) % 4);
                 ScenarioClientState.saveLayout();
                 clearAndInit();
             }, false));
         } else if (place != null) {
-            WoodUi.WoodButton put = new WoodUi.WoodButton(px, by, 78, 18, fit("빈 자리에 놓기", 78), b -> {
+            WoodUi.WoodButton put = new WoodUi.WoodButton(px, by, 66, 18, fit("빈 자리에 놓기", 66), b -> {
                 if (layout.addFree(place)) {
                     ScenarioClientState.saveLayout();
                 } else {
@@ -453,7 +453,7 @@ public class ScenarioScreen extends Screen {
             addDrawableChild(put);
         }
         if (place != null && !place.outdoor) {
-            WoodUi.WoodButton cond = new WoodUi.WoodButton(px + 148, by, 58, 18, Text.literal(conditionKo(place.condition)), b -> {
+            WoodUi.WoodButton cond = new WoodUi.WoodButton(px + 126, by, 46, 18, Text.literal(conditionKo(place.condition)), b -> {
                 int i = com.foredayner.scenario.sheet.ScenarioSheet.CONDITIONS.indexOf(place.condition);
                 place.condition = com.foredayner.scenario.sheet.ScenarioSheet.CONDITIONS.get((i + 1) % 4);
                 ScenarioClientState.saveSheet();
@@ -463,7 +463,14 @@ public class ScenarioScreen extends Screen {
             addDrawableChild(cond);
         }
         if (place != null) {
-            addDrawableChild(new WoodUi.WoodButton(px + 82, by, 62, 18, Text.literal("크기 " + place.size), b -> {
+            boolean hasRef = place.refImage != null && !place.refImage.isBlank();
+            WoodUi.WoodButton photo = new WoodUi.WoodButton(px + 176, by, 46, 18, Text.literal(hasRef ? "사진 ✓" : "사진"),
+                b -> this.client.setScreen(new RefImageScreen(this, place.id)), false);
+            photo.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(hasRef
+                ? "참고 사진: " + place.refImage + (place.refDescription.isBlank() ? " (아직 읽지 않음)" : " (읽음)")
+                : "실제 건물 사진을 붙이면 AI가 보고 따라 지어요.")));
+            addDrawableChild(photo);
+            addDrawableChild(new WoodUi.WoodButton(px + 70, by, 52, 18, Text.literal("크기 " + place.size), b -> {
                 int s = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.indexOf(place.size);
                 place.size = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.get((s + 1) % 4);
                 ScenarioClientState.saveSheet();

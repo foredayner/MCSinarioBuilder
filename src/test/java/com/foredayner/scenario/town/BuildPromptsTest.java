@@ -64,6 +64,10 @@ class BuildPromptsTest {
         ScenarioSheet harbour = greymouth();
         assertFalse(References.korean(harbour), "a New England town gets no Korean cards");
         assertEquals("", References.card(harbour, harbour.place("church")));
+        korea.place("police").refDescription = "A 2-storey white tile box with a navy band.";
+        String withPhoto = BuildPrompts.extra(korea, korea.place("police"), 15);
+        assertTrue(withPhoto.contains("PHOTO REFERENCE") && withPhoto.contains("navy band"), "the keeper's photo is followed");
+        assertFalse(withPhoto.contains("REFERENCE (how such"), "and replaces the general card");
         korea.era = "1920s";
         assertTrue(References.card(korea, korea.place("church")).contains("Gothic"), "colonial-era cards for the 1920s");
     }

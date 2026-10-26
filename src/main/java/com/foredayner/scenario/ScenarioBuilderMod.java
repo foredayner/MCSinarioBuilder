@@ -16,7 +16,7 @@ public final class ScenarioBuilderMod implements ModInitializer {
     public static final String MOD_ID = "scenario-builder";
     public static final Logger LOG = LoggerFactory.getLogger(MOD_ID);
     /** The AI Build Assistant API version this mod was written for. */
-    public static final int NEEDS_API = 1;
+    public static final int NEEDS_API = 2;
 
     @Override
     public void onInitialize() {

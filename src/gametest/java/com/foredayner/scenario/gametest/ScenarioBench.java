@@ -134,7 +134,27 @@ public class ScenarioBench implements FabricClientGameTest {
                     BuildService.designer = new Recorder();
                     BuildService.columnsPerTick = 1500;
                     BuildService.here(player, info.id);
-                    BuildService.start(player, info.id);
+                    // A real photo for one place (SCN_BENCH_REF = "place=path"): the AI reads it before building.
+                    String ref = System.getenv().getOrDefault("SCN_BENCH_REF", "");
+                    int eq = ref.indexOf('=');
+                    Path photo = eq > 0 ? Path.of(ref.substring(eq + 1)) : null;
+                    if (photo != null && Files.isRegularFile(photo) && sheet.place(ref.substring(0, eq)) != null) {
+                        String placeId = ref.substring(0, eq);
+                        String saved = com.foredayner.scenario.town.RefService.saveFile(info.id, placeId, Files.readAllBytes(photo));
+                        com.foredayner.scenario.town.RefService.set(server, player, info.id, placeId, saved, ok -> {
+                            try {
+                                var read = SheetService.load(info.id);
+                                write("ref_" + placeId + ".txt", ok ? read.place(placeId).refDescription : "the photo could not be read");
+                            } catch (java.io.IOException ignored) {
+                            }
+                            BuildService.start(player, info.id);
+                        });
+                    } else {
+                        if (!ref.isBlank()) {
+                            write("ref_missing.txt", "no photo at " + ref);
+                        }
+                        BuildService.start(player, info.id);
+                    }
                     return info.id;
                 } catch (java.io.IOException e) {
                     throw new RuntimeException(e);

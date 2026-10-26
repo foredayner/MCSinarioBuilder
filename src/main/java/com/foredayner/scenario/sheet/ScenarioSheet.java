@@ -62,6 +62,10 @@ public final class ScenarioSheet {
         public boolean outdoor;
         /** kept, worn, abandoned or sinister. */
         public String condition = "kept";
+        /** A picture of a real building to follow: a web address, or "file:<name>" kept with the scenario. */
+        public String refImage = "";
+        /** What the AI saw in that picture, as building directions (made when the picture is set). */
+        public String refDescription = "";
     }
 
     public static final class Room {
@@ -213,6 +217,12 @@ public final class ScenarioSheet {
             }
             p.floors = Math.max(1, Math.min(4, p.floors));
             p.condition = CONDITIONS.contains(lower(p.condition)) ? lower(p.condition) : "kept";
+            if (p.refImage == null) {
+                p.refImage = "";
+            }
+            if (p.refDescription == null) {
+                p.refDescription = "";
+            }
             if (p.rooms == null) {
                 p.rooms = new ArrayList<>();
             }

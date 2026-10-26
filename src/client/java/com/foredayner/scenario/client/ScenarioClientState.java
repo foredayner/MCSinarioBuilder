@@ -215,6 +215,57 @@ public final class ScenarioClientState {
         }
     }
 
+    /** Set a place's reference picture by web address ("" clears it). */
+    public static void refUrl(String place, String url) {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S(url == null || url.isBlank() ? "ref_clear" : "ref_url",
+                selected + "\n" + place + "\n" + (url == null ? "" : url.trim())));
+        }
+    }
+
+    /** Have the AI look at a place's picture again. */
+    public static void refAgain(String place) {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("ref_again", selected + "\n" + place));
+        }
+    }
+
+    /** The system's file dialog for a picture; null if cancelled. */
+    public static Path pickImage() {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            PointerBuffer filters = stack.mallocPointer(5);
+            filters.put(stack.UTF8("*.png"));
+            filters.put(stack.UTF8("*.jpg"));
+            filters.put(stack.UTF8("*.jpeg"));
+            filters.put(stack.UTF8("*.gif"));
+            filters.put(stack.UTF8("*.webp"));
+            filters.flip();
+            String path = TinyFileDialogs.tinyfd_openFileDialog("참고 사진 고르기", "", filters, "사진 (.png .jpg .gif .webp)", false);
+            return path == null ? null : Path.of(path);
+        }
+    }
+
+    /** Send a picture file as a place's reference (in parts). */
+    public static void refFile(String place, Path file) {
+        try {
+            byte[] all = java.nio.file.Files.readAllBytes(file);
+            if (all.length > 4_500_000) {
+                message = "사진이 너무 커요 (" + all.length / 1000 + " KB, 4500 KB까지).";
+                refresh();
+                return;
+            }
+            int total = Math.max(1, (all.length + ScenarioNet.PART_SIZE - 1) / ScenarioNet.PART_SIZE);
+            for (int i = 0; i < total; i++) {
+                byte[] part = Arrays.copyOfRange(all, i * ScenarioNet.PART_SIZE, Math.min(all.length, (i + 1) * ScenarioNet.PART_SIZE));
+                ClientPlayNetworking.send(new ScenarioNet.RefUploadC2S(selected, place, i, total, part));
+            }
+            message = "사진을 보내는 중...";
+        } catch (IOException e) {
+            message = "사진을 읽지 못했어요: " + e.getMessage();
+        }
+        refresh();
+    }
+
     /** Have the AI write the town's architecture guide. */
     public static void makeStyle() {
         if (!selected.isEmpty()) {
@@ -335,6 +386,8 @@ public final class ScenarioClientState {
         if (MinecraftClient.getInstance().currentScreen instanceof ScenarioScreen screen) {
             screen.refresh();
         } else if (MinecraftClient.getInstance().currentScreen instanceof StyleScreen screen) {
+            screen.refresh();
+        } else if (MinecraftClient.getInstance().currentScreen instanceof RefImageScreen screen) {
             screen.refresh();
         }
     }

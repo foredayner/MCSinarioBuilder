@@ -113,6 +113,54 @@ public final class ScenarioNet {
         }
     }
 
+    /** Client -> server: one part of a place's reference picture (a png, jpeg, gif or webp file). */
+    public record RefUploadC2S(String id, String place, int index, int total, byte[] data) implements CustomPayload {
+        public static final Id<RefUploadC2S> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "ref_upload"));
+        public static final PacketCodec<RegistryByteBuf, RefUploadC2S> CODEC = PacketCodec.tuple(
+            PacketCodecs.STRING, RefUploadC2S::id, PacketCodecs.STRING, RefUploadC2S::place, PacketCodecs.VAR_INT, RefUploadC2S::index,
+            PacketCodecs.VAR_INT, RefUploadC2S::total, PacketCodecs.BYTE_ARRAY, RefUploadC2S::data, RefUploadC2S::new);
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
+    }
+
+    /** Pictures are at most this many parts (4.5 MB). */
+    private static final int MAX_REF_PARTS = 160;
+    private static final Map<UUID, byte[][]> REF_UPLOADS = new HashMap<>();
+
+    private static void receiveRef(ServerPlayerEntity player, RefUploadC2S p) {
+        if (!allowed(player)) {
+            return;
+        }
+        if (p.total() <= 0 || p.total() > MAX_REF_PARTS || p.index() < 0 || p.index() >= p.total() || p.data().length > PART_SIZE) {
+            return;
+        }
+        byte[][] parts = REF_UPLOADS.get(player.getUuid());
+        if (parts == null || parts.length != p.total() || p.index() == 0) {
+            parts = new byte[p.total()][];
+            REF_UPLOADS.put(player.getUuid(), parts);
+        }
+        parts[p.index()] = p.data();
+        for (byte[] part : parts) {
+            if (part == null) {
+                return;
+            }
+        }
+        REF_UPLOADS.remove(player.getUuid());
+        ByteArrayOutputStream all = new ByteArrayOutputStream();
+        for (byte[] part : parts) {
+            all.writeBytes(part);
+        }
+        try {
+            String ref = com.foredayner.scenario.town.RefService.saveFile(p.id(), p.place(), all.toByteArray());
+            com.foredayner.scenario.town.RefService.set(player.getServer(), player, p.id(), p.place(), ref, ok -> { });
+        } catch (IOException | RuntimeException e) {
+            status(player, "사진을 받지 못했어요: " + e.getMessage(), p.id());
+        }
+    }
+
     /** Server -> client: the model settings (JSON of ScenarioConfig). */
     public record ConfigS2C(String json) implements CustomPayload {
         public static final Id<ConfigS2C> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "config"));
@@ -147,6 +195,8 @@ public final class ScenarioNet {
         PayloadTypeRegistry.playS2C().register(ConfigS2C.ID, ConfigS2C.CODEC);
         PayloadTypeRegistry.playS2C().register(LayoutPayload.ID, LayoutPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(BuildPayload.ID, BuildPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(RefUploadC2S.ID, RefUploadC2S.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(RefUploadC2S.ID, (p, ctx) -> ctx.server().execute(() -> receiveRef(ctx.player(), p)));
         PayloadTypeRegistry.playC2S().register(LayoutPayload.ID, LayoutPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(LayoutPayload.ID, (p, ctx) -> ctx.server().execute(() -> saveLayout(ctx.player(), p)));
         ServerPlayNetworking.registerGlobalReceiver(SheetPayload.ID, (p, ctx) -> ctx.server().execute(() -> saveSheet(ctx.player(), p)));
@@ -185,6 +235,17 @@ public final class ScenarioNet {
                 int nl = p.arg().indexOf('\n');
                 if (nl > 0) {
                     com.foredayner.scenario.sheet.SheetService.revise(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
+                }
+            }
+            case "ref_url", "ref_clear", "ref_again" -> {
+                String[] a = p.arg().split("\n", 3);
+                if (a.length >= 2) {
+                    switch (p.action()) {
+                        case "ref_url" -> com.foredayner.scenario.town.RefService.set(player.getServer(), player, a[0], a[1],
+                            a.length > 2 ? a[2] : "", ok -> { });
+                        case "ref_clear" -> com.foredayner.scenario.town.RefService.set(player.getServer(), player, a[0], a[1], "", ok -> { });
+                        default -> com.foredayner.scenario.town.RefService.describe(player.getServer(), player, a[0], a[1], ok -> { });
+                    }
                 }
             }
             case "style" -> com.foredayner.scenario.town.StyleService.make(player.getServer(), player, p.arg(), guide -> { });

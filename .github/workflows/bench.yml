@@ -45,6 +45,20 @@ jobs:
           mkdir -p libs
           gh release download mc1.21.4-latest -R foredayner/McTestBuilder -p '*.jar' -D libs-dl --clobber
           mv "$(ls libs-dl/*.jar | grep -v sources | head -1)" libs/minecraft-ai-build-assistant.jar
+      - name: Get a reference photo (Korean police box, Wikimedia Commons)
+        if: ${{ (github.event.inputs.sheet || 'greymouth') == 'modern_korea' }}
+        run: |
+          mkdir -p build/clientgametest
+          for name in Seoul_Nowon_Police_Station_Danghyeon_Police_Box.JPG Gapyeong_Police_Station_Eumnae_Police_Box.JPG Jangheung_Police_Station_Eumnae_Police_Box.JPG; do
+            if curl -sfL -A "MCSinarioBuilder-bench/1.0 (https://github.com/foredayner/MCSinarioBuilder)" \
+                 -o build/clientgametest/ref_police.jpg "https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=1024" \
+               && [ "$(head -c 2 build/clientgametest/ref_police.jpg | od -An -tx1 | tr -d ' ')" = "ffd8" ]; then
+              echo "photo: ${name} ($(stat -c %s build/clientgametest/ref_police.jpg) bytes)"
+              echo "${name}" > build/clientgametest/ref_police.txt
+              break
+            fi
+            rm -f build/clientgametest/ref_police.jpg
+          done
       - name: Run the bench in a real client
         id: bench
         continue-on-error: true
@@ -55,6 +69,7 @@ jobs:
           SCN_BENCH_MODEL: ${{ github.event.inputs.model || 'claude-sonnet-5-5' }}
           SCN_BENCH_SHEET: ${{ github.event.inputs.sheet || 'greymouth' }}
           SCN_BENCH_PLACES: ${{ github.event.inputs.places || '' }}
+          SCN_BENCH_REF: ${{ (github.event.inputs.sheet || 'greymouth') == 'modern_korea' && 'police=ref_police.jpg' || '' }}
         with:
           run: |
             chmod +x gradlew
@@ -67,6 +82,7 @@ jobs:
           out=$(mktemp -d)
           cp -r build/clientgametest/bench "$out/" 2>/dev/null || true
           cp -r build/clientgametest/screenshots "$out/" 2>/dev/null || true
+          mkdir -p "$out/bench"; cp build/clientgametest/ref_police.jpg build/clientgametest/ref_police.txt "$out/bench/" 2>/dev/null || true
           mkdir -p "$out/logs"
           # Never publish the key: drop any line that could contain it.
           grep -v -i "x-api-key\|authorization\|sk-ant" build/clientgametest/logs/latest.log > "$out/logs/client.log" 2>/dev/null || true

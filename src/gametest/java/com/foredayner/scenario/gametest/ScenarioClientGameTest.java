@@ -72,6 +72,21 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> ScenarioScreen.pickForTests("lighthouse"));
             context.waitTicks(3);
             context.takeScreenshot("03d_layout_picked");
+            // The reference picture window of the lighthouse, with a description as the AI would write it.
+            context.runOnClient(client -> {
+                var sheet = com.foredayner.scenario.client.ScenarioClientState.sheet();
+                var lighthouse = sheet.place("lighthouse");
+                lighthouse.refImage = "https://example.org/old-lighthouse.jpg";
+                lighthouse.refDescription = "A round white tower about 4 times as tall as wide, with a red band near the top.\n"
+                    + "- A black iron gallery with a railing under a glass lantern room and a dark domed cap.\n"
+                    + "- Small square windows climbing the tower in a spiral, one every 4 blocks.\n"
+                    + "- Walls: white_concrete with a red_concrete band; gallery: iron_bars; cap: black_concrete.";
+            });
+            context.setScreen(() -> new com.foredayner.scenario.client.RefImageScreen(null, "lighthouse"));
+            context.waitTicks(3);
+            context.takeScreenshot("03d2_ref_photo");
+            context.setScreen(ScenarioScreen::new);
+            context.waitTicks(3);
             // A crowded town: 14 places, the list scrolls; one place has no site and is picked.
             context.runOnClient(client -> {
                 var sheet = new com.foredayner.scenario.sheet.ScenarioSheet();
