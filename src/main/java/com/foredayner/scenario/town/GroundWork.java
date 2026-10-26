@@ -92,6 +92,9 @@ public final class GroundWork {
     }
 
     private void set(int x, int y, int z, BlockState state) {
+        if (y < world.getBottomY()) {
+            return; // a shallow world (superflat): fill only down to its bottom
+        }
         pos.set(ox + x, y, oz + z);
         if (world.getBlockState(pos) != state) {
             world.setBlockState(pos, state, FLAGS);
@@ -168,7 +171,7 @@ public final class GroundWork {
 
     /** Fill air and fluids under the ground (caves, ravines, the sea floor) down to the fill depth. */
     private void fillBelow(int x, int z, int from, BlockState first, BlockState rest) {
-        for (int y = from; y >= y0 - FILL; y--) {
+        for (int y = from; y >= Math.max(world.getBottomY(), y0 - FILL); y--) {
             BlockState s = get(x, y, z);
             if (!s.isAir() && s.getFluidState().isEmpty()) {
                 break;

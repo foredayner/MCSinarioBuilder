@@ -149,7 +149,7 @@ public final class BuildService {
     public static void placeAt(BuildState state, ServerWorld world, BlockPos at) {
         world.getChunk(at.getX() >> 4, at.getZ() >> 4); // the height is only known for a loaded chunk
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
-        if (y <= world.getBottomY() + GroundWork.FILL + 1 || y + GroundWork.CLEAR > world.getTopYInclusive()) {
+        if (y < world.getBottomY() + 2 || y + GroundWork.CLEAR > world.getTopYInclusive()) {
             throw new IllegalStateException("no ground to build on here (y " + y + ")");
         }
         state.placed = true;
@@ -285,7 +285,8 @@ public final class BuildService {
             state.message = "";
             if (!"done".equals(state.ground)) {
                 if (!SNAPSHOTS.containsKey(id)) {
-                    job.capture = new TownSnapshot(job.world, job.origin.add(0, -GroundWork.FILL, 0),
+                    int low = Math.max(job.world.getBottomY(), job.origin.getY() - GroundWork.FILL);
+                    job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX(), low, job.origin.getZ()),
                         job.origin.add(TownLayout.SIZE - 1, GroundWork.CLEAR - 1, TownLayout.SIZE - 1));
                 }
                 job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1);
