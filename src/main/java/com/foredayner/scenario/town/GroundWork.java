@@ -151,6 +151,13 @@ public final class GroundWork {
             case FIELD -> top = x % 9 == 4 ? Blocks.WATER.getDefaultState()
                 : Blocks.FARMLAND.getDefaultState().with(FarmlandBlock.MOISTURE, 7);
             case SQUARE -> top = paving(x, z);
+            case PARKING -> {
+                // Bays 3 wide marked with white lines, an aisle every 12 blocks.
+                int along = Math.floorMod(z, 12);
+                boolean line = Math.floorMod(x, 3) == 0 && along != 5 && along != 6 && along != 7;
+                top = line ? Blocks.WHITE_CONCRETE.getDefaultState() : Blocks.GRAY_CONCRETE.getDefaultState();
+                soil = Blocks.STONE.getDefaultState();
+            }
             case WOODS -> top = GroundPlan.noise(x, z, 11) < 25 ? Blocks.PODZOL.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
             case CEMETERY -> top = GroundPlan.noise(x, z, 12) < 30 ? Blocks.COARSE_DIRT.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
             case OUTDOOR -> {
@@ -245,11 +252,24 @@ public final class GroundWork {
             } else if (GroundPlan.noise(x, z, 14) < 16) {
                 setIfAir(x, y0, z, Blocks.SHORT_GRASS.getDefaultState());
             }
+        } else if (cell == GroundPlan.Cell.PARK) {
+            if (treeHere(x, z, 7, 45)) {
+                tree(x, z, false);
+            } else if (GroundPlan.noise(x, z, 30) < 1) {
+                set(x, y0, z, Blocks.SPRUCE_STAIRS.getDefaultState()); // a bench
+            } else if (GroundPlan.noise(x, z, 31) < 4) {
+                set(x, y0, z, flower(x, z));
+            } else if (GroundPlan.noise(x, z, 31) < 12) {
+                set(x, y0, z, Blocks.SHORT_GRASS.getDefaultState());
+            }
         } else if (cell == GroundPlan.Cell.GRASS) {
             if (lampHere(x, z)) {
                 lamp(x, z);
             } else if (modern && nearRoad(x, z, 2)) {
-                // sidewalk: kept clear
+                // Sidewalk: clear, with a street tree in a planter now and then on its outer row.
+                if (!nearRoad(x, z, 1) && Math.floorMod(x * 5 + z * 11, 9) == 0) {
+                    streetTree(x, z);
+                }
             } else if (GroundPlan.noise(x, z, 15) < 7) {
                 set(x, y0, z, Blocks.SHORT_GRASS.getDefaultState());
             } else if (GroundPlan.noise(x, z, 15) < 8) {
@@ -382,6 +402,24 @@ public final class GroundWork {
             }
         }
         return false;
+    }
+
+    /** A small tree in a square of earth on the sidewalk. */
+    private void streetTree(int x, int z) {
+        set(x, y0 - 1, z, Blocks.GRASS_BLOCK.getDefaultState());
+        BlockState log = Blocks.OAK_LOG.getDefaultState();
+        BlockState leaves = Blocks.OAK_LEAVES.getDefaultState().with(LeavesBlock.PERSISTENT, true);
+        for (int y = 0; y < 4; y++) {
+            set(x, y0 + y, z, log);
+        }
+        for (int y = 3; y <= 5; y++) {
+            int r = y == 5 ? 0 : 1;
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    setIfAir(x + dx, y0 + y, z + dz, leaves);
+                }
+            }
+        }
     }
 
     /** Street lamps beside main roads, every so often. */

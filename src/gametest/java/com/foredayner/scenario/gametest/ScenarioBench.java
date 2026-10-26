@@ -212,10 +212,33 @@ public class ScenarioBench implements FabricClientGameTest {
                 look(context, game, fx + ox * dist * 0.8 + oz * dist * 0.6, origin[1] + 1 + s.w * 0.5, fz + oz * dist * 0.8 - ox * dist * 0.6,
                     cx, origin[1] + s.w * 0.15, cz);
                 context.takeScreenshot("bench_" + s.id + "_corner");
-                // Inside, from the middle of the building: toward the door, then toward the back.
-                look(context, game, cx, origin[1] + 1.6, cz, fx, origin[1] + 1.4, fz);
+                // Inside: the open spot (floor with 2 blocks of air) nearest the middle, looking toward the
+                // door, then toward the back.
+                int sx0 = origin[0] + s.x, sz0 = origin[2] + s.z, y0 = origin[1];
+                double[] spot = game.getServer().computeOnServer(server -> {
+                    var world = server.getOverworld();
+                    double best = Double.MAX_VALUE;
+                    double[] at = { cx, y0 + 1, cz };
+                    for (int x = sx0 + 1; x < sx0 + s.w - 1; x++) {
+                        for (int z = sz0 + 1; z < sz0 + s.d - 1; z++) {
+                            for (int y = y0; y <= y0 + 1; y++) {
+                                BlockPos p = new BlockPos(x, y, z);
+                                if (!world.getBlockState(p.down()).isAir() && world.getBlockState(p).isAir() && world.getBlockState(p.up()).isAir()
+                                    && !world.isSkyVisible(p)) {
+                                    double d = Math.hypot(x + 0.5 - cx, z + 0.5 - cz);
+                                    if (d < best) {
+                                        best = d;
+                                        at = new double[] { x + 0.5, y, z + 0.5 };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return at;
+                });
+                look(context, game, spot[0], spot[1] + 0.1, spot[2], fx, spot[1] + 1.4, fz);
                 context.takeScreenshot("bench_" + s.id + "_inside");
-                look(context, game, cx, origin[1] + 1.6, cz, cx - ox * 10, origin[1] + 1.4, cz - oz * 10);
+                look(context, game, spot[0], spot[1] + 0.1, spot[2], spot[0] - ox * 10, spot[1] + 1.4, spot[2] - oz * 10);
                 context.takeScreenshot("bench_" + s.id + "_inside_back");
             }
             // Along the main street, at eye height.

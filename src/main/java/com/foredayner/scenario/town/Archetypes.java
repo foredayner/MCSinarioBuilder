@@ -46,8 +46,9 @@ public final class Archetypes {
                 : "a shop: a false front (a tall flat facade hiding the roof), display windows either side of the door, an awning,"
                     + " a counter, shelves and barrels of goods, a back store room";
             case "church" -> modern
-                ? "a modern church: a slim tower or spire with a cross on top (a glowing red cross, redstone_lamp or red"
-                    + " concrete with a light), a wide glass or double-door entrance under a canopy, tall narrow windows, a sign"
+                ? "a modern church: a slim tower on the front corner, on its very top a red cross that stands out against"
+                    + " the sky (red_concrete, an upright 4 blocks tall and arms 3 blocks wide, a redstone_lamp or red light inside"
+                    + " it), a wide glass or double-door entrance under a canopy, tall narrow windows, a sign"
                     + " band with the church name, inside a hall with rows of pews, an aisle, a raised stage with a pulpit and a"
                     + " cross on the wall"
                 : "a church: a steeple or bell tower over the entrance with a bell, tall pointed (lancet) windows of"
@@ -57,7 +58,8 @@ public final class Archetypes {
                 + " room with long tables and lamps, rows of tall bookshelves, a librarian's desk, a locked special collection room";
             case "police" -> modern
                 ? "a police station: a 2-storey building of light concrete or tile with a blue and white sign band over a"
-                    + " glass entrance, a blue light by the door, a parking space for a patrol car in front, a front desk,"
+                    + " glass entrance, a blue light by the door, a parking bay beside the entrance on the ground of the lot"
+                    + " (gray concrete with white_concrete lines, never on the steps), a front desk,"
                     + " offices with desks, a holding cell with iron bars"
                 : "a police station: a solid brick or stone building, a lamp over the door, a front desk, an office,"
                     + " holding cells with iron bars";

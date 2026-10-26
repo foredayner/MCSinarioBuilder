@@ -11,7 +11,7 @@ import com.foredayner.scenario.sheet.ScenarioSheet;
 public final class GroundPlan {
 
     public enum Cell {
-        GRASS, ROAD, PATH, WATER, BEACH, WOODS, FIELD, GARDEN, SQUARE, CEMETERY,
+        GRASS, ROAD, PATH, WATER, BEACH, WOODS, FIELD, GARDEN, SQUARE, CEMETERY, PARKING, PARK,
         /** A building's lot (grass, kept clear for the building). */
         LOT,
         /** An outdoor place: dock deck, cemetery, woods, square or plain ground (see {@link #outdoor}). */
@@ -58,6 +58,8 @@ public final class GroundPlan {
                 case "garden" -> Cell.GARDEN;
                 case "square" -> Cell.SQUARE;
                 case "cemetery" -> Cell.CEMETERY;
+                case "parking" -> Cell.PARKING;
+                case "park" -> Cell.PARK;
                 default -> Cell.GRASS;
             };
             // Water and beach go under the rest of the zones (a field never floods).

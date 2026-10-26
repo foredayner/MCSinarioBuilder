@@ -23,7 +23,7 @@ public final class TownLayout {
     public static final int MARGIN = 2;
     public static final int GAP = 2;
     public static final List<String> FRONTS = List.of("north", "east", "south", "west");
-    public static final List<String> ZONES = List.of("water", "woods", "field", "cemetery", "square", "garden", "beach");
+    public static final List<String> ZONES = List.of("water", "woods", "field", "cemetery", "square", "garden", "beach", "parking", "park");
 
     public int size = SIZE;
     public List<Site> sites = new ArrayList<>();
@@ -459,6 +459,10 @@ public final class TownLayout {
         int west = "west".equals(woodsLocal) ? 16 : MARGIN + 2;
         int east = "east".equals(woodsLocal) ? SIZE - 16 : SIZE - MARGIN - 2;
         int streetZ = Math.min(south - 36, (north + south) / 2 + 12);
+        // Modern towns get wider main streets: curb, two lanes, a middle line, two lanes, curb.
+        boolean modern = com.foredayner.scenario.town.Archetypes.modern(sheet.era);
+        int roadWidth = modern ? 7 : 5;
+        int half = roadWidth / 2;
         List<int[]> streets = new ArrayList<>();
         int cursorA = west, cursorB = west; // A: north of the street, B: south of it
         int depthA = 0, depthB = 0;
@@ -472,7 +476,7 @@ public final class TownLayout {
             if ((toA ? cursorA : cursorB) + f > east) {
                 // Row full: start a new street further inland.
                 streets.add(new int[] { streetZ, west, Math.max(cursorA, cursorB) });
-                streetZ = streetZ - Math.max(depthA, 21) - 10;
+                streetZ = streetZ - Math.max(depthA, 21) - 10 - (half - 2) * 2;
                 cursorA = cursorB = west;
                 depthA = depthB = 0;
                 toA = true;
@@ -482,14 +486,14 @@ public final class TownLayout {
             s.w = s.d = f;
             if (toA) {
                 s.x = cursorA;
-                s.z = streetZ - 3 - f;
+                s.z = streetZ - half - 1 - f;
                 s.front = "south";
                 cursorA += f + 5;
                 depthA = Math.max(depthA, f);
                 rows.computeIfAbsent(streets.size() * 2, k -> new ArrayList<>()).add(s);
             } else {
                 s.x = cursorB;
-                s.z = streetZ + 4;
+                s.z = streetZ + half + 2;
                 s.front = "north";
                 cursorB += f + 5;
                 depthB = Math.max(depthB, f);
@@ -571,7 +575,7 @@ public final class TownLayout {
         int spineX = west - 1;
         for (int[] st : streets) {
             Road r = new Road();
-            r.width = 5;
+            r.width = roadWidth;
             r.points.add(new int[] { Math.max(MARGIN + 1, west - 2), st[0] });
             r.points.add(new int[] { Math.min(SIZE - MARGIN - 2, east + 1), st[0] });
             l.roads.add(r);
@@ -594,7 +598,7 @@ public final class TownLayout {
                 l.sites.add(s);
             }
         }
-        l.fillGround(west, east, north, south, streets);
+        l.fillGround(west, east, north, south, streets, modern);
         l.turn(turns);
         return l;
     }
@@ -603,7 +607,7 @@ public final class TownLayout {
      * Fill the open ground (no site, street or zone near) with gardens near the streets and
      * fields further out, in cells of 12 blocks joined along each row.
      */
-    private void fillGround(int west, int east, int north, int south, List<int[]> streets) {
+    private void fillGround(int west, int east, int north, int south, List<int[]> streets, boolean modern) {
         final int cell = 12;
         boolean[][] road = roadGrid();
         List<Zone> added = new ArrayList<>();
@@ -639,7 +643,10 @@ public final class TownLayout {
                 for (int[] st : streets) {
                     near = Math.min(near, Math.abs(z + cell / 2 - st[0]));
                 }
-                String kind = near < 34 ? "garden" : "field";
+                // Old towns: gardens by the street, fields beyond. Modern towns: parking lots and
+                // little parks by the street, parks beyond.
+                String kind = modern ? (near < 22 && Math.floorMod(x / cell + z / cell, 2) == 0 ? "parking" : "park")
+                    : near < 34 ? "garden" : "field";
                 if (run != null && run.kind.equals(kind)) {
                     run.w += cell;
                 } else {

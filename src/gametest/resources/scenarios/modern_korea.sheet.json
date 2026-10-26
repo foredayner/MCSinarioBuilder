@@ -16,10 +16,18 @@
       "floors": 1,
       "basement": false,
       "rooms": [
-        { "name": "매장", "purpose": "진열대 통로, 계산대, 음료 냉장고" },
-        { "name": "창고", "purpose": "상자와 재고, 직원 휴게 의자" }
+        {
+          "name": "매장",
+          "purpose": "진열대 통로, 계산대, 음료 냉장고"
+        },
+        {
+          "name": "창고",
+          "purpose": "상자와 재고, 직원 휴게 의자"
+        }
       ],
-      "scenes": ["새벽 세 시, 아르바이트생이 이상한 손님을 본다"],
+      "scenes": [
+        "새벽 세 시, 아르바이트생이 이상한 손님을 본다"
+      ],
       "notes": "a Korean 24-hour convenience store on the ground floor, green and white sign band, plastic tables and chairs outside under a parasol",
       "filler": false,
       "outdoor": false,
@@ -33,11 +41,22 @@
       "floors": 2,
       "basement": false,
       "rooms": [
-        { "name": "예배당", "purpose": "신도석과 강단, 벽의 십자가" },
-        { "name": "사무실", "purpose": "목사의 책상과 서류장" },
-        { "name": "식당", "purpose": "긴 탁자와 의자, 작은 부엌" }
+        {
+          "name": "예배당",
+          "purpose": "신도석과 강단, 벽의 십자가"
+        },
+        {
+          "name": "사무실",
+          "purpose": "목사의 책상과 서류장"
+        },
+        {
+          "name": "식당",
+          "purpose": "긴 탁자와 의자, 작은 부엌"
+        }
       ],
-      "scenes": ["밤마다 예배당에 불이 켜진다"],
+      "scenes": [
+        "밤마다 예배당에 불이 켜진다"
+      ],
       "notes": "a typical Korean neighbourhood church: red brick and white concrete, a slim tower with a red cross on top that glows at night",
       "filler": false,
       "outdoor": false,
@@ -51,28 +70,125 @@
       "floors": 2,
       "basement": false,
       "rooms": [
-        { "name": "민원실", "purpose": "민원 창구와 대기 의자" },
-        { "name": "사무실", "purpose": "경찰관 책상과 컴퓨터, 서류장" },
-        { "name": "유치실", "purpose": "쇠창살과 벤치" }
+        {
+          "name": "민원실",
+          "purpose": "민원 창구와 대기 의자"
+        },
+        {
+          "name": "사무실",
+          "purpose": "경찰관 책상과 컴퓨터, 서류장"
+        },
+        {
+          "name": "유치실",
+          "purpose": "쇠창살과 벤치"
+        }
       ],
-      "scenes": ["실종 신고를 하러 온 탐사자들"],
+      "scenes": [
+        "실종 신고를 하러 온 탐사자들"
+      ],
       "notes": "a Korean police box (파출소): light grey tiles, blue and white sign band reading POLICE, a patrol car space in front",
       "filler": false,
       "outdoor": false,
       "condition": "kept"
+    },
+    {
+      "id": "villa_a",
+      "name": "한빛빌라",
+      "kind": "house",
+      "size": "M",
+      "floors": 4,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "필로티 주차장",
+          "purpose": "1층 기둥 사이 주차"
+        },
+        {
+          "name": "세대",
+          "purpose": "거실과 방"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 4-storey red-brick Korean villa (빌라) on pilotis: open parking under the first floor, balconies with metal railings, a flat roof with a water tank",
+      "filler": true,
+      "outdoor": false,
+      "condition": "kept"
+    },
+    {
+      "id": "villa_b",
+      "name": "그린맨션",
+      "kind": "house",
+      "size": "M",
+      "floors": 3,
+      "basement": false,
+      "rooms": [
+        {
+          "name": "계단실",
+          "purpose": "층마다 현관문"
+        },
+        {
+          "name": "세대",
+          "purpose": "거실과 방"
+        }
+      ],
+      "scenes": [],
+      "notes": "a 3-storey white-and-grey tiled Korean villa with a glass stairwell, small balconies, air-conditioner units on the walls",
+      "filler": true,
+      "outdoor": false,
+      "condition": "worn"
     }
   ],
   "npcs": [
-    { "name": "박지훈", "role": "편의점 아르바이트생", "place": "convenience_store", "room": "매장", "notes": "" },
-    { "name": "김경위", "role": "파출소 경찰관", "place": "police", "room": "민원실", "notes": "" }
+    {
+      "name": "박지훈",
+      "role": "편의점 아르바이트생",
+      "place": "convenience_store",
+      "room": "매장",
+      "notes": ""
+    },
+    {
+      "name": "김경위",
+      "role": "파출소 경찰관",
+      "place": "police",
+      "room": "민원실",
+      "notes": ""
+    }
   ],
   "clues": [
-    { "id": "missing_report", "name": "실종 신고서", "text": "지난 한 달 사이 같은 동네에서 세 명이 사라졌다.", "form": "note", "place": "police", "room": "사무실", "hidden": false },
-    { "id": "receipt", "name": "새벽 영수증", "text": "매일 새벽 3시 3분, 같은 물건을 산 기록.", "form": "item", "place": "convenience_store", "room": "매장", "hidden": false }
+    {
+      "id": "missing_report",
+      "name": "실종 신고서",
+      "text": "지난 한 달 사이 같은 동네에서 세 명이 사라졌다.",
+      "form": "note",
+      "place": "police",
+      "room": "사무실",
+      "hidden": false
+    },
+    {
+      "id": "receipt",
+      "name": "새벽 영수증",
+      "text": "매일 새벽 3시 3분, 같은 물건을 산 기록.",
+      "form": "item",
+      "place": "convenience_store",
+      "room": "매장",
+      "hidden": false
+    }
   ],
   "links": [
-    { "from": "convenience_store", "to": "church", "kind": "road" },
-    { "from": "church", "to": "police", "kind": "road" }
+    {
+      "from": "convenience_store",
+      "to": "church",
+      "kind": "road"
+    },
+    {
+      "from": "church",
+      "to": "police",
+      "kind": "road"
+    }
   ],
-  "terrain": { "coast": "none", "woods": "none", "notes": "a city street, no sea or woods" }
+  "terrain": {
+    "coast": "none",
+    "woods": "none",
+    "notes": "a city street, no sea or woods"
+  }
 }
