@@ -21,7 +21,8 @@ public final class SheetPrompt {
                         police|newspaper|school|hospital|mansion|farm|mill|factory|warehouse|dock|lighthouse|cemetery|woods|
                         square|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false,
                         "rooms": [ { "name": "...", "purpose": "..." } ], "scenes": [ "short scene names here" ],
-                        "notes": "what matters for building it", "filler": false, "outdoor": false } ],
+                        "notes": "what matters for building it", "filler": false, "outdoor": false,
+                        "condition": "kept|worn|abandoned|sinister" } ],
           "npcs": [ { "name": "...", "role": "...", "place": "place id", "room": "room name or ''", "notes": "..." } ],
           "clues": [ { "id": "short_ascii_id", "name": "...", "text": "what it says or shows, 1-3 sentences",
                        "form": "book|note|map|item", "place": "place id", "room": "room name", "hidden": true|false } ],
@@ -39,6 +40,8 @@ public final class SheetPrompt {
         - Clues: the physical things the investigators can find. form: book (journal, ledger, letters), note (one
           page), map (chart, plan), item (object). Give the text the clue reveals. hidden = behind or inside something.
         - Links: roads between places, paths to outdoor places, and secret passages (kind "secret") the scenario names.
+        - Condition: how the place looks as the investigators find it: kept (lived in, cared for), worn (old, shabby),
+          abandoned (empty, decaying), sinister (something is wrong here). Follow the scenario.
         - Style: fit the era and place. For a 1920s New England town for example: clapboard houses of spruce and birch
           planks with dark oak trim, red brick shops, dark slate roofs (deepslate tiles), cobblestone foundations,
           gravel streets, lanterns, white picket fences.

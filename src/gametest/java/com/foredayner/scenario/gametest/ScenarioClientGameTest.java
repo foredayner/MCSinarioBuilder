@@ -51,6 +51,12 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             });
             context.waitTicks(3);
             context.takeScreenshot("03b_sheet");
+            // The town's architecture guide (the test sheet has a hand-written one).
+            context.setScreen(() -> new com.foredayner.scenario.client.StyleScreen(null));
+            context.waitTicks(3);
+            context.takeScreenshot("03b2_style_guide");
+            context.setScreen(ScenarioScreen::new);
+            context.waitTicks(3);
             // The layout tab with the automatic layout of the test town, then with a place picked.
             context.runOnClient(client -> {
                 var sheet = com.foredayner.scenario.client.ScenarioClientState.sheet();

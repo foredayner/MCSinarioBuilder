@@ -36,10 +36,17 @@ public final class BuildPrompts {
         return sb.toString();
     }
 
+    /** The town's style for every building: the keeper's guide if there is one, else the sheet's short style notes. */
+    public static String style(ScenarioSheet sheet) {
+        return sheet.styleGuide == null || sheet.styleGuide.isBlank() ? sheet.style : sheet.styleGuide;
+    }
+
     public static List<String> rooms(ScenarioSheet.Place p) {
         List<String> out = new ArrayList<>();
         for (ScenarioSheet.Room r : p.rooms) {
-            out.add(r.purpose.isBlank() ? r.name : r.name + ": " + r.purpose);
+            String room = r.purpose.isBlank() ? r.name : r.name + ": " + r.purpose;
+            String furniture = Archetypes.furniture(r.name + " " + r.purpose);
+            out.add(furniture.isEmpty() ? room : room + " (furnish with " + furniture + ")");
         }
         return out;
     }
@@ -73,7 +80,18 @@ public final class BuildPrompts {
 
     public static String extra(ScenarioSheet sheet, ScenarioSheet.Place p, int size) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format(Locale.ROOT, "Use most of the %dx%d site; the building may be up to %d blocks high.", size, size, maxHeight(p)));
+        sb.append(String.format(Locale.ROOT, "The building takes most of the %dx%d site (leave 2-3 blocks around it for the yard); it may be"
+            + " up to %d blocks high.", size, size, maxHeight(p)));
+        String features = Archetypes.features(p.kind, sheet.era);
+        if (!features.isEmpty()) {
+            sb.append("\nIt must read clearly as ").append(features).append('.');
+        }
+        String variant = Archetypes.variant(sheet, p);
+        if (!variant.isEmpty()) {
+            sb.append('\n').append(variant);
+        }
+        sb.append('\n').append(Archetypes.condition(p.condition));
+        sb.append('\n').append(Archetypes.yard(p));
         if (!p.scenes.isEmpty()) {
             sb.append("\nScenes that happen here (leave room for the investigators): ").append(String.join("; ", p.scenes)).append('.');
         }

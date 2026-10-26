@@ -21,6 +21,8 @@ public final class ScenarioSheet {
     public static final List<String> CLUE_FORMS = List.of("book", "note", "map", "item");
     public static final List<String> SIDES = List.of("none", "north", "east", "south", "west");
     public static final List<String> LINKS = List.of("road", "path", "secret");
+    /** How a place looks after: kept, worn, abandoned, sinister. */
+    public static final List<String> CONDITIONS = List.of("kept", "worn", "abandoned", "sinister");
     /** At most this many places fit a 160x160 town with room for streets. */
     public static final int MAX_PLACES = 14;
 
@@ -33,6 +35,8 @@ public final class ScenarioSheet {
     public String weather = "rain";
     /** Building style rules shared by the whole town (materials as Minecraft blocks). */
     public String style = "";
+    /** The town's architecture guide (written by the AI from the era and place, edited by the keeper). */
+    public String styleGuide = "";
     public List<Place> places = new ArrayList<>();
     public List<Npc> npcs = new ArrayList<>();
     public List<Clue> clues = new ArrayList<>();
@@ -56,6 +60,8 @@ public final class ScenarioSheet {
         public boolean filler;
         /** Outdoor places (cemetery, woods, dock) have no building, just ground features. */
         public boolean outdoor;
+        /** kept, worn, abandoned or sinister. */
+        public String condition = "kept";
     }
 
     public static final class Room {
@@ -176,6 +182,12 @@ public final class ScenarioSheet {
         if (terrain == null) {
             terrain = new Terrain();
         }
+        if (styleGuide == null) {
+            styleGuide = "";
+        }
+        if (style == null) {
+            style = "";
+        }
         terrain.coast = SIDES.contains(lower(terrain.coast)) ? lower(terrain.coast) : "none";
         terrain.woods = SIDES.contains(lower(terrain.woods)) ? lower(terrain.woods) : "none";
         if (places.isEmpty()) {
@@ -200,6 +212,7 @@ public final class ScenarioSheet {
                 p.size = "M";
             }
             p.floors = Math.max(1, Math.min(4, p.floors));
+            p.condition = CONDITIONS.contains(lower(p.condition)) ? lower(p.condition) : "kept";
             if (p.rooms == null) {
                 p.rooms = new ArrayList<>();
             }

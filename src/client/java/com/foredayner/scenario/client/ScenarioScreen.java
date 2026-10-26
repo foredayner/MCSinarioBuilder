@@ -218,6 +218,15 @@ public class ScenarioScreen extends Screen {
             b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
         var sheet = ScenarioClientState.sheet();
         if (sheet != null) {
+            boolean hasGuide = sheet.styleGuide != null && !sheet.styleGuide.isBlank();
+            WoodUi.WoodButton style = new WoodUi.WoodButton(right() - 266, y, 80, 18, fit(hasGuide ? "스타일 가이드" : "스타일 가이드 +", 80),
+                b -> this.client.setScreen(new StyleScreen(this)), false);
+            style.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(hasGuide
+                ? "모든 건물이 따르는 시대·지역 건축 규칙. 눌러서 보고 고치기."
+                : "아직 없어요. 짓기를 시작하면 AI가 먼저 만들어요. 미리 만들고 고칠 수도 있어요.")));
+            addDrawableChild(style);
+        }
+        if (sheet != null) {
             int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
             // Places: name (details on hover), size, remove.
             int cx = colX(0), w = colWidth();
@@ -334,7 +343,7 @@ public class ScenarioScreen extends Screen {
 
     private static final int ENTRY = 11;
     /** Room under the list: the picked place's buttons, its corner line and the check. */
-    private static final int CONTROLS = 34;
+    private static final int CONTROLS = 44;
     private int listScroll;
 
     private int entriesTop() {
@@ -442,6 +451,16 @@ public class ScenarioScreen extends Screen {
                 clearAndInit();
             }, false);
             addDrawableChild(put);
+        }
+        if (place != null && !place.outdoor) {
+            WoodUi.WoodButton cond = new WoodUi.WoodButton(px + 148, by, 58, 18, Text.literal(conditionKo(place.condition)), b -> {
+                int i = com.foredayner.scenario.sheet.ScenarioSheet.CONDITIONS.indexOf(place.condition);
+                place.condition = com.foredayner.scenario.sheet.ScenarioSheet.CONDITIONS.get((i + 1) % 4);
+                ScenarioClientState.saveSheet();
+                clearAndInit();
+            }, false);
+            cond.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("건물 상태: 깔끔 / 낡음 / 폐허 / 불길. 지을 때 낡은 정도와 조명에 반영돼요.")));
+            addDrawableChild(cond);
         }
         if (place != null) {
             addDrawableChild(new WoodUi.WoodButton(px + 82, by, 62, 18, Text.literal("크기 " + place.size), b -> {
@@ -674,8 +693,7 @@ public class ScenarioScreen extends Screen {
                 + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size)
                 : (world ? "좌하단 월드 (" : "좌하단 (") + cx + ", " + cz + ") · " + site.w + "x" + site.d;
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 22, WoodUi.INK_SOFT, false);
-            statusX = px + 150;
-            ty += 5;
+            ty += 33;
         } else {
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("지도에서 끌어 옮기기 · 밝은 테두리 = 입구", right() - 12 - px),
                 px, ty, WoodUi.INK_SOFT, false);
@@ -692,7 +710,7 @@ public class ScenarioScreen extends Screen {
                 }
                 ctx.drawOrderedTooltip(this.textRenderer, tip, mouseX, mouseY);
             }
-            int ly = controlsY() + 34;
+            int ly = controlsY() + 44;
             for (String problem : layoutProblems) {
                 for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), right() - 12 - px)) {
                     if (ly > bottom() - 58) {
@@ -874,6 +892,15 @@ public class ScenarioScreen extends Screen {
         }
     }
 
+    private static String conditionKo(String c) {
+        return switch (c == null ? "" : c) {
+            case "worn" -> "낡음";
+            case "abandoned" -> "폐허";
+            case "sinister" -> "불길";
+            default -> "깔끔";
+        };
+    }
+
     private static String placeName(com.foredayner.scenario.sheet.ScenarioSheet sheet, String id) {
         var p = sheet.place(id);
         return p == null ? id : p.name;
@@ -890,7 +917,7 @@ public class ScenarioScreen extends Screen {
 
     private static String placeDetail(com.foredayner.scenario.sheet.ScenarioSheet.Place p) {
         StringBuilder s = new StringBuilder(p.name + " (" + p.kind + ", " + p.size + " " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(p.size)
-            + "칸, " + p.floors + "층" + (p.basement ? " + 지하" : "") + (p.outdoor ? ", 야외" : "") + ")");
+            + "칸, " + p.floors + "층" + (p.basement ? " + 지하" : "") + (p.outdoor ? ", 야외" : ", " + conditionKo(p.condition)) + ")");
         if (!p.rooms.isEmpty()) {
             s.append("\n방: ");
             for (int i = 0; i < p.rooms.size(); i++) {
@@ -943,7 +970,7 @@ public class ScenarioScreen extends Screen {
             ctx.drawText(this.textRenderer, "아직 시트가 없어요. \"AI로 다시 읽기\"를 누르면 AI가 시나리오를 읽고 만들어요.", l, bodyTop() + 40,
                 WoodUi.INK_SOFT, false);
         } else {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 200),
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 284),
                 l, bodyTop() + 11, WoodUi.INK, false);
             String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
                 + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;

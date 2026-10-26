@@ -276,6 +276,16 @@ public final class BuildService {
 
     private static void start(MinecraftServer server, ServerPlayerEntity player, String id) {
         try {
+            ScenarioSheet sheet = SheetService.load(id);
+            if (sheet != null && (sheet.styleGuide == null || sheet.styleGuide.isBlank()) && designer == AI && !JOBS.containsKey(id)) {
+                // Every building follows the town's architecture guide: write it first.
+                StyleService.make(server, player, id, guide -> {
+                    if (guide != null) {
+                        start(server, player, id);
+                    }
+                });
+                return;
+            }
             Job job = prepare(server, player, id);
             if (job == null) {
                 return;
@@ -641,7 +651,7 @@ public final class BuildService {
             future = designer.object(job.world, siteMin(job, s), BuildPrompts.prop(job.sheet, p), PROP_SIZE, model);
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
-            AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), job.sheet.style,
+            AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
                 BuildPrompts.rooms(p), BuildPrompts.marks(job.sheet, p), BuildPrompts.extra(job.sheet, p, s.w), model);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }

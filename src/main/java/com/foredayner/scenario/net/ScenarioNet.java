@@ -187,6 +187,7 @@ public final class ScenarioNet {
                     com.foredayner.scenario.sheet.SheetService.revise(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
                 }
             }
+            case "style" -> com.foredayner.scenario.town.StyleService.make(player.getServer(), player, p.arg(), guide -> { });
             case "build_here" -> com.foredayner.scenario.town.BuildService.here(player, p.arg());
             case "build_start" -> com.foredayner.scenario.town.BuildService.start(player, p.arg());
             case "build_stop" -> com.foredayner.scenario.town.BuildService.stop(player, p.arg());

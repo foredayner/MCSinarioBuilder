@@ -7,42 +7,277 @@
   "weather": "rain",
   "style": "spruce·birch 판자 목조집, dark oak 테두리\n붉은 벽돌 상점, deepslate tiles 지붕\ncobblestone 기초, gravel 길, lantern 가로등",
   "places": [
-    {"id": "dock", "name": "부두", "kind": "dock", "size": "L", "floors": 1, "basement": false, "outdoor": true,
-     "rooms": [{"name": "창고", "purpose": "어구와 상자"}], "scenes": ["폰드의 행적"], "notes": "어선 세 척", "filler": false},
-    {"id": "inn", "name": "여관 '젖은 닻'", "kind": "inn", "size": "L", "floors": 2, "basement": false, "outdoor": false,
-     "rooms": [{"name": "술집", "purpose": "만남"}, {"name": "주방", "purpose": ""}, {"name": "객실", "purpose": "숙소"}],
-     "scenes": ["마사와 만남"], "notes": "", "filler": false},
-    {"id": "lighthouse", "name": "등대", "kind": "lighthouse", "size": "M", "floors": 3, "basement": false, "outdoor": false,
-     "rooms": [{"name": "등대지기의 집", "purpose": "책상"}, {"name": "등실", "purpose": "초록 렌즈"}], "scenes": ["등대 조사"], "notes": "동쪽 곶", "filler": false},
-    {"id": "church", "name": "성 요한 교회", "kind": "church", "size": "L", "floors": 1, "basement": false, "outdoor": false,
-     "rooms": [{"name": "예배당", "purpose": ""}, {"name": "성구실", "purpose": "장부"}], "scenes": ["목사와 대화"], "notes": "뒤뜰 묘지", "filler": false},
-    {"id": "mansion", "name": "위트모어 저택", "kind": "mansion", "size": "XL", "floors": 3, "basement": true, "outdoor": false,
-     "rooms": [{"name": "서재", "purpose": "금고"}, {"name": "응접실", "purpose": ""}, {"name": "식당", "purpose": ""}, {"name": "지하실", "purpose": "숨은 통로"}],
-     "scenes": ["위트모어의 계획"], "notes": "북쪽 숲 가장자리", "filler": false},
-    {"id": "general_store", "name": "잡화점", "kind": "shop", "size": "M", "floors": 1, "basement": false, "outdoor": false,
-     "rooms": [{"name": "가게", "purpose": ""}], "scenes": [], "notes": "", "filler": true}
+    {
+      "id": "dock",
+      "name": "부두",
+      "kind": "dock",
+      "size": "L",
+      "floors": 1,
+      "basement": false,
+      "outdoor": true,
+      "rooms": [
+        {
+          "name": "창고",
+          "purpose": "어구와 상자"
+        }
+      ],
+      "scenes": [
+        "폰드의 행적"
+      ],
+      "notes": "어선 세 척",
+      "filler": false
+    },
+    {
+      "id": "inn",
+      "name": "여관 '젖은 닻'",
+      "kind": "inn",
+      "size": "L",
+      "floors": 2,
+      "basement": false,
+      "outdoor": false,
+      "rooms": [
+        {
+          "name": "술집",
+          "purpose": "만남"
+        },
+        {
+          "name": "주방",
+          "purpose": ""
+        },
+        {
+          "name": "객실",
+          "purpose": "숙소"
+        }
+      ],
+      "scenes": [
+        "마사와 만남"
+      ],
+      "notes": "",
+      "filler": false,
+      "condition": "worn"
+    },
+    {
+      "id": "lighthouse",
+      "name": "등대",
+      "kind": "lighthouse",
+      "size": "M",
+      "floors": 3,
+      "basement": false,
+      "outdoor": false,
+      "rooms": [
+        {
+          "name": "등대지기의 집",
+          "purpose": "책상"
+        },
+        {
+          "name": "등실",
+          "purpose": "초록 렌즈"
+        }
+      ],
+      "scenes": [
+        "등대 조사"
+      ],
+      "notes": "동쪽 곶",
+      "filler": false,
+      "condition": "abandoned"
+    },
+    {
+      "id": "church",
+      "name": "성 요한 교회",
+      "kind": "church",
+      "size": "L",
+      "floors": 1,
+      "basement": false,
+      "outdoor": false,
+      "rooms": [
+        {
+          "name": "예배당",
+          "purpose": ""
+        },
+        {
+          "name": "성구실",
+          "purpose": "장부"
+        }
+      ],
+      "scenes": [
+        "목사와 대화"
+      ],
+      "notes": "뒤뜰 묘지",
+      "filler": false,
+      "condition": "worn"
+    },
+    {
+      "id": "mansion",
+      "name": "위트모어 저택",
+      "kind": "mansion",
+      "size": "XL",
+      "floors": 3,
+      "basement": true,
+      "outdoor": false,
+      "rooms": [
+        {
+          "name": "서재",
+          "purpose": "금고"
+        },
+        {
+          "name": "응접실",
+          "purpose": ""
+        },
+        {
+          "name": "식당",
+          "purpose": ""
+        },
+        {
+          "name": "지하실",
+          "purpose": "숨은 통로"
+        }
+      ],
+      "scenes": [
+        "위트모어의 계획"
+      ],
+      "notes": "북쪽 숲 가장자리",
+      "filler": false,
+      "condition": "sinister"
+    },
+    {
+      "id": "general_store",
+      "name": "잡화점",
+      "kind": "shop",
+      "size": "M",
+      "floors": 1,
+      "basement": false,
+      "outdoor": false,
+      "rooms": [
+        {
+          "name": "가게",
+          "purpose": ""
+        }
+      ],
+      "scenes": [],
+      "notes": "",
+      "filler": true
+    }
   ],
   "npcs": [
-    {"name": "마사 폰드", "role": "의뢰인", "place": "inn", "room": "술집", "notes": "실종자의 조카"},
-    {"name": "해나 모스", "role": "여관 주인", "place": "inn", "room": "술집", "notes": ""},
-    {"name": "사일러스 크레인", "role": "어부", "place": "dock", "room": "", "notes": ""},
-    {"name": "조나 브루어", "role": "목사", "place": "church", "room": "예배당", "notes": "무언가를 숨김"},
-    {"name": "아이작 위트모어", "role": "저택 주인", "place": "mansion", "room": "서재", "notes": ""}
+    {
+      "name": "마사 폰드",
+      "role": "의뢰인",
+      "place": "inn",
+      "room": "술집",
+      "notes": "실종자의 조카"
+    },
+    {
+      "name": "해나 모스",
+      "role": "여관 주인",
+      "place": "inn",
+      "room": "술집",
+      "notes": ""
+    },
+    {
+      "name": "사일러스 크레인",
+      "role": "어부",
+      "place": "dock",
+      "room": "",
+      "notes": ""
+    },
+    {
+      "name": "조나 브루어",
+      "role": "목사",
+      "place": "church",
+      "room": "예배당",
+      "notes": "무언가를 숨김"
+    },
+    {
+      "name": "아이작 위트모어",
+      "role": "저택 주인",
+      "place": "mansion",
+      "room": "서재",
+      "notes": ""
+    }
   ],
   "clues": [
-    {"id": "pond_journal", "name": "폰드의 일지 마지막 장", "text": "초록 불빛이 바다 밑에서 올라온다.", "form": "book", "place": "dock", "room": "창고", "hidden": true},
-    {"id": "sea_chart", "name": "낡은 해도", "text": "등대 아래 동굴이 표시되어 있다.", "form": "map", "place": "inn", "room": "술집", "hidden": false},
-    {"id": "letter_draft", "name": "폰드의 편지 초안", "text": "마사에게, 위트모어를 믿지 마라.", "form": "note", "place": "lighthouse", "room": "등대지기의 집", "hidden": false},
-    {"id": "burial_ledger", "name": "찢긴 매장 장부", "text": "지난달 매장 기록 세 줄이 지워져 있다.", "form": "book", "place": "church", "room": "성구실", "hidden": false},
-    {"id": "green_glass", "name": "초록 유리 조각", "text": "등대 렌즈와 같은 기묘한 유리.", "form": "item", "place": "mansion", "room": "서재", "hidden": true}
+    {
+      "id": "pond_journal",
+      "name": "폰드의 일지 마지막 장",
+      "text": "초록 불빛이 바다 밑에서 올라온다.",
+      "form": "book",
+      "place": "dock",
+      "room": "창고",
+      "hidden": true
+    },
+    {
+      "id": "sea_chart",
+      "name": "낡은 해도",
+      "text": "등대 아래 동굴이 표시되어 있다.",
+      "form": "map",
+      "place": "inn",
+      "room": "술집",
+      "hidden": false
+    },
+    {
+      "id": "letter_draft",
+      "name": "폰드의 편지 초안",
+      "text": "마사에게, 위트모어를 믿지 마라.",
+      "form": "note",
+      "place": "lighthouse",
+      "room": "등대지기의 집",
+      "hidden": false
+    },
+    {
+      "id": "burial_ledger",
+      "name": "찢긴 매장 장부",
+      "text": "지난달 매장 기록 세 줄이 지워져 있다.",
+      "form": "book",
+      "place": "church",
+      "room": "성구실",
+      "hidden": false
+    },
+    {
+      "id": "green_glass",
+      "name": "초록 유리 조각",
+      "text": "등대 렌즈와 같은 기묘한 유리.",
+      "form": "item",
+      "place": "mansion",
+      "room": "서재",
+      "hidden": true
+    }
   ],
   "links": [
-    {"from": "dock", "to": "inn", "kind": "road"},
-    {"from": "inn", "to": "church", "kind": "road"},
-    {"from": "church", "to": "mansion", "kind": "road"},
-    {"from": "dock", "to": "lighthouse", "kind": "path"},
-    {"from": "inn", "to": "general_store", "kind": "road"},
-    {"from": "mansion", "to": "lighthouse", "kind": "secret"}
+    {
+      "from": "dock",
+      "to": "inn",
+      "kind": "road"
+    },
+    {
+      "from": "inn",
+      "to": "church",
+      "kind": "road"
+    },
+    {
+      "from": "church",
+      "to": "mansion",
+      "kind": "road"
+    },
+    {
+      "from": "dock",
+      "to": "lighthouse",
+      "kind": "path"
+    },
+    {
+      "from": "inn",
+      "to": "general_store",
+      "kind": "road"
+    },
+    {
+      "from": "mansion",
+      "to": "lighthouse",
+      "kind": "secret"
+    }
   ],
-  "terrain": {"coast": "south", "woods": "north", "notes": "등대는 동쪽 곶"}
+  "terrain": {
+    "coast": "south",
+    "woods": "north",
+    "notes": "등대는 동쪽 곶"
+  },
+  "styleGuide": "PALETTE: walls spruce_planks, birch_planks (clapboard), bricks for shops; trim dark_oak_planks, stripped_dark_oak_log; roofs deepslate_tiles, dark_oak_stairs; foundations cobblestone, mossy_cobblestone; floors oak_planks, dark_oak_planks; windows glass_pane in spruce trapdoor frames; doors spruce_door; chimneys bricks, cobblestone; fences white birch_fence, spruce_fence; lamps lantern on spruce_fence posts.\nSHAPES: steep gable and gambrel roofs, 4-block storeys, small-paned windows in rows, covered front porches, widow's walks on rich houses.\nINTERIORS: plank floors with carpets, wainscot (stripped logs), fireplaces of bricks, oil lamps (lanterns), heavy dark furniture.\nWEAR AND MOOD: salt-greyed wood, moss on foundations, fog-dark windows, a few cracked bricks.\nBY BUILDING: church white birch with a spire; shops red brick with false fronts; inn two storeys with a long porch; lighthouse white with a red band.\nAVOID: concrete, quartz, bright modern colours, sea lanterns outside the lighthouse."
 }

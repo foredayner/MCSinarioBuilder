@@ -215,6 +215,13 @@ public final class ScenarioClientState {
         }
     }
 
+    /** Have the AI write the town's architecture guide. */
+    public static void makeStyle() {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("style", selected));
+        }
+    }
+
     /** Have the AI change the sheet as asked. */
     public static void revise(String instruction) {
         if (!selected.isEmpty() && instruction != null && !instruction.isBlank()) {
@@ -326,6 +333,8 @@ public final class ScenarioClientState {
 
     private static void refresh() {
         if (MinecraftClient.getInstance().currentScreen instanceof ScenarioScreen screen) {
+            screen.refresh();
+        } else if (MinecraftClient.getInstance().currentScreen instanceof StyleScreen screen) {
             screen.refresh();
         }
     }
