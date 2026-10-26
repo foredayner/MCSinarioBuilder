@@ -1,0 +1,219 @@
+{
+  "placed": true,
+  "originX": -76,
+  "originY": -60,
+  "originZ": -86,
+  "dimension": "minecraft:overworld",
+  "status": "done",
+  "ground": "done",
+  "groundPercent": 100,
+  "places": {
+    "shin_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_84a5f21a",
+      "min": [
+        66,
+        -60,
+        -71
+      ],
+      "max": [
+        80,
+        -47,
+        -57
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "noh_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_347fbe89",
+      "min": [
+        27,
+        -60,
+        -84
+      ],
+      "max": [
+        41,
+        -47,
+        -70
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "kim_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_10ea8c91",
+      "min": [
+        49,
+        -60,
+        -54
+      ],
+      "max": [
+        63,
+        -47,
+        -40
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "jang_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_754c3090",
+      "min": [
+        -62,
+        -60,
+        -12
+      ],
+      "max": [
+        -48,
+        -47,
+        2
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "bae_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_f4476488",
+      "min": [
+        -5,
+        -60,
+        22
+      ],
+      "max": [
+        15,
+        -47,
+        42
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "moon_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_481361a1",
+      "min": [
+        -64,
+        -60,
+        42
+      ],
+      "max": [
+        -50,
+        -47,
+        56
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "house_w1": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_db3e1d18",
+      "min": [
+        -60,
+        -60,
+        -51
+      ],
+      "max": [
+        -46,
+        -47,
+        -37
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "house_e1": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_db3e1aea",
+      "min": [
+        66,
+        -60,
+        -1
+      ],
+      "max": [
+        80,
+        -47,
+        13
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "house_e2": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_db3e1aeb",
+      "min": [
+        39,
+        -60,
+        18
+      ],
+      "max": [
+        53,
+        -47,
+        32
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "house_e3": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_db3e1aec",
+      "min": [
+        56,
+        -60,
+        31
+      ],
+      "max": [
+        70,
+        -47,
+        45
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "pyeongsang": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_2f42a532",
+      "min": [
+        -28,
+        -60,
+        -18
+      ],
+      "max": [
+        -14,
+        -56,
+        -4
+      ],
+      "marks": {},
+      "prop": true
+    },
+    "pine": {
+      "state": "done",
+      "error": "",
+      "tag": "",
+      "min": [
+        4,
+        -60,
+        54
+      ],
+      "max": [
+        14,
+        -42,
+        64
+      ],
+      "marks": {},
+      "prop": false
+    }
+  },
+  "tokensIn": 53192,
+  "tokensOut": 234533,
+  "message": "마을을 다 지었어요."
+}

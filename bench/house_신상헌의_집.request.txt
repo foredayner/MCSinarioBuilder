@@ -1,0 +1,96 @@
+DESCRIPTION:
+house "신상헌의 집" in 메이골, a small isolated mountain village (산골 마을) deep in the mountains of Gangwon-do, Korea (1950s (early 1950s), a Call of Cthulhu scenario). 1 floor. a 너와집 (log walls, wooden shingle roof held down with stones) of the Gangwon mountains, neat and tidy; a young man lives here alone Mood: a quiet, isolated mountain village with an uneasy stillness at dusk.
+
+SITE: Site[width=15, depth=15, maxHeight=13]
+
+STYLE:
+ARCHITECTURE GUIDE: 흡혈귀곡 - 메이골 (1950s, Gangwon-do mountain village)
+
+PALETTE:
+Walls: stripped_spruce_log stacked as log-box walls (귀틀벽), with mud or packed_mud infill and coarse_dirt rubbed into the joints.
+Trim and frames: stripped_spruce_log for posts and sills, spruce_planks for door frames, spruce_stairs or spruce_slab for thresholds.
+Roofs: spruce_slab and spruce_stairs laid as split-shingle courses (너와), held down by cobblestone, mossy_cobblestone, or andesite stones placed on top.
+Foundations: cobblestone or stone_bricks dry-stacked as a low base (돌 기단), with gravel at the footing.
+Floors: packed_mud or dirt inside the main room, spruce_planks for the 툇마루 wooden porch, hay_block or brown_carpet for straw mats (멍석).
+Windows: white_stained_glass_pane standing in spruce_fence lattice to read as paper panes (창호지), with spruce_trapdoor shutters.
+Doors: spruce_door or spruce_trapdoor, with plank-built doors on wooden hinge-style frames.
+Chimneys: cobblestone or mud_bricks cone-shaped flues (굴뚝), with a black stone or blackstone cap blackened by soot.
+Fences and gates: spruce_fence and spruce_fence_gate woven low as 싸리 울타리, with dead_bush tufts and azalea bits along the base.
+Lamps: lantern hung from a spruce_fence post or porch beam; no street lights anywhere in the village.
+
+SHAPES:
+Roofs are low, steep-sided gable or hip roofs, pitched around 45 degrees, with a ridge pole of stripped_spruce_log and wide overhangs over the porch.
+Storeys: one storey, roughly 4 blocks to the eaves, with the roof taking another 3 to 4 blocks above.
+Walls are short and thick; the stone base stands 1 block proud of the ground, floor raised slightly above the dirt yard.
+Windows are small and few, about 1x2 with a 2-block spacing, mostly on the front; the back and sides keep closed walls against the cold.
+Porches are 툇마루: a narrow spruce_planks platform along the front, 1-2 blocks deep, with a low railing of spruce_fence and a single hanging lantern.
+Entrances are low and offset, with a stone step and a door turned away from the prevailing north-west wind.
+Decoration is restrained: rice-straw or hay_block bundles stacked under eaves (나뭇단), clay jars (장독대) of terracotta or brown_terracotta beside the back wall, and firewood stacks of stripped_spruce_log.
+
+INTERIORS:
+Walls are bare log or mud, lightly whitewashed in places with white_concrete_powder or white_terracotta patches, never painted with modern colours.
+Floors are packed earth or stamped mud, covered with straw mats (멍석 or hay_block) and oiled-paper look from brown_carpet.
+Furniture is low and handmade: spruce_stairs or spruce_slab for stools, chests of spruce_planks, a low table, a 이불장 cupboard, and sleeping mats along the warm side.
+Hearth: a stone 아궁이 built into the kitchen floor, with a cauldron, firewood, and blackened stone walls.
+Lighting comes only from oil lamps, 호롱불 in the form of lantern and candle, and the hearth glow; there is no electricity anywhere.
+
+WEAR AND MOOD:
+Smoke from the hearths blackens every roof and chimney; use soul_soil dust-darkened blocks, blackstone patches, and cobwebs at eaves.
+Moss and lichen spread on north-facing slopes and stones: mossy_cobblestone, moss_carpet, and vines hanging from the roof edge.
+Pine needles and resin: spruce_leaves litter the yard, and dark_oak_slab or dark_oak_stairs show sap-stained patches.
+Wood greys with age and damp: vary spruce_planks with weathered tones and leave a few planks missing or broken on the porch.
+The mood is still and damp, with fog-dim light at dusk, paths of packed dirt and coarse_dirt, and no paved surface anywhere.
+
+BY BUILDING:
+House (집): the standard 너와집 described above, with a stone base, a log-box wall, a porch, a hearth, and a yard fenced in 싸리 울타리.
+Pyeongsang (평상): an open raised wooden platform of spruce_planks on stone posts beneath a roof of spruce_slab, placed in the open yard as a gathering seat with no walls.
+Pine (소나무 당집): a small shrine-shed beneath the great pine at the village centre, built of stripped_spruce_log with a closed roof, a stone altar, and hanging straw ropes (금줄); it is kept dim and sealed with no windows.
+
+AVOID:
+Glass windows, real glass panes in any building beyond the shrine's sealed frames.
+Clay roof tiles (기와) on common houses, which were for wealthier homes, not 너와 mountain houses.
+Brick, concrete, iron, asphalt, or paved stone roads; the village is dirt paths only.
+Electric lights, lamp posts, lamps other than oil lanterns and candles, or any modern fixtures.
+Western furniture such as beds, chairs with legs, wardrobes with mirrors, or tall tables.
+Tall buildings, second storeys with balconies, or any building taller than two storeys.
+Japanese-colonial stone offices, Korean hanok courtyard houses with tiled roofs, or red-brick villas.
+
+ROOMS:
+- 정지(부엌): 흙바닥, 아궁이 두 개와 가마솥, 그릇 선반, 물독 (furnish with a stove (furnace or smoker), a sink (cauldron), barrels, a work table, hanging lanterns)
+- 안방: 온돌방, 개어 둔 이불과 베개, 낮은 궤짝, 등잔
+- 웃방: 작은 방, 반닫이와 횃대에 걸린 옷
+- 마루: 앞쪽 툇마루, 짚신과 바구니
+
+MARKS:
+- 
+
+EXTRA:
+The building takes most of the 15x15 site (leave 2-3 blocks around it for the yard); it may be up to 13 blocks high.
+REFERENCE (how such a building really looks; follow it, scaled to the site):
+Neowajip (너와집), the mountain house of Gangwon-do: a single-storey house, nearly square in plan (a "double-row"
+겹집 plan: rooms on both sides of the ridge, under one roof), about 9-11 wide and 8-10 deep on a 15 site.
+- Base: a low stone footing (cobblestone or mossy_cobblestone, 1 block) the whole floor stands on; one stone
+  step (cobblestone_stairs or a stone slab) in front of every door, so nobody climbs a full block.
+- Walls: log-cabin walls of stacked logs laid on their side (stripped_spruce_log or spruce_log, axis along the
+  wall) with mud plaster in the gaps on some courses (packed_mud, mud_bricks, light_gray_terracotta). Always full
+  blocks; never slabs or stairs as wall.
+- Roof: a big low hip-and-gable roof of wooden shingles (너와): dark_oak or spruce stairs and slabs, weathered grey
+  in places (some stripped_dark_oak or mossy stone pieces), with loose fist-sized stones on it to hold the shingles
+  (a few cobblestone_slab or stone_button on the roof slopes), a small smoke hole under each gable end (까치구멍:
+  a 1x1 opening or a spruce_trapdoor). Eaves overhang 1 block. The underside of the eaves is at least 4 blocks
+  above the yard where people walk in, so the doorway never feels cramped.
+- Front: a wooden-floored veranda (마루: spruce_planks floor, 1 block above the yard, 2-3 wide) under the eaves,
+  reached by the stone step; sliding paper doors and windows: spruce_door or birch_door, windows of
+  white_stained_glass_pane or birch_trapdoor lattice, small (1 wide, 1 high) and few. No glass windows, no shutters.
+- Inside (rooms at least 4x4, ceiling 3 high, a 2-wide passage where you walk): a kitchen (정지/부엌) with an earth
+  floor a step lower than the rooms (coarse_dirt or packed_mud), 1-2 fire holes (아궁이: a furnace or campfire
+  set into a stone block wall) with iron pots on them (cauldron), a shelf of bowls (barrel, decorated_pot);
+  an earth-floored entry hall (봉당); 안방 and 웃방 with warm yellow oiled-paper floors (orange or yellow
+  terracotta or birch_planks) - bedding folded in a corner (white or light_gray carpet and wool), never bed
+  blocks; a low wooden chest (chest or barrel) and a small low table (a spruce_trapdoor on top of 1 block); a
+  corner fire nook for light (코클: a small stone niche with a lantern or candle). Some houses keep a cow stall
+  (외양간) inside one corner under the same roof (hay_block, fence). Doors between rooms are real doors.
+- Light: no electricity. Lanterns, candles and fire only.
+CONDITION kept (lived in, cared for): tidy, clean, a lantern in every room, flower boxes under some windows.
+Around the house, inside the lot: a packed-earth front yard (마당: coarse_dirt and dirt paths, no paving), a low brushwood fence (싸리 울타리: spruce_fence or oak_fence, 1 high) along the lot edge with an opening at the front, a 장독대 (a raised stone platform of cobblestone with 3-6 earthen jars: decorated_pot, flower_pot) beside the house, a stacked firewood pile (나뭇단: spruce_log or oak_log on their side, under a slab roof), and a small separate outhouse (변소: a 2x2 plank hut with a door) in a back corner. No mailbox, no lamp post, no garden flowers in rows.
+Colours named in the description (sign bands, walls, awnings) are the keeper's choice: use exactly those.

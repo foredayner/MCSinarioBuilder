@@ -1,0 +1,50 @@
+ARCHITECTURE GUIDE: 흡혈귀곡 - 메이골 (1950s, Gangwon-do mountain village)
+
+PALETTE:
+Walls: stripped_spruce_log stacked as log-box walls (귀틀벽), with mud or packed_mud infill and coarse_dirt rubbed into the joints.
+Trim and frames: stripped_spruce_log for posts and sills, spruce_planks for door frames, spruce_stairs or spruce_slab for thresholds.
+Roofs: spruce_slab and spruce_stairs laid as split-shingle courses (너와), held down by cobblestone, mossy_cobblestone, or andesite stones placed on top.
+Foundations: cobblestone or stone_bricks dry-stacked as a low base (돌 기단), with gravel at the footing.
+Floors: packed_mud or dirt inside the main room, spruce_planks for the 툇마루 wooden porch, hay_block or brown_carpet for straw mats (멍석).
+Windows: white_stained_glass_pane standing in spruce_fence lattice to read as paper panes (창호지), with spruce_trapdoor shutters.
+Doors: spruce_door or spruce_trapdoor, with plank-built doors on wooden hinge-style frames.
+Chimneys: cobblestone or mud_bricks cone-shaped flues (굴뚝), with a black stone or blackstone cap blackened by soot.
+Fences and gates: spruce_fence and spruce_fence_gate woven low as 싸리 울타리, with dead_bush tufts and azalea bits along the base.
+Lamps: lantern hung from a spruce_fence post or porch beam; no street lights anywhere in the village.
+
+SHAPES:
+Roofs are low, steep-sided gable or hip roofs, pitched around 45 degrees, with a ridge pole of stripped_spruce_log and wide overhangs over the porch.
+Storeys: one storey, roughly 4 blocks to the eaves, with the roof taking another 3 to 4 blocks above.
+Walls are short and thick; the stone base stands 1 block proud of the ground, floor raised slightly above the dirt yard.
+Windows are small and few, about 1x2 with a 2-block spacing, mostly on the front; the back and sides keep closed walls against the cold.
+Porches are 툇마루: a narrow spruce_planks platform along the front, 1-2 blocks deep, with a low railing of spruce_fence and a single hanging lantern.
+Entrances are low and offset, with a stone step and a door turned away from the prevailing north-west wind.
+Decoration is restrained: rice-straw or hay_block bundles stacked under eaves (나뭇단), clay jars (장독대) of terracotta or brown_terracotta beside the back wall, and firewood stacks of stripped_spruce_log.
+
+INTERIORS:
+Walls are bare log or mud, lightly whitewashed in places with white_concrete_powder or white_terracotta patches, never painted with modern colours.
+Floors are packed earth or stamped mud, covered with straw mats (멍석 or hay_block) and oiled-paper look from brown_carpet.
+Furniture is low and handmade: spruce_stairs or spruce_slab for stools, chests of spruce_planks, a low table, a 이불장 cupboard, and sleeping mats along the warm side.
+Hearth: a stone 아궁이 built into the kitchen floor, with a cauldron, firewood, and blackened stone walls.
+Lighting comes only from oil lamps, 호롱불 in the form of lantern and candle, and the hearth glow; there is no electricity anywhere.
+
+WEAR AND MOOD:
+Smoke from the hearths blackens every roof and chimney; use soul_soil dust-darkened blocks, blackstone patches, and cobwebs at eaves.
+Moss and lichen spread on north-facing slopes and stones: mossy_cobblestone, moss_carpet, and vines hanging from the roof edge.
+Pine needles and resin: spruce_leaves litter the yard, and dark_oak_slab or dark_oak_stairs show sap-stained patches.
+Wood greys with age and damp: vary spruce_planks with weathered tones and leave a few planks missing or broken on the porch.
+The mood is still and damp, with fog-dim light at dusk, paths of packed dirt and coarse_dirt, and no paved surface anywhere.
+
+BY BUILDING:
+House (집): the standard 너와집 described above, with a stone base, a log-box wall, a porch, a hearth, and a yard fenced in 싸리 울타리.
+Pyeongsang (평상): an open raised wooden platform of spruce_planks on stone posts beneath a roof of spruce_slab, placed in the open yard as a gathering seat with no walls.
+Pine (소나무 당집): a small shrine-shed beneath the great pine at the village centre, built of stripped_spruce_log with a closed roof, a stone altar, and hanging straw ropes (금줄); it is kept dim and sealed with no windows.
+
+AVOID:
+Glass windows, real glass panes in any building beyond the shrine's sealed frames.
+Clay roof tiles (기와) on common houses, which were for wealthier homes, not 너와 mountain houses.
+Brick, concrete, iron, asphalt, or paved stone roads; the village is dirt paths only.
+Electric lights, lamp posts, lamps other than oil lanterns and candles, or any modern fixtures.
+Western furniture such as beds, chairs with legs, wardrobes with mirrors, or tall tables.
+Tall buildings, second storeys with balconies, or any building taller than two storeys.
+Japanese-colonial stone offices, Korean hanok courtyard houses with tiled roofs, or red-brick villas.
