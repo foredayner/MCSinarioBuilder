@@ -58,6 +58,38 @@ class TownLayoutTest {
     }
 
     @Test
+    void placesThatDoNotFitAreLeftOutAndReported() {
+        ScenarioSheet sheet = new ScenarioSheet();
+        for (int i = 0; i < 20; i++) {
+            ScenarioSheet.Place p = new ScenarioSheet.Place();
+            p.id = "big" + i;
+            p.size = "XL";
+            sheet.places.add(p);
+        }
+        sheet.normalize();
+        sheet.terrain.coast = "south";
+        sheet.terrain.woods = "north";
+        TownLayout layout = TownLayout.auto(sheet);
+        List<String> problems = layout.check(sheet);
+        assertTrue(layout.sites.size() < 20, "20 XL places cannot all fit");
+        assertTrue(layout.sites.size() >= 4, "but some do: " + layout.sites.size());
+        for (String problem : problems) {
+            assertTrue(problem.contains("has no site"), "everything placed is fine; only missing places are reported: " + problem);
+        }
+        assertEquals(20 - layout.sites.size(), problems.size());
+    }
+
+    @Test
+    void aMissingPlaceCanBePutOnAFreeSpot() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        TownLayout layout = TownLayout.auto(sheet);
+        layout.sites.remove(layout.site("church"));
+        assertFalse(layout.check(sheet).isEmpty());
+        assertTrue(layout.addFree(sheet.place("church")));
+        assertTrue(layout.check(sheet).isEmpty(), "the church found a spot by a street: " + layout.check(sheet));
+    }
+
+    @Test
     void readsTheAiAnswerWithSizesFromTheSheet() throws Exception {
         ScenarioSheet sheet = greymouth();
         String answer = "Here: ```json\n" + LayoutPrompt.answerJson(TownLayout.auto(sheet)) + "\n```";

@@ -63,6 +63,32 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> ScenarioScreen.pickForTests("lighthouse"));
             context.waitTicks(3);
             context.takeScreenshot("03d_layout_picked");
+            // A crowded town: 14 places, the list scrolls; one place has no site and is picked.
+            context.runOnClient(client -> {
+                var sheet = new com.foredayner.scenario.sheet.ScenarioSheet();
+                String[] names = { "시청", "경찰서", "도서관", "신문사", "교회", "여관", "잡화점", "약국", "학교", "병원", "제재소", "창고", "묘지", "부두" };
+                String[] sizes = { "L", "M", "L", "M", "L", "L", "M", "S", "L", "XL", "XL", "L", "L", "M" };
+                for (int i = 0; i < names.length; i++) {
+                    var p = new com.foredayner.scenario.sheet.ScenarioSheet.Place();
+                    p.id = "p" + i;
+                    p.name = names[i];
+                    p.size = sizes[i];
+                    p.kind = i == 12 ? "cemetery" : i == 13 ? "dock" : "house";
+                    p.outdoor = i >= 12;
+                    sheet.places.add(p);
+                }
+                sheet.terrain.coast = "south";
+                sheet.terrain.woods = "west";
+                sheet.normalize();
+                String id = com.foredayner.scenario.client.ScenarioClientState.selected();
+                com.foredayner.scenario.client.ScenarioClientState.showSheetForTests(id, sheet);
+                var layout = com.foredayner.scenario.layout.TownLayout.auto(sheet);
+                layout.sites.remove(layout.site("p11"));
+                com.foredayner.scenario.client.ScenarioClientState.showLayoutForTests(id, layout);
+                ScenarioScreen.pickForTests("p11");
+            });
+            context.waitTicks(3);
+            context.takeScreenshot("03e_layout_crowded");
             context.setScreen(HandbookScreen::new);
             context.waitTicks(5);
             context.takeScreenshot("04_gm_handbook");

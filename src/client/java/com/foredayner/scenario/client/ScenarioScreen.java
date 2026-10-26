@@ -45,6 +45,7 @@ public class ScenarioScreen extends Screen {
     public static void pickForTests(String id) {
         if (net.minecraft.client.MinecraftClient.getInstance().currentScreen instanceof ScenarioScreen s) {
             s.picked = id;
+            s.showPicked();
             s.clearAndInit();
         }
     }
@@ -276,14 +277,21 @@ public class ScenarioScreen extends Screen {
                 askField.setText("");
             }, false));
             boolean hasLayout = ScenarioClientState.layout() != null;
-            addDrawableChild(new WoodUi.WoodButton(right() - 148, bottom() - 44, 136, 18,
-                Text.literal(hasLayout ? "배치도 보기 →" : "AI로 배치도 만들기 →"), b -> {
+            boolean tooMany = sheet.places.size() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
+            WoodUi.WoodButton next = new WoodUi.WoodButton(right() - 148, bottom() - 44, 136, 18,
+                fit(tooMany ? "장소를 " + com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES + "곳 이하로" : hasLayout ? "배치도 보기 →" : "AI로 배치도 만들기 →", 136), b -> {
                     if (!hasLayout) {
                         ScenarioClientState.makeLayout(true);
                     }
                     tab = Tab.LAYOUT;
                     clearAndInit();
-                }, false));
+                }, false);
+            next.active = !tooMany || hasLayout;
+            if (tooMany) {
+                next.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소가 " + sheet.places.size() + "곳이에요. 160x160 땅에는 "
+                    + com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES + "곳까지 놓을 수 있어요. X로 빼거나 AI에게 합쳐 달라고 하세요.")));
+            }
+            addDrawableChild(next);
         } else {
             askField = null;
         }
@@ -320,6 +328,9 @@ public class ScenarioScreen extends Screen {
     }
 
     private static final int ENTRY = 11;
+    /** Room under the list: the picked place's buttons, its corner line and the check. */
+    private static final int CONTROLS = 34;
+    private int listScroll;
 
     private int entriesTop() {
         return bodyTop() + 30;
@@ -329,51 +340,105 @@ public class ScenarioScreen extends Screen {
         return (right() - 12 - panelX()) / 2;
     }
 
-    /** Where the place list ends and the picked place's buttons go. */
-    private int controlsY() {
-        var layout = ScenarioClientState.layout();
-        int n = layout == null ? 0 : layout.sites.size();
-        return entriesTop() + (n + 1) / 2 * ENTRY + 4;
+    /** The places in the list: every place in the sheet (numbered in sheet order), placed or not. */
+    private static List<com.foredayner.scenario.sheet.ScenarioSheet.Place> listed() {
+        var sheet = ScenarioClientState.sheet();
+        return sheet == null ? List.of() : sheet.places;
     }
 
-    /** The place list entry under the mouse (index into the sites), or -1. */
+    private int listRows() {
+        return (listed().size() + 1) / 2;
+    }
+
+    /** How many list rows fit above the controls and the request field. */
+    private int visibleRows() {
+        return Math.max(2, (bottom() - 46 - CONTROLS - 4 - entriesTop()) / ENTRY);
+    }
+
+    /** Where the place list ends and the picked place's buttons go. */
+    private int controlsY() {
+        return entriesTop() + Math.min(listRows(), visibleRows()) * ENTRY + 4;
+    }
+
+    private void clampListScroll() {
+        listScroll = Math.max(0, Math.min(listScroll, listRows() - visibleRows()));
+    }
+
+    /** Scroll the list so the picked place shows. */
+    private void showPicked() {
+        var places = listed();
+        for (int i = 0; i < places.size(); i++) {
+            if (places.get(i).id.equals(picked)) {
+                int row = i / 2;
+                if (row < listScroll) {
+                    listScroll = row;
+                } else if (row >= listScroll + visibleRows()) {
+                    listScroll = row - visibleRows() + 1;
+                }
+            }
+        }
+        clampListScroll();
+    }
+
+    /** The list entry under the mouse (index into the sheet's places), or -1. */
     private int entryAt(double mx, double my) {
-        var layout = ScenarioClientState.layout();
-        if (layout == null || mx < panelX() || my < entriesTop()) {
+        if (ScenarioClientState.layout() == null || mx < panelX() || my < entriesTop() || my >= controlsY() - 4) {
             return -1;
         }
-        int rows = (layout.sites.size() + 1) / 2;
         int col = (int) ((mx - panelX()) / entryWidth());
-        int row = (int) ((my - entriesTop()) / ENTRY);
-        int i = col * rows + row;
-        return col <= 1 && row < rows && i < layout.sites.size() ? i : -1;
+        int row = (int) ((my - entriesTop()) / ENTRY) + listScroll;
+        int i = row * 2 + col;
+        return col <= 1 && i < listed().size() ? i : -1;
     }
 
     private void initLayoutTab() {
         int px = panelX(), y = bodyTop() + 6, pw = right() - 12 - px;
         int bw = (pw - 8) / 3;
-        addDrawableChild(new WoodUi.WoodButton(px, y, bw, 18, fit("AI로 배치", bw), b -> ScenarioClientState.makeLayout(true), false));
-        addDrawableChild(new WoodUi.WoodButton(px + bw + 4, y, bw, 18, fit("기본 배치", bw), b -> ScenarioClientState.makeLayout(false), false));
-        addDrawableChild(new WoodUi.WoodButton(px + 2 * (bw + 4), y, bw, 18, fit("모델 설정", bw),
-            b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
         var layout = ScenarioClientState.layout();
         var sheet = ScenarioClientState.sheet();
+        boolean tooMany = sheet != null && sheet.places.size() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
+        WoodUi.WoodButton ai = new WoodUi.WoodButton(px, y, bw, 18, fit("AI로 배치", bw), b -> ScenarioClientState.makeLayout(true), false);
+        WoodUi.WoodButton plain = new WoodUi.WoodButton(px + bw + 4, y, bw, 18, fit("기본 배치", bw), b -> ScenarioClientState.makeLayout(false), false);
+        ai.active = plain.active = !tooMany;
+        if (tooMany) {
+            var tip = net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소가 " + sheet.places.size() + "곳이에요. 시트에서 "
+                + com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES + "곳 이하로 줄여 주세요."));
+            ai.setTooltip(tip);
+            plain.setTooltip(tip);
+        }
+        addDrawableChild(ai);
+        addDrawableChild(plain);
+        addDrawableChild(new WoodUi.WoodButton(px + 2 * (bw + 4), y, bw, 18, fit("모델 설정", bw),
+            b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
         if (layout == null || sheet == null) {
             askField = null;
             layoutProblems = List.of();
             return;
         }
         layoutProblems = layout.check(sheet);
+        clampListScroll();
+        var place = sheet.place(picked);
         var site = layout.site(picked);
-        var place = site == null ? null : sheet.place(site.id);
-        if (site != null && place != null) {
-            int by = controlsY();
+        int by = controlsY();
+        if (place != null && site != null) {
             addDrawableChild(new WoodUi.WoodButton(px, by, 78, 18, Text.literal("입구 " + sideKo(site.front)), b -> {
                 int i = com.foredayner.scenario.layout.TownLayout.FRONTS.indexOf(site.front);
                 site.front = com.foredayner.scenario.layout.TownLayout.FRONTS.get((i + 1) % 4);
                 ScenarioClientState.saveLayout();
                 clearAndInit();
             }, false));
+        } else if (place != null) {
+            WoodUi.WoodButton put = new WoodUi.WoodButton(px, by, 78, 18, fit("빈 자리에 놓기", 78), b -> {
+                if (layout.addFree(place)) {
+                    ScenarioClientState.saveLayout();
+                } else {
+                    ScenarioClientState.setMessage(place.name + ": 빈 자리가 없어요. 크기를 줄이거나 다른 장소를 옮겨 보세요.");
+                }
+                clearAndInit();
+            }, false);
+            addDrawableChild(put);
+        }
+        if (place != null) {
             addDrawableChild(new WoodUi.WoodButton(px + 82, by, 62, 18, Text.literal("크기 " + place.size), b -> {
                 int s = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.indexOf(place.size);
                 place.size = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.get((s + 1) % 4);
@@ -387,10 +452,12 @@ public class ScenarioScreen extends Screen {
         askField.setMaxLength(300);
         askField.setPlaceholder(Text.literal("AI에게 배치 고쳐 달라고 하기"));
         addDrawableChild(askField);
-        addDrawableChild(new WoodUi.WoodButton(right() - 60, bottom() - 44, 48, 18, Text.literal("요청"), b -> {
+        WoodUi.WoodButton ask = new WoodUi.WoodButton(right() - 60, bottom() - 44, 48, 18, Text.literal("요청"), b -> {
             ScenarioClientState.reviseLayout(askField.getText());
             askField.setText("");
-        }, false));
+        }, false);
+        ask.active = !tooMany;
+        addDrawableChild(ask);
     }
 
     private int toScreenX(int x) {
@@ -418,13 +485,14 @@ public class ScenarioScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (tab == Tab.LAYOUT && button == 0 && entryAt(mx, my) >= 0) {
-            picked = ScenarioClientState.layout().sites.get(entryAt(mx, my)).id;
+            picked = listed().get(entryAt(mx, my)).id;
             clearAndInit();
             return true;
         }
         if (tab == Tab.LAYOUT && button == 0 && mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize()) {
             var s = siteAt(mx, my);
             picked = s == null ? "" : s.id;
+            showPicked();
             if (s != null) {
                 dragging = true;
                 dragMoved = false;
@@ -541,8 +609,8 @@ public class ScenarioScreen extends Screen {
                 case "west" -> ctx.fill(sx, sz + 1, sx + 2, ez - 1, edge);
                 default -> ctx.fill(sx + 1, ez - 2, ex - 1, ez, edge);
             }
-            // The place's number (its name is in the list beside the map).
-            String num = String.valueOf(n + 1);
+            // The place's number in the sheet (its name is in the list beside the map).
+            String num = String.valueOf(sheet.places.indexOf(sheet.place(s.id)) + 1);
             int tw = this.textRenderer.getWidth(num);
             if (tw + 2 <= ex - sx) {
                 ctx.drawText(this.textRenderer, num, (sx + ex - tw) / 2 + 1, (sz + ez) / 2 - 3, 0xFF1E140A, false);
@@ -556,25 +624,46 @@ public class ScenarioScreen extends Screen {
             }
         }
         ctx.disableScissor();
-        // Side panel: the numbered place list, the picked place's buttons and the check.
-        int ew = entryWidth(), rows = (layout.sites.size() + 1) / 2;
+        // Side panel: the numbered place list (scrolls when long), the picked place and the check.
+        int ew = entryWidth();
         int hoverEntry = entryAt(mouseX, mouseY);
-        for (int n = 0; n < layout.sites.size(); n++) {
-            var s = layout.sites.get(n);
-            var place = sheet.place(s.id);
-            int ex = px + (n / rows) * ew, ey = entriesTop() + (n % rows) * ENTRY;
-            if (s.id.equals(picked)) {
-                ctx.fill(ex - 2, ey - 2, ex + ew - 4, ey + ENTRY - 2, 0x60C28A4E);
-            } else if (n == hoverEntry) {
-                ctx.fill(ex - 2, ey - 2, ex + ew - 4, ey + ENTRY - 2, 0x30C28A4E);
+        var places = sheet.places;
+        int shown = Math.min(listRows(), visibleRows());
+        for (int r = 0; r < shown; r++) {
+            for (int c = 0; c < 2; c++) {
+                int n = (r + listScroll) * 2 + c;
+                if (n >= places.size()) {
+                    break;
+                }
+                var place = places.get(n);
+                boolean placed = layout.site(place.id) != null;
+                int ex = px + c * ew, ey = entriesTop() + r * ENTRY;
+                if (place.id.equals(picked)) {
+                    ctx.fill(ex - 2, ey - 2, ex + ew - 4, ey + ENTRY - 2, 0x60C28A4E);
+                } else if (n == hoverEntry) {
+                    ctx.fill(ex - 2, ey - 2, ex + ew - 4, ey + ENTRY - 2, 0x30C28A4E);
+                }
+                String label = (n + 1) + " " + place.name + (placed ? "" : " (자리 없음)");
+                ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(label, ew - 6), ex, ey, placed ? WoodUi.INK : 0xFF8E2A1E, false);
             }
-            String label = (n + 1) + " " + (place == null ? s.id : place.name);
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(label, ew - 6), ex, ey, WoodUi.INK, false);
+        }
+        if (listRows() > shown) {
+            // A thin scroll bar at the list's right edge.
+            int top = entriesTop() - 1, h = shown * ENTRY;
+            int barH = Math.max(6, h * shown / listRows());
+            int barY = top + (h - barH) * listScroll / Math.max(1, listRows() - shown);
+            ctx.fill(right() - 13, top, right() - 11, top + h, 0x40000000);
+            ctx.fill(right() - 13, barY, right() - 11, barY + barH, 0xFF6B4A2B);
         }
         var site = layout.site(picked);
+        var pickedPlace = sheet.place(picked);
         int ty = controlsY();
         int statusX = px;
-        if (site != null && sheet.place(site.id) != null) {
+        if (pickedPlace != null) {
+            // The picked place's south-west corner (bottom left on the map) and size.
+            String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) + "x" + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) : "좌하단 (" + site.x + ", " + (site.z + site.d - 1) + ") · "
+                + site.w + "x" + site.d;
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 22, WoodUi.INK_SOFT, false);
             statusX = px + 150;
             ty += 5;
         } else {
@@ -593,7 +682,7 @@ public class ScenarioScreen extends Screen {
                 }
                 ctx.drawOrderedTooltip(this.textRenderer, tip, mouseX, mouseY);
             }
-            int ly = Math.max(ty, controlsY() + 18) + 11;
+            int ly = controlsY() + 34;
             for (String problem : layoutProblems) {
                 for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), right() - 12 - px)) {
                     if (ly > bottom() - 58) {
@@ -606,7 +695,7 @@ public class ScenarioScreen extends Screen {
         }
         if (hover != null && !dragging) {
             var place = sheet.place(hover.id);
-            int n = layout.sites.indexOf(hover) + 1;
+            int n = sheet.places.indexOf(sheet.place(hover.id)) + 1;
             ctx.drawTooltip(this.textRenderer, Text.literal(n + " " + (place == null ? hover.id : place.name + " (" + place.kind + ", "
                 + hover.w + "x" + hover.d + ", 입구 " + sideKo(hover.front) + ")")), mouseX, mouseY);
         }
@@ -646,6 +735,11 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        if (tab == Tab.LAYOUT && mouseX >= panelX() && mouseY >= entriesTop() && mouseY < controlsY() && listRows() > visibleRows()) {
+            listScroll -= (int) Math.signum(vertical);
+            clampListScroll();
+            return true;
+        }
         if (tab == Tab.SHEET && ScenarioClientState.sheet() != null && mouseY >= listTop() && mouseY <= listBottom()) {
             var sheet = ScenarioClientState.sheet();
             int[] sizes = { sheet.places.size(), sheet.npcs.size(), sheet.clues.size() };

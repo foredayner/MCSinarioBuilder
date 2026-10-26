@@ -195,7 +195,7 @@ public final class TownLayout {
         }
         for (ScenarioSheet.Place p : sheet.places) {
             if (site(p.id) == null) {
-                problems.add("place " + p.id + " has no site");
+                problems.add("place " + p.id + " has no site (no free spot: make places smaller or fewer)");
             }
         }
         for (int i = 0; i < sites.size(); i++) {
@@ -236,6 +236,110 @@ public final class TownLayout {
             }
         }
         return problems;
+    }
+
+    /** Summed road cells, for counting the street blocks under any rectangle at once. */
+    int[][] roadSums() {
+        boolean[][] road = roadGrid();
+        int[][] sum = new int[size + 1][size + 1];
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                sum[x + 1][z + 1] = sum[x][z + 1] + sum[x + 1][z] - sum[x][z] + (road[x][z] ? 1 : 0);
+            }
+        }
+        return sum;
+    }
+
+    private int roadsIn(int[][] sum, int x, int z, int w, int d) {
+        int x0 = Math.max(0, x), z0 = Math.max(0, z), x1 = Math.min(size, x + w), z1 = Math.min(size, z + d);
+        if (x1 <= x0 || z1 <= z0) {
+            return 0;
+        }
+        return sum[x1][z1] - sum[x0][z1] - sum[x1][z0] + sum[x0][z0];
+    }
+
+    /**
+     * Whether a site may stand where it is, among the sites already in the layout: inside the
+     * ground, apart from the others, off the streets, out of water and woods (docks may reach into
+     * water), with its front by a street unless it is outdoors.
+     */
+    boolean fits(Site s, ScenarioSheet.Place place, int[][] roadSum) {
+        if (s.x < MARGIN || s.z < MARGIN || s.x + s.w > size - MARGIN || s.z + s.d > size - MARGIN) {
+            return false;
+        }
+        for (Site o : sites) {
+            if (o != s && overlaps(s.x, s.z, s.w, s.d, o.x, o.z, o.w, o.d, GAP)) {
+                return false;
+            }
+        }
+        if (roadsIn(roadSum, s.x, s.z, s.w, s.d) > 0) {
+            return false;
+        }
+        boolean dock = place != null && "dock".equals(place.kind);
+        for (Zone z : zones) {
+            if (("water".equals(z.kind) && !dock || "woods".equals(z.kind)) && overlaps(s.x, s.z, s.w, s.d, z.x, z.z, z.w, z.d, 0)) {
+                return false;
+            }
+        }
+        if (s.outdoor) {
+            return true;
+        }
+        int[] f = frontPoint(s);
+        return roadsIn(roadSum, f[0] - 4, f[1] - 4, 9, 9) > 0;
+    }
+
+    /**
+     * Move a site (keeping its size) to the free spot nearest the middle of the ground, turning its
+     * front to the street; false when there is none.
+     */
+    public boolean placeFree(Site s, ScenarioSheet.Place place, int[][] roadSum) {
+        int bestX = 0, bestZ = 0, best = Integer.MAX_VALUE;
+        String bestFront = s.front;
+        String keep = s.front;
+        int ox = s.x, oz = s.z;
+        for (int x = MARGIN; x + s.w <= size - MARGIN; x++) {
+            for (int z = MARGIN; z + s.d <= size - MARGIN; z++) {
+                int score = Math.abs(x + s.w / 2 - size / 2) + Math.abs(z + s.d / 2 - size / 2);
+                if (score >= best) {
+                    continue;
+                }
+                s.x = x;
+                s.z = z;
+                for (String front : FRONTS) {
+                    s.front = front;
+                    if (fits(s, place, roadSum)) {
+                        best = score;
+                        bestX = x;
+                        bestZ = z;
+                        bestFront = front;
+                        break;
+                    }
+                }
+            }
+        }
+        if (best == Integer.MAX_VALUE) {
+            s.x = ox;
+            s.z = oz;
+            s.front = keep;
+            return false;
+        }
+        s.x = bestX;
+        s.z = bestZ;
+        s.front = bestFront;
+        return true;
+    }
+
+    /** Put a place that has no site yet (or a new one) on the first free spot; false when there is none. */
+    public boolean addFree(ScenarioSheet.Place place) {
+        Site s = new Site();
+        s.id = place.id;
+        s.w = s.d = ScenarioSheet.footprint(place.size);
+        s.outdoor = place.outdoor;
+        if (placeFree(s, place, roadSums())) {
+            sites.add(s);
+            return true;
+        }
+        return false;
     }
 
     private boolean nearRoad(boolean[][] road, int[] p, int range) {
@@ -480,6 +584,16 @@ public final class TownLayout {
             l.roads.add(spine);
         }
         l.roads.addAll(paths);
+        // Anything that did not fit (a crowded town) goes to the free spot nearest the middle; with no
+        // free spot left it gets no site, and the check says so.
+        List<Site> placed = new ArrayList<>(l.sites);
+        l.sites.clear();
+        int[][] roadSum = l.roadSums();
+        for (Site s : placed) {
+            if (l.fits(s, sheet.place(s.id), roadSum) || l.placeFree(s, sheet.place(s.id), roadSum)) {
+                l.sites.add(s);
+            }
+        }
         l.fillGround(west, east, north, south, streets);
         l.turn(turns);
         return l;

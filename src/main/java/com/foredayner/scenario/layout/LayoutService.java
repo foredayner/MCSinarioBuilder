@@ -40,6 +40,16 @@ public final class LayoutService {
         }
     }
 
+    /** Too many places for the ground: say so and lay out nothing. */
+    private static boolean tooMany(ServerPlayerEntity player, String id, ScenarioSheet sheet) {
+        if (sheet.places.size() <= ScenarioSheet.MAX_PLACES) {
+            return false;
+        }
+        ScenarioNet.status(player, "장소가 " + sheet.places.size() + "곳이에요. 시트에서 " + ScenarioSheet.MAX_PLACES
+            + "곳 이하로 줄여 주세요 (X로 빼거나 AI에게 합쳐 달라고 하기).", id);
+        return true;
+    }
+
     /** "- a\n- b" or null. */
     static String problems(TownLayout layout, ScenarioSheet sheet) {
         List<String> list = layout.check(sheet);
@@ -55,6 +65,9 @@ public final class LayoutService {
                 return;
             }
             sheet.normalize();
+            if (tooMany(player, id, sheet)) {
+                return;
+            }
             TownLayout layout = TownLayout.auto(sheet);
             List<String> problems = layout.check(sheet);
             save(id, layout);
@@ -74,6 +87,9 @@ public final class LayoutService {
                 return;
             }
             sheet.normalize();
+            if (tooMany(player, id, sheet)) {
+                return;
+            }
             TownLayout draft = TownLayout.auto(sheet);
             run(player, id, sheet, draft, LayoutPrompt.layout(sheet, draft), "AI가 마을을 배치하는 중이에요...");
         } catch (IOException e) {
@@ -91,6 +107,9 @@ public final class LayoutService {
                 return;
             }
             sheet.normalize();
+            if (tooMany(player, id, sheet)) {
+                return;
+            }
             run(player, id, sheet, current, LayoutPrompt.revise(sheet, current, instruction), "배치를 고치는 중이에요...");
         } catch (IOException e) {
             ScenarioNet.status(player, "배치를 읽지 못했어요: " + e.getMessage(), id);
