@@ -82,7 +82,7 @@ public class ScenarioBench implements FabricClientGameTest {
         if (key == null || key.isBlank()) {
             return; // not a bench run
         }
-        String model = System.getenv().getOrDefault("SCN_BENCH_MODEL", "claude-sonnet-5-5").trim();
+        String model = System.getenv().getOrDefault("SCN_BENCH_MODEL", "claude-haiku-5-5").trim();
         String sheetName = System.getenv().getOrDefault("SCN_BENCH_SHEET", "greymouth").trim();
         List<String> wanted = new ArrayList<>();
         for (String p : System.getenv().getOrDefault("SCN_BENCH_PLACES", "").split(",")) {
