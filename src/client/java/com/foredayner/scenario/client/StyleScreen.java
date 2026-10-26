@@ -42,7 +42,7 @@ public class StyleScreen extends Screen {
     @Override
     protected void init() {
         String keep = box != null && edited ? box.getText() : guide();
-        box = new EditBoxWidget(this.textRenderer, l() + 12, t() + 30, r() - l() - 24, b() - t() - 66,
+        box = new EditBoxWidget(this.textRenderer, l() + 12, t() + 30, r() - l() - 24, b() - t() - 80,
             Text.literal("비어 있어요. \"AI로 만들기\"를 누르거나 직접 쓰세요."), Text.literal("스타일 가이드"));
         box.setMaxLength(8000);
         box.setText(keep);
@@ -88,7 +88,7 @@ public class StyleScreen extends Screen {
             r() - l() - 24), l() + 12, t() + 14, WoodUi.INK_SOFT, false);
         String message = ScenarioClientState.message();
         if (!message.isEmpty()) {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, r() - l() - 300), l() + 114, b() - 25, WoodUi.INK, false);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, r() - l() - 290), l() + 114, b() - 25, WoodUi.INK, false);
         }
     }
 
