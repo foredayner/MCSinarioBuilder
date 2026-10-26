@@ -333,7 +333,7 @@ public class ScenarioScreen extends Screen {
                 l, bodyTop() + 11, WoodUi.INK, false);
             String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
                 + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(line, right() - l - 20), l, bodyTop() + 28, WoodUi.INK_SOFT, false);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(line, right() - l - 20), l, bodyTop() + 23, WoodUi.INK_SOFT, false);
             String[] heads = { "장소 " + sheet.places.size(), "NPC " + sheet.npcs.size(), "단서 " + sheet.clues.size() };
             for (int c = 0; c < 3; c++) {
                 ctx.drawText(this.textRenderer, heads[c], colX(c) + 2, listTop() - 12, WoodUi.INK, false);
