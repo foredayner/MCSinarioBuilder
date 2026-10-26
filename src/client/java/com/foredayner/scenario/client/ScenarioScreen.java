@@ -59,13 +59,19 @@ public class ScenarioScreen extends Screen {
         }
     }
 
+    /** The wooden frame goes under the buttons. */
+    @Override
+    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        super.renderBackground(ctx, mouseX, mouseY, delta);
+        WoodUi.frame(ctx, left(), top(), right(), bottom());
+        WoodUi.plaque(ctx, this.textRenderer, "AI 시나리오 공방", this.width / 2, top() - 14, WoodUi.PAPER);
+        WoodUi.inset(ctx, left() + 6, top() + 34, right() - 6, bottom() - 6, WoodUi.PARCHMENT);
+    }
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
-        WoodUi.frame(ctx, left(), top(), right(), bottom());
-        WoodUi.plaque(ctx, this.textRenderer, "AI 시나리오 공방", this.width / 2, top() - 14, WoodUi.PAPER);
         int y = top() + 34;
-        WoodUi.inset(ctx, left() + 6, y, right() - 6, bottom() - 6, WoodUi.PARCHMENT);
         ctx.drawText(this.textRenderer, "크툴루의 부름 시나리오를 넣으면 마을을 지어 줘요.", left() + 14, y + 10, WoodUi.INK, false);
         ctx.drawText(this.textRenderer, "1) 시나리오 파일(.txt .md .pdf)을 고르거나 글을 붙여 넣어요.", left() + 14, y + 26, WoodUi.INK_SOFT, false);
         ctx.drawText(this.textRenderer, "2) AI가 장소·NPC·단서를 정리한 시트를 확인해요.", left() + 14, y + 40, WoodUi.INK_SOFT, false);
