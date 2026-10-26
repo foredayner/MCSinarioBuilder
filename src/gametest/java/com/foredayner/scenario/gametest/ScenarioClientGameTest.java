@@ -130,8 +130,13 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             game.getServer().runCommand("gamerule sendCommandFeedback false");
             game.getServer().runCommand("gamemode spectator @a");
             // High over the sea side, looking down over the whole town.
-            game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 95) + " " + (mid[2] + 110) + " 180 50");
-            context.waitTicks(40);
+            game.getServer().runCommand("tp @a " + mid[0] + " " + (mid[1] + 60) + " " + (mid[2] + 105));
+            context.waitTicks(20);
+            context.runOnClient(client -> {
+                client.player.setYaw(180);
+                client.player.setPitch(38);
+            });
+            context.waitTicks(30);
             game.getClientWorld().waitForChunksRender();
             context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
             context.takeScreenshot("05_town_from_above");
