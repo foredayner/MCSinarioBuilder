@@ -163,7 +163,6 @@ public class ScenarioScreen extends Screen {
 
     private static final int ROW = 20;
     private int[] scroll = new int[3];
-    private TextFieldWidget modelField;
     private TextFieldWidget askField;
 
     private int colWidth() {
@@ -175,7 +174,16 @@ public class ScenarioScreen extends Screen {
     }
 
     private int listTop() {
-        return bodyTop() + 70;
+        return bodyTop() + 50;
+    }
+
+    /** A button label that fits its button. */
+    private Text fit(String label, int width) {
+        String s = label;
+        if (this.textRenderer.getWidth(s) > width - 8) {
+            s = this.textRenderer.trimToWidth(s, width - 14) + "…";
+        }
+        return Text.literal(s);
     }
 
     private int listBottom() {
@@ -186,15 +194,8 @@ public class ScenarioScreen extends Screen {
         int l = left() + 12, y = bodyTop() + 6;
         addDrawableChild(new WoodUi.WoodButton(right() - 104, y, 92, 18, Text.literal("AI로 다시 읽기"),
             b -> ScenarioClientState.analyze(), false));
-        modelField = new TextFieldWidget(this.textRenderer, right() - 300, y + 2, 150, 14, Text.literal("분석 모델"));
-        modelField.setMaxLength(60);
-        modelField.setText(ScenarioClientState.config().analysisModel);
-        modelField.setPlaceholder(Text.literal("기본 모델(AI 공방 설정)"));
-        addDrawableChild(modelField);
-        addDrawableChild(new WoodUi.WoodButton(right() - 146, y, 38, 18, Text.literal("저장"), b -> {
-            var c = ScenarioClientState.config();
-            ScenarioClientState.saveModels(modelField.getText(), c.layoutModel, c.buildingModel);
-        }, false));
+        addDrawableChild(new WoodUi.WoodButton(right() - 182, y, 74, 18, Text.literal("모델 설정"),
+            b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
         var sheet = ScenarioClientState.sheet();
         if (sheet != null) {
             int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
@@ -204,7 +205,7 @@ public class ScenarioScreen extends Screen {
             for (int k = scroll[0]; k < sheet.places.size() && i < maxRows; k++, i++) {
                 var p = sheet.places.get(k);
                 int ry = listTop() + i * ROW;
-                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 58, 18, Text.literal(p.name + (p.filler ? " ·" : "")), b -> { }, false);
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 58, 18, fit(p.name + (p.filler ? " ·" : ""), w - 58), b -> { }, false);
                 name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(placeDetail(p))));
                 addDrawableChild(name);
                 addDrawableChild(new WoodUi.WoodButton(cx + w - 56, ry, 32, 18, Text.literal(p.size), b -> {
@@ -223,7 +224,7 @@ public class ScenarioScreen extends Screen {
             for (int k = scroll[1]; k < sheet.npcs.size() && i < maxRows; k++, i++) {
                 var n = sheet.npcs.get(k);
                 int ry = listTop() + i * ROW;
-                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 24, 18, Text.literal(n.name), b -> { }, false);
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 24, 18, fit(n.name + " · " + n.role, w - 24), b -> { }, false);
                 name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(n.name + " (" + n.role + ")\n장소: "
                     + placeName(sheet, n.place) + (n.room.isBlank() ? "" : " / " + n.room) + (n.notes.isBlank() ? "" : "\n" + n.notes))));
                 addDrawableChild(name);
@@ -238,7 +239,7 @@ public class ScenarioScreen extends Screen {
             for (int k = scroll[2]; k < sheet.clues.size() && i < maxRows; k++, i++) {
                 var c = sheet.clues.get(k);
                 int ry = listTop() + i * ROW;
-                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 62, 18, Text.literal(c.name), b -> { }, false);
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 62, 18, fit(c.name, w - 62), b -> { }, false);
                 name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(c.name + " [" + formKo(c.form) + "]\n장소: "
                     + placeName(sheet, c.place) + (c.room.isBlank() ? "" : " / " + c.room) + "\n" + c.text)));
                 addDrawableChild(name);
@@ -254,7 +255,7 @@ public class ScenarioScreen extends Screen {
             // Ask the AI to change it.
             askField = new TextFieldWidget(this.textRenderer, l + 2, bottom() - 42, right() - l - 210, 14, Text.literal("요청"));
             askField.setMaxLength(300);
-            askField.setPlaceholder(Text.literal("AI에게 고쳐 달라고 하기 (예: 잡화점을 하나 더, 교회는 크게)"));
+            askField.setPlaceholder(Text.literal("AI에게 고쳐 달라고 하기"));
             addDrawableChild(askField);
             addDrawableChild(new WoodUi.WoodButton(right() - 202, bottom() - 44, 50, 18, Text.literal("요청"), b -> {
                 ScenarioClientState.revise(askField.getText());
@@ -320,7 +321,6 @@ public class ScenarioScreen extends Screen {
 
     private void renderSheet(DrawContext ctx) {
         int l = left() + 12;
-        ctx.drawText(this.textRenderer, "분석 모델", right() - 352, bodyTop() + 11, WoodUi.INK, false);
         var sheet = ScenarioClientState.sheet();
         var info = ScenarioClientState.selectedInfo();
         String name = info == null ? "" : info.name;
@@ -329,12 +329,11 @@ public class ScenarioScreen extends Screen {
             ctx.drawText(this.textRenderer, "아직 시트가 없어요. \"AI로 다시 읽기\"를 누르면 AI가 시나리오를 읽고 만들어요.", l, bodyTop() + 40,
                 WoodUi.INK_SOFT, false);
         } else {
-            ctx.drawText(this.textRenderer, sheet.title.isBlank() ? name : sheet.title, l, bodyTop() + 11, WoodUi.INK, false);
-            String line = sheet.era + " · " + sheet.setting;
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(line, right() - l - 20), l, bodyTop() + 30, WoodUi.INK_SOFT, false);
-            String mood = "분위기: " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
-                + " · 바다: " + sideKo(sheet.terrain.coast) + " · 숲: " + sideKo(sheet.terrain.woods);
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(mood, right() - l - 20), l, bodyTop() + 42, WoodUi.INK_SOFT, false);
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 200),
+                l, bodyTop() + 11, WoodUi.INK, false);
+            String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
+                + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(line, right() - l - 20), l, bodyTop() + 28, WoodUi.INK_SOFT, false);
             String[] heads = { "장소 " + sheet.places.size(), "NPC " + sheet.npcs.size(), "단서 " + sheet.clues.size() };
             for (int c = 0; c < 3; c++) {
                 ctx.drawText(this.textRenderer, heads[c], colX(c) + 2, listTop() - 12, WoodUi.INK, false);
