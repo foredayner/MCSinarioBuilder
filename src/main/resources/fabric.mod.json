@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "scenario-builder",
+  "version": "${version}",
+  "name": "AI Scenario Builder",
+  "description": "TRPG(크툴루의 부름) 시나리오를 넣으면 AI가 마을 맵을 지어 줍니다. AI Build Assistant 모드가 필요합니다.",
+  "authors": ["JCG"],
+  "contact": { "sources": "https://github.com/foredayner/MCSinarioBuilder" },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.foredayner.scenario.ScenarioBuilderMod"],
+    "client": ["com.foredayner.scenario.client.ScenarioClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "1.21.4",
+    "java": ">=21",
+    "fabric-api": "*",
+    "minecraft-ai-build-assistant": ">=1.0.2"
+  }
+}

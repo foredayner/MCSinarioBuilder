@@ -1,0 +1,91 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Get the AI Build Assistant (required mod)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p libs
+          gh release download mc1.21.4-latest -R foredayner/McTestBuilder -p '*.jar' -D libs-dl --clobber
+          ls libs-dl
+          mv "$(ls libs-dl/*.jar | grep -v sources | head -1)" libs/minecraft-ai-build-assistant.jar
+
+      - name: Build and unit tests
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew build 2>&1 | tee build.log
+      - name: Report build errors
+        if: failure()
+        run: |
+          grep -E "error:|FAILED|Test.*>|expected|Assertion|What went wrong|Could not|> " -A3 build.log | head -150 > errors.txt || true
+          msg=$(sed -e 's/%/%25/g' errors.txt | awk '{printf "%s%%0A", $0}')
+          echo "::error title=build errors::${msg}"
+
+      - name: Server game tests
+        run: |
+          mkdir -p build/gametest build/clientgametest
+          echo "eula=true" > build/gametest/eula.txt
+          echo "eula=true" > build/clientgametest/eula.txt
+          set -o pipefail
+          ./gradlew runGametest 2>&1 | tee gametest.log
+      - name: Report game test failures
+        if: failure()
+        run: |
+          grep -iE "error:|GameTestException|failed|exception|passed|tests? (were|was)|required tests" -A2 gametest.log | head -120 > errors.txt || true
+          msg=$(sed -e 's/%/%25/g' errors.txt | awk '{printf "%s%%0A", $0}')
+          echo "::error title=game test errors::${msg}"
+
+      - name: Client game test (screenshots)
+        id: clienttest
+        continue-on-error: true
+        uses: modmuss50/xvfb-action@v1
+        with:
+          run: bash -c "./gradlew runClientGametest --stacktrace > clienttest-gradle.log 2>&1; s=$?; tail -c 60000 clienttest-gradle.log; exit $s"
+      - name: Publish to the "latest" release
+        if: github.ref == 'refs/heads/main' && steps.clienttest.outcome == 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mc1.21.4-latest
+          name: AI Scenario Builder for Minecraft 1.21.4 (latest build)
+          prerelease: true
+          make_latest: true
+          body: |
+            AI Scenario Builder (needs the AI Build Assistant: https://github.com/foredayner/McTestBuilder/releases/tag/mc1.21.4-latest).
+            Built automatically from `${{ github.sha }}` after unit tests, in-game server tests and the client test passed.
+          files: build/libs/scenario-builder-*.jar
+      - name: Publish screenshots and logs to the ci-screenshots branch
+        if: always()
+        run: |
+          out=$(mktemp -d)
+          cp -r build/clientgametest/screenshots "$out/" 2>/dev/null || true
+          mkdir -p "$out/logs"
+          cp build/clientgametest/logs/latest.log "$out/logs/client.log" 2>/dev/null || true
+          cp -r build/clientgametest/crash-reports "$out/logs/" 2>/dev/null || true
+          tail -c 200000 clienttest-gradle.log > "$out/logs/client-gradle.log" 2>/dev/null || true
+          cp build/gametest/logs/latest.log "$out/logs/server-gametest.log" 2>/dev/null || true
+          echo "${GITHUB_SHA} client-test=${{ steps.clienttest.outcome }}" > "$out/RUN.txt"
+          cd "$out"
+          git init -q
+          git checkout -q -b ci-screenshots
+          git add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "screenshots for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-screenshots

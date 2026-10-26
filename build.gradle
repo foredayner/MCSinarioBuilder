@@ -1,0 +1,99 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+loom {
+	splitEnvironmentSourceSets()
+}
+
+sourceSets {
+	// In-game tests: server GameTests and client GameTests (screenshots). Not part of the mod jar.
+	gametest {
+		compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+		compileClasspath += sourceSets.client.compileClasspath + sourceSets.client.output
+		runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+		runtimeClasspath += sourceSets.client.runtimeClasspath + sourceSets.client.output
+	}
+}
+
+loom {
+	mods {
+		"scenario-builder" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+		"scenario-builder-gametest" {
+			sourceSet sourceSets.gametest
+		}
+	}
+
+	runs {
+		gametest {
+			server()
+			name "Game Test"
+			source sourceSets.gametest
+			vmArg "-Dfabric-api.gametest"
+			vmArg "-Dfabric-api.gametest.report-file=${project.layout.buildDirectory.file("gametest/junit.xml").get().getAsFile()}"
+			runDir "build/gametest"
+		}
+		clientGametest {
+			client()
+			name "Client Game Test"
+			source sourceSets.gametest
+			vmArg "-Dfabric.client.gametest"
+			runDir "build/clientgametest"
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// The AI Build Assistant: AI connection, building and object generators, placing (needed at runtime).
+	modImplementation files(project.ai_build_jar)
+	// Its script engine, bundled inside its jar; listed here so the development game has it too.
+	implementation 'org.codehaus.groovy:groovy:3.0.17'
+	implementation 'org.codehaus.groovy:groovy-json:3.0.17'
+
+	// Reading scenario PDFs (text only).
+	include implementation('org.apache.pdfbox:pdfbox:3.0.3')
+	include implementation('org.apache.pdfbox:pdfbox-io:3.0.3')
+	include implementation('org.apache.pdfbox:fontbox:3.0.3')
+	include implementation('commons-logging:commons-logging:1.3.4')
+
+	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+	testImplementation platform("org.junit:junit-bom:5.11.4")
+	testImplementation "org.junit.jupiter:junit-jupiter"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+	useJUnitPlatform()
+	testLogging {
+		events "failed"
+		exceptionFormat "full"
+	}
+}

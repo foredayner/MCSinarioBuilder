@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "scenario-builder-gametest",
+  "version": "1.0.0",
+  "name": "AI Scenario Builder tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["com.foredayner.scenario.gametest.ScenarioGameTests"],
+    "fabric-client-gametest": ["com.foredayner.scenario.gametest.ScenarioClientGameTest"]
+  },
+  "depends": {
+    "scenario-builder": "*",
+    "fabric-api": "*"
+  }
+}
