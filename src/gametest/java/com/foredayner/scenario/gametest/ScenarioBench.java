@@ -256,12 +256,14 @@ public class ScenarioBench implements FabricClientGameTest {
             }
             game.getServer().runCommand("gamemode spectator @a");
             context.runOnClient(client -> client.options.hudHidden = true);
-            java.util.Set<String> built = game.getServer().computeOnServer(server -> {
-                java.util.Set<String> ok = new java.util.HashSet<>();
+            // Built places and how tall each came out (blocks above the ground).
+            java.util.Map<String, Integer> built = game.getServer().computeOnServer(server -> {
+                java.util.Map<String, Integer> ok = new java.util.HashMap<>();
                 try {
-                    BuildService.load(id).places.forEach((k, v) -> {
+                    var state = BuildService.load(id);
+                    state.places.forEach((k, v) -> {
                         if ("done".equals(v.state)) {
-                            ok.add(k);
+                            ok.put(k, v.max == null ? 8 : Math.max(4, v.max[1] - state.originY));
                         }
                     });
                 } catch (java.io.IOException ignored) {
@@ -269,9 +271,11 @@ public class ScenarioBench implements FabricClientGameTest {
                 return ok;
             });
             for (TownLayout.Site s : finalLayout.sites) {
-                if (s.outdoor || !built.contains(s.id)) {
+                if (s.outdoor || !built.containsKey(s.id)) {
                     continue;
                 }
+                // Tall buildings (towers, lighthouses) are framed by their height, not their footprint.
+                int h = Math.min(built.get(s.id), 40);
                 double cx = origin[0] + s.x + s.w / 2.0, cz = origin[2] + s.z + s.d / 2.0;
                 int[] f = TownLayout.frontPoint(s);
                 double fx = origin[0] + f[0] + 0.5, fz = origin[2] + f[1] + 0.5;
@@ -280,12 +284,13 @@ public class ScenarioBench implements FabricClientGameTest {
                 ox /= len;
                 oz /= len;
                 // From the street (on this side of it, so the row across does not block the view).
-                double dist = 7;
-                look(context, game, fx + ox * dist, origin[1] + 2.6 + s.w * 0.12, fz + oz * dist, cx, origin[1] + s.w * 0.25, cz);
+                double dist = Math.max(7, h * 0.6);
+                look(context, game, fx + ox * dist, origin[1] + 2.6 + s.w * 0.12, fz + oz * dist, cx, origin[1] + Math.min(s.w * 0.25, h * 0.4), cz);
                 context.takeScreenshot("bench_" + s.id + "_outside");
                 // From an angle.
-                look(context, game, fx + ox * dist * 0.8 + oz * dist * 0.6, origin[1] + 1 + s.w * 0.5, fz + oz * dist * 0.8 - ox * dist * 0.6,
-                    cx, origin[1] + s.w * 0.15, cz);
+                double far = Math.max(dist, h * 0.9);
+                look(context, game, fx + ox * far * 0.8 + oz * far * 0.6, origin[1] + 1 + Math.max(s.w * 0.5, h * 0.55),
+                    fz + oz * far * 0.8 - ox * far * 0.6, cx, origin[1] + h * 0.4, cz);
                 context.takeScreenshot("bench_" + s.id + "_corner");
                 // Inside: the open spot (floor with 2 blocks of air) nearest the middle, looking toward the
                 // door, then toward the back.

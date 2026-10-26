@@ -19,7 +19,7 @@ public final class SheetPrompt {
           "style": "building style rules for the whole town, 3-6 short lines, naming Minecraft blocks",
           "places": [ { "id": "short_ascii_id", "name": "name as in the scenario", "kind": "house|inn|shop|church|library|
                         police|newspaper|school|hospital|mansion|farm|mill|factory|warehouse|dock|lighthouse|cemetery|woods|
-                        square|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false,
+                        square|cave|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false,
                         "rooms": [ { "name": "...", "purpose": "..." } ], "scenes": [ "short scene names here" ],
                         "notes": "what matters for building it", "filler": false, "outdoor": false,
                         "condition": "kept|worn|abandoned|sinister" } ],
@@ -35,6 +35,8 @@ public final class SheetPrompt {
           4-12 places from the scenario, plus up to 3 "filler": true ordinary houses or shops so the town feels lived in.
         - Sizes: S = 11x11 (shed, cottage), M = 15x15 (house, shop, small church), L = 21x21 (inn, church, police
           station, library), XL = 31x31 (mansion, factory). Outdoor places (cemetery, woods, dock) set "outdoor": true.
+          Places under the ground (a cave, a crypt below, a tunnel, a mine) are kind "cave", "outdoor": true: the town shows
+          their entrance only.
         - Rooms: list the rooms of each building with their use, always including the rooms where scenes happen, NPCs
           stand and clues lie. A basement room only if "basement": true. Secret rooms and passages are rooms too.
         - Clues: the physical things the investigators can find. form: book (journal, ledger, letters), note (one

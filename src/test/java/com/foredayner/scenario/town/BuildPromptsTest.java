@@ -42,6 +42,7 @@ class BuildPromptsTest {
         assertTrue(extra.contains("steeple"), "a church gets its steeple: " + extra);
         assertTrue(extra.contains("CONDITION worn"), extra);
         assertTrue(extra.contains("mossy_cobblestone"), "the condition names its blocks: " + extra);
+        assertTrue(extra.contains("no lines or stripes") && extra.contains("73856093"), "weathered blocks are scattered by a hash");
         assertTrue(extra.contains("FACADE RULES"), extra);
         assertTrue(extra.contains("\n- tall pointed (lancet) windows of stained glass along the sides"), "features are a checklist: " + extra);
         assertTrue(extra.contains("Around the building"), extra);

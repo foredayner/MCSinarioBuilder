@@ -176,6 +176,14 @@ public final class GroundWork {
                     }
                     case "cemetery" -> top = GroundPlan.noise(x, z, 12) < 30 ? Blocks.COARSE_DIRT.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
                     case "woods" -> top = GroundPlan.noise(x, z, 11) < 25 ? Blocks.PODZOL.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
+                    case "cave" -> {
+                        // Rocky ground around a cave mouth (the place itself is under the ground).
+                        int n = GroundPlan.noise(x, z, 40);
+                        top = n < 35 ? Blocks.STONE.getDefaultState() : n < 55 ? Blocks.COBBLESTONE.getDefaultState()
+                            : n < 70 ? Blocks.GRAVEL.getDefaultState() : n < 80 ? Blocks.MOSSY_COBBLESTONE.getDefaultState()
+                            : Blocks.COARSE_DIRT.getDefaultState();
+                        soil = Blocks.STONE.getDefaultState();
+                    }
                     case "square" -> top = paving(x, z);
                     default -> top = Blocks.GRASS_BLOCK.getDefaultState();
                 }
@@ -301,6 +309,17 @@ public final class GroundWork {
                 }
             } else {
                 grave(x, z);
+            }
+        } else if (cell == GroundPlan.Cell.OUTDOOR && "cave".equals(kind)) {
+            // Boulders scattered over the rocks.
+            int n = GroundPlan.noise(x, z, 41);
+            if (n < 6) {
+                set(x, y0, z, n < 3 ? Blocks.COBBLESTONE.getDefaultState() : Blocks.MOSSY_COBBLESTONE.getDefaultState());
+                if (n == 0) {
+                    set(x, y0 + 1, z, Blocks.STONE.getDefaultState());
+                }
+            } else if (n < 9) {
+                setIfAir(x, y0, z, Blocks.FERN.getDefaultState());
             }
         } else if (cell == GroundPlan.Cell.OUTDOOR && ("dock".equals(kind) || "beach".equals(kind))) {
             if (edge(x, z) && plan.under[x][z] == GroundPlan.Cell.WATER && !byStreet(x, z)) {

@@ -127,6 +127,7 @@ public final class BuildPrompts {
             case "woods" -> "an old moss-covered standing stone with strange carvings in a forest clearing";
             case "square" -> "a stone fountain for a town square";
             case "beach" -> "an overturned wooden rowing boat with oars on the sand";
+            case "cave" -> "a cave mouth: a low mound of grey stone with a dark opening, moss and hanging roots over it";
             default -> "a fitting centrepiece for " + p.kind + " \"" + p.name + "\"";
         };
         return what + " (" + sheet.era + (sheet.mood.isBlank() ? "" : ", " + sheet.mood) + ")" + (p.notes.isBlank() ? "" : ". " + p.notes);

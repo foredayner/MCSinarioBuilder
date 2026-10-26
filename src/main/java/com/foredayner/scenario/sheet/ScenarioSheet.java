@@ -217,6 +217,12 @@ public final class ScenarioSheet {
             }
             p.floors = Math.max(1, Math.min(4, p.floors));
             p.condition = CONDITIONS.contains(lower(p.condition)) ? lower(p.condition) : "kept";
+            // Places under the ground cannot be built as buildings: the town shows their entrance.
+            String look = (p.kind + " " + p.name + " " + p.id).toLowerCase(Locale.ROOT);
+            if ("cave".equals(p.kind) || look.matches(".*(동굴|땅굴|지하 ?묘지|광산|터널|\\bcave|cavern|grotto|\\bmine\\b|tunnel|catacomb).*")) {
+                p.kind = "cave";
+                p.outdoor = true;
+            }
             if (p.refImage == null) {
                 p.refImage = "";
             }

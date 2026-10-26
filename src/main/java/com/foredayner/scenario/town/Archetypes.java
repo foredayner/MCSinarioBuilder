@@ -147,7 +147,8 @@ public final class Archetypes {
     }
 
     /** A way to pick blocks spread evenly and the same every time, for the script. */
-    private static final String PICK = "pick them with a fixed pattern such as ((x * 7 + y * 13 + z * 31) % N == 0) inside your loops";
+    private static final String PICK = "scatter them with a hash so they form no lines or stripes: int h = (x * 73856093) ^ (y * 19349663)"
+        + " ^ (z * 83492791); h = (h ^ (h >>> 13)) * 1274126177; if (((h ^ (h >>> 16)) & 0x7fffffff) % N == 0) { ... }";
 
     /** How the place's condition shows: which blocks, how many, where. */
     public static String condition(String condition) {
