@@ -277,7 +277,7 @@ public final class BuildService {
     private static void start(MinecraftServer server, ServerPlayerEntity player, String id) {
         try {
             ScenarioSheet sheet = SheetService.load(id);
-            if (sheet != null && (sheet.styleGuide == null || sheet.styleGuide.isBlank()) && designer == AI && !JOBS.containsKey(id)) {
+            if (sheet != null && (sheet.styleGuide == null || sheet.styleGuide.isBlank()) && !JOBS.containsKey(id)) {
                 // Every building follows the town's architecture guide: write it first.
                 StyleService.make(server, player, id, guide -> {
                     if (guide != null) {

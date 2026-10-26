@@ -1,0 +1,75 @@
+name: bench
+
+# Real AI on the test scenario: the town's architecture guide and a few buildings, with pictures.
+# Needs the ANTHROPIC_API_KEY repository secret. Start it from the Actions tab (Run workflow)
+# or by pushing to the "bench" branch. Results go to the bench-results branch.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model id for the guide and the buildings
+        default: claude-sonnet-5-5
+      places:
+        description: Comma-separated place ids of the test town
+        default: church,mansion,general_store
+  push:
+    branches: [bench]
+
+permissions:
+  contents: write
+
+jobs:
+  bench:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check the key is there
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "::error::ANTHROPIC_API_KEY secret is missing"; exit 1; fi
+          echo "key present (${#ANTHROPIC_API_KEY} chars)"
+      - name: Get the AI Build Assistant (required mod)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p libs
+          gh release download mc1.21.4-latest -R foredayner/McTestBuilder -p '*.jar' -D libs-dl --clobber
+          mv "$(ls libs-dl/*.jar | grep -v sources | head -1)" libs/minecraft-ai-build-assistant.jar
+      - name: Run the bench in a real client
+        id: bench
+        continue-on-error: true
+        uses: modmuss50/xvfb-action@v1
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SCN_BENCH_ONLY: "1"
+          SCN_BENCH_MODEL: ${{ github.event.inputs.model || 'claude-sonnet-5-5' }}
+          SCN_BENCH_PLACES: ${{ github.event.inputs.places || 'church,mansion,general_store' }}
+        with:
+          run: |
+            chmod +x gradlew
+            mkdir -p build/clientgametest
+            echo "eula=true" > build/clientgametest/eula.txt
+            ./gradlew runClientGametest --stacktrace
+      - name: Publish results to the bench-results branch
+        if: always()
+        run: |
+          out=$(mktemp -d)
+          cp -r build/clientgametest/bench "$out/" 2>/dev/null || true
+          cp -r build/clientgametest/screenshots "$out/" 2>/dev/null || true
+          mkdir -p "$out/logs"
+          # Never publish the key: drop any line that could contain it.
+          grep -v -i "x-api-key\|authorization\|sk-ant" build/clientgametest/logs/latest.log > "$out/logs/client.log" 2>/dev/null || true
+          echo "${GITHUB_SHA} bench=${{ steps.bench.outcome }} model=${{ github.event.inputs.model || 'claude-sonnet-5-5' }}" > "$out/RUN.txt"
+          cd "$out"
+          git init -q
+          git checkout -q -b bench-results
+          git add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "bench for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" bench-results

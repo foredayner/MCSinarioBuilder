@@ -6,7 +6,7 @@
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": ["com.foredayner.scenario.gametest.ScenarioGameTests"],
-    "fabric-client-gametest": ["com.foredayner.scenario.gametest.ScenarioClientGameTest"]
+    "fabric-client-gametest": ["com.foredayner.scenario.gametest.ScenarioClientGameTest", "com.foredayner.scenario.gametest.ScenarioBench"]
   },
   "depends": {
     "scenario-builder": "*",
