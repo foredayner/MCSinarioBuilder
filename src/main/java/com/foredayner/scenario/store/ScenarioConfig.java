@@ -60,4 +60,16 @@ public final class ScenarioConfig {
     public static String model(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
+
+    /** Buildings and props: Haiku by default on a Claude connection (cheap and quick enough for them). */
+    public static final String DEFAULT_CLAUDE_BUILDING_MODEL = "claude-haiku-5-5";
+
+    /** The model for buildings and props (null = the AI Build Assistant's own model). */
+    public static String buildingModel() {
+        String set = model(get().buildingModel);
+        if (set != null) {
+            return set;
+        }
+        return com.example.config.AiBuilderConfig.get().provider == com.example.config.AiProvider.CLAUDE ? DEFAULT_CLAUDE_BUILDING_MODEL : null;
+    }
 }

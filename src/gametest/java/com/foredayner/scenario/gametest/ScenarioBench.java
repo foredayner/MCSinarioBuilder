@@ -94,6 +94,7 @@ public class ScenarioBench implements FabricClientGameTest {
         config.apiUrl = "https://api.anthropic.com";
         config.apiKey = key.trim();
         config.modelName = model;
+        com.foredayner.scenario.store.ScenarioConfig.get().buildingModel = model;
         config.openAiWebSearchEnabled = false;
         config.autoRetries = 2;
         config.ticksPerBlock = 1;
@@ -199,17 +200,19 @@ public class ScenarioBench implements FabricClientGameTest {
                 double len = Math.max(1e-6, Math.hypot(ox, oz));
                 ox /= len;
                 oz /= len;
-                // From the street: back from the front, raised, looking at the middle of the building.
-                double dist = s.w * 0.95 + 6;
-                look(context, game, fx + ox * dist, origin[1] + 1 + s.w * 0.35, fz + oz * dist, cx, origin[1] + s.w * 0.2, cz);
+                // From the street (on this side of it, so the row across does not block the view).
+                double dist = 7;
+                look(context, game, fx + ox * dist, origin[1] + 2.6 + s.w * 0.12, fz + oz * dist, cx, origin[1] + s.w * 0.25, cz);
                 context.takeScreenshot("bench_" + s.id + "_outside");
                 // From an angle.
                 look(context, game, fx + ox * dist * 0.8 + oz * dist * 0.6, origin[1] + 1 + s.w * 0.5, fz + oz * dist * 0.8 - ox * dist * 0.6,
                     cx, origin[1] + s.w * 0.15, cz);
                 context.takeScreenshot("bench_" + s.id + "_corner");
-                // Inside, just past the door.
-                look(context, game, fx - ox * 3, origin[1] + 1.2, fz - oz * 3, cx - ox * 2, origin[1] + 1.2, cz - oz * 2);
+                // Inside, from the middle of the building: toward the door, then toward the back.
+                look(context, game, cx, origin[1] + 1.6, cz, fx, origin[1] + 1.4, fz);
                 context.takeScreenshot("bench_" + s.id + "_inside");
+                look(context, game, cx, origin[1] + 1.6, cz, cx - ox * 10, origin[1] + 1.4, cz - oz * 10);
+                context.takeScreenshot("bench_" + s.id + "_inside_back");
             }
             double mx = origin[0] + 80, mz = origin[2] + 80;
             look(context, game, mx, origin[1] + 70, mz + 90, mx, origin[1], mz);

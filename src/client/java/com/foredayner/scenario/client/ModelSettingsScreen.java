@@ -19,11 +19,11 @@ public class ModelSettingsScreen extends Screen {
         this.parent = parent;
     }
 
-    private TextFieldWidget field(int y, String value) {
+    private TextFieldWidget field(int y, String value, String placeholder) {
         TextFieldWidget f = new TextFieldWidget(this.textRenderer, this.width / 2 - 20, y, 170, 14, Text.literal(""));
         f.setMaxLength(60);
         f.setText(value);
-        f.setPlaceholder(Text.literal("기본 (AI 공방 설정)"));
+        f.setPlaceholder(Text.literal(placeholder));
         addDrawableChild(f);
         return f;
     }
@@ -32,9 +32,9 @@ public class ModelSettingsScreen extends Screen {
     protected void init() {
         var c = ScenarioClientState.config();
         int y = this.height / 2 - 40;
-        analysis = field(y, c.analysisModel);
-        layout = field(y + 22, c.layoutModel);
-        building = field(y + 44, c.buildingModel);
+        analysis = field(y, c.analysisModel, "기본 (AI 공방 설정)");
+        layout = field(y + 22, c.layoutModel, "기본 (AI 공방 설정)");
+        building = field(y + 44, c.buildingModel, "기본: Claude면 Haiku 5.5");
         addDrawableChild(new WoodUi.WoodButton(this.width / 2 - 100, y + 72, 96, 18, Text.literal("저장"), b -> {
             ScenarioClientState.saveModels(analysis.getText(), layout.getText(), building.getText());
             this.client.setScreen(parent);

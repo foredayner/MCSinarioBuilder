@@ -133,17 +133,62 @@ public final class Archetypes {
         return false;
     }
 
-    /** How the place's condition shows. */
+    /** A way to pick blocks spread evenly and the same every time, for the script. */
+    private static final String PICK = "pick them with a fixed pattern such as ((x * 7 + y * 13 + z * 31) % N == 0) inside your loops";
+
+    /** How the place's condition shows: which blocks, how many, where. */
     public static String condition(String condition) {
         return switch (condition == null ? "" : condition) {
-            case "worn" -> "Condition: worn. Old and shabby: weathered and mismatched materials, some cracked or mossy blocks,"
-                + " a sagging porch, patched roof, dim light.";
-            case "abandoned" -> "Condition: abandoned. Empty and decaying: broken windows (leave some panes out), holes in the"
-                + " roof, cobwebs, mossy and cracked blocks, overgrown yard (leaves, vines), overturned furniture, no lights.";
-            case "sinister" -> "Condition: sinister. Something is wrong here: dark materials, few small windows, heavy shadows,"
-                + " odd details that hint at something unnatural (strange symbols, a sealed door), only a few dim lights.";
-            default -> "Condition: kept. Lived in and cared for: tidy, clean, lit windows.";
+            case "worn" -> "CONDITION worn (old and shabby), which MUST show:\n"
+                + "- about 1 wall block in 6 swapped for a weathered one: stone -> mossy_cobblestone, mossy_stone_bricks or"
+                + " cracked_stone_bricks; bricks -> a few cobblestone or granite patches (bricks have no mossy form); planks -> a darker or mismatched plank or a"
+                + " stripped log (" + PICK + ", N = 6)\n"
+                + "- a foundation row mixing cobblestone and mossy_cobblestone\n"
+                + "- 2-3 cobwebs in upper inside corners, one patched spot on the roof in a different stair block\n"
+                + "- fewer lights: one lantern per room";
+            case "abandoned" -> "CONDITION abandoned (empty, decaying), which MUST show:\n"
+                + "- about 1 wall block in 3 weathered (mossy, cracked, stripped) (" + PICK + ", N = 3)\n"
+                + "- broken windows: leave about 1 pane in 3 empty (air)\n"
+                + "- 2-4 holes in the roof (air), vines on two outer walls, leaves and cobwebs in many corners inside\n"
+                + "- overturned or missing furniture, dust (gray carpet scraps), the yard overgrown (tall grass, bushes)\n"
+                + "- no lights at all";
+            case "sinister" -> "CONDITION sinister (something is wrong here), which MUST show:\n"
+                + "- the town style in its darkest materials, with dark accents (deepslate, blackstone, dark_oak, polished_basalt)"
+                + " at the corners, trim and foundation\n"
+                + "- small, few windows on the street side, some covered by dark trapdoors as shutters\n"
+                + "- odd details: carved or chiseled blocks in a pattern, one door sealed with iron_bars, a dead tree in the yard\n"
+                + "- 1 wall block in 8 weathered (" + PICK + ", N = 8)\n"
+                + "- only dim light: soul_lantern or candles, few of them";
+            default -> "CONDITION kept (lived in, cared for): tidy, clean, a lantern in every room, flower boxes under some windows.";
         };
+    }
+
+    /** Facade rules every building follows, so walls are not blank. */
+    public static final String FACADE = "FACADE RULES (every outside wall):\n"
+        + "- no blank wall longer than 4 blocks: a window every 2-3 blocks along every side, on every floor\n"
+        + "- corner posts (logs or a darker block) and a post every 4-6 blocks on long walls\n"
+        + "- a trim band (slabs or stairs of the trim block) between floors and under the roof\n"
+        + "- the roof overhangs the walls by 1 block, made of stairs, with a visible ridge\n"
+        + "- a 1-block foundation course of the foundation block, visible above the ground\n"
+        + "- on the street side: shutters (trapdoors) or sills under windows, a lamp by the door, steps up to the door";
+
+    /** The kind's features as a checklist the script must tick off. */
+    public static String checklist(String kind, String era) {
+        String features = features(kind, era);
+        if (features.isEmpty()) {
+            return "";
+        }
+        int colon = features.indexOf(':');
+        String what = colon < 0 ? kind : features.substring(0, colon).trim();
+        String list = colon < 0 ? features : features.substring(colon + 1);
+        StringBuilder sb = new StringBuilder("MUST HAVE so it reads as " + what + " (check every item before finishing):");
+        for (String item : list.split(",| and (?=a |an |the |rows |tall |double |inside )")) {
+            String t = item.trim();
+            if (!t.isEmpty()) {
+                sb.append("\n- ").append(t);
+            }
+        }
+        return sb.toString();
     }
 
     private static final String[] WALLS = {

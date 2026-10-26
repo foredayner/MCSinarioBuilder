@@ -40,9 +40,12 @@ class BuildPromptsTest {
         ScenarioSheet.Place church = sheet.place("church");
         String extra = BuildPrompts.extra(sheet, church, 21);
         assertTrue(extra.contains("steeple"), "a church gets its steeple: " + extra);
-        assertTrue(extra.contains("Condition: worn"), extra);
+        assertTrue(extra.contains("CONDITION worn"), extra);
+        assertTrue(extra.contains("mossy_cobblestone"), "the condition names its blocks: " + extra);
+        assertTrue(extra.contains("FACADE RULES"), extra);
+        assertTrue(extra.contains("\n- tall pointed (lancet) windows of stained glass along the sides"), "features are a checklist: " + extra);
         assertTrue(extra.contains("Around the building"), extra);
-        assertTrue(BuildPrompts.extra(sheet, sheet.place("mansion"), 31).contains("Condition: sinister"));
+        assertTrue(BuildPrompts.extra(sheet, sheet.place("mansion"), 31).contains("CONDITION sinister"));
         assertEquals(sheet.styleGuide, BuildPrompts.style(sheet), "the guide replaces the short style notes");
         List<String> rooms = BuildPrompts.rooms(sheet.place("inn"));
         assertTrue(rooms.stream().anyMatch(r -> r.contains("furnish with")), "rooms come with furniture: " + rooms);

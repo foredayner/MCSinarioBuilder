@@ -82,10 +82,11 @@ public final class BuildPrompts {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.ROOT, "The building takes most of the %dx%d site (leave 2-3 blocks around it for the yard); it may be"
             + " up to %d blocks high.", size, size, maxHeight(p)));
-        String features = Archetypes.features(p.kind, sheet.era);
-        if (!features.isEmpty()) {
-            sb.append("\nIt must read clearly as ").append(features).append('.');
+        String checklist = Archetypes.checklist(p.kind, sheet.era);
+        if (!checklist.isEmpty()) {
+            sb.append('\n').append(checklist);
         }
+        sb.append('\n').append(Archetypes.FACADE);
         String variant = Archetypes.variant(sheet, p);
         if (!variant.isEmpty()) {
             sb.append('\n').append(variant);

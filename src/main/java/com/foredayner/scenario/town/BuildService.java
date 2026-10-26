@@ -645,7 +645,7 @@ public final class BuildService {
         bp.error = "";
         job.designing++;
         job.dirty = true;
-        String model = ScenarioConfig.model(ScenarioConfig.get().buildingModel);
+        String model = ScenarioConfig.buildingModel();
         CompletableFuture<AiBuildApi.Design> future;
         if (s.outdoor) {
             future = designer.object(job.world, siteMin(job, s), BuildPrompts.prop(job.sheet, p), PROP_SIZE, model);
