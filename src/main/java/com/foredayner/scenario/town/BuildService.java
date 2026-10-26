@@ -131,7 +131,12 @@ public final class BuildService {
                 say(player, "이미 지은 마을이 있어요. 먼저 전체 되돌리기나 장소별 치우기를 하세요.", id);
                 return;
             }
-            placeAt(state, player.getServerWorld(), player.getBlockPos());
+            try {
+                placeAt(state, player.getServerWorld(), player.getBlockPos());
+            } catch (IllegalStateException e) {
+                say(player, "여기에는 지을 땅이 없어요 (너무 낮거나 높아요).", id);
+                return;
+            }
             save(id, state);
             send(player.getServer(), player.getUuid(), id, state);
             say(player, "여기를 마을 한가운데로 정했어요. 지면 높이 y = " + (state.originY - 1) + ".", id);
@@ -142,7 +147,11 @@ public final class BuildService {
 
     /** The town's middle at {@code at}, its ground at the surface there. */
     public static void placeAt(BuildState state, ServerWorld world, BlockPos at) {
+        world.getChunk(at.getX() >> 4, at.getZ() >> 4); // the height is only known for a loaded chunk
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
+        if (y <= world.getBottomY() + GroundWork.FILL + 1 || y + GroundWork.CLEAR > world.getTopYInclusive()) {
+            throw new IllegalStateException("no ground to build on here (y " + y + ")");
+        }
         state.placed = true;
         state.originX = at.getX() - TownLayout.SIZE / 2;
         state.originZ = at.getZ() - TownLayout.SIZE / 2;
