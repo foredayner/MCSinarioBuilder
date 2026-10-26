@@ -153,6 +153,10 @@ public final class BuildPrompts {
                 : "a stone fountain for a town square";
             case "beach" -> "an overturned wooden rowing boat with oars on the sand";
             case "cave" -> "a cave mouth: a low mound of grey stone with a dark opening, moss and hanging roots over it";
+            case "scene" -> "a few small loose things by a road that show something happened here (a dropped bundle, a broken"
+                + " basket or cart wheel, scattered stones, a torn cloth on a bush), each item separate and small; no people, no"
+                + " animals, nothing taller than 2 blocks";
+            case "landmark" -> "the " + p.name + " itself, small and standing on its own (at most 4 blocks), as it looks in the setting";
             case "pyeongsang" -> "a Korean 평상: a low, wide wooden platform (about 4x3, 1 block high: spruce or oak slabs on fence"
                 + " posts) where villagers sit, with a woven straw mat on it and a small low wooden table";
             default -> "a fitting centrepiece for " + p.kind + " \"" + p.name + "\"";

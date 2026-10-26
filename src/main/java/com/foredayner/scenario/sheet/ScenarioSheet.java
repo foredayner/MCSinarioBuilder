@@ -39,6 +39,8 @@ public final class ScenarioSheet {
     public String style = "";
     /** The town's architecture guide (written by the AI from the era and place, edited by the keeper). */
     public String styleGuide = "";
+    /** The keeper's map of the town ("file:<name>" kept with the scenario, or ""): the AI lays the town out after it. */
+    public String mapImage = "";
     public List<Place> places = new ArrayList<>();
     public List<Npc> npcs = new ArrayList<>();
     public List<Clue> clues = new ArrayList<>();
@@ -196,6 +198,9 @@ public final class ScenarioSheet {
         if (style == null) {
             style = "";
         }
+        if (mapImage == null) {
+            mapImage = "";
+        }
         if (!Period.known(period)) {
             period = Period.guess(era, setting, title, style);
         }
@@ -288,6 +293,112 @@ public final class ScenarioSheet {
             }
         }
         return problems;
+    }
+
+    // ------------------------------------------------------------------ places that are not buildings
+
+    private static java.util.regex.Pattern words(String regex) {
+        return java.util.regex.Pattern.compile(regex);
+    }
+
+    /** Names that say "a building" (these stay buildings whatever else the name says). */
+    private static final java.util.regex.Pattern BUILDING = words("집|가옥|신당|사당|당집|회관|사무소|가게|상점|주막|여관|여인숙|교회|성당|사찰"
+        + "|암자|학교|서당|병원|의원|약방|창고|헛간|오두막|움막|별장|산장|저택|관아|주재소|지서|파출소|정자|방앗간|공장|등대|도서관"
+        + "|house|hall|inn|shop|store|church|chapel|temple|school|hospital|clinic|office|station|cabin|hut|cottage|mansion|manor"
+        + "|barn|mill|factory|warehouse|tavern|library|lighthouse|tower");
+    /** The town itself (the map is the town; it is not a place on it). */
+    private static final java.util.regex.Pattern TOWN = words("(마을|동네|부락|읍내|촌락|village|town|hamlet)\\s*$");
+    /** A spot on a road or path: a little clearing by the road, no building. */
+    private static final java.util.regex.Pattern SCENE = words("현장|길가|길$|길 |길\\)|내리막|오르막|고개|갈림길|건널목|다리$"
+        + "|roadside|road$|path$|trail|crossroads|bridge|scene");
+    /** Wild land: woods, hills, valleys. */
+    private static final java.util.regex.Pattern WILD = words("숲|수풀|산속|들판|벌판|언덕|계곡|골짜기|늪|강가|냇가|호숫가|forest|woods"
+        + "|meadow|hill|valley|swamp|marsh|riverside");
+    /** Graves. */
+    private static final java.util.regex.Pattern GRAVES = words("무덤|묘지|묘$|공동묘지|grave|tomb|cemetery|graveyard");
+    /** A small thing standing on its own: a well, a cairn, a totem pole. */
+    private static final java.util.regex.Pattern LANDMARK = words("우물|돌탑|비석|장승|솟대|당산나무|고목|바위|well|cairn|statue|monument"
+        + "|totem|boulder|standing stone");
+    /** Kinds that are already outdoor ground. */
+    private static final Set<String> GROUND_KINDS = Set.of("woods", "cemetery", "dock", "beach", "square", "cave", "scene", "landmark",
+        "pyeongsang", "pine");
+
+    /**
+     * Sort out places the AI listed that are not buildings: the town itself is dropped (or, when
+     * something is in it, becomes the village common), woods and hills become outdoor woods, spots
+     * on a road become a "scene" by the road, wells and cairns a small "landmark". Run once on what
+     * the AI read; the keeper's own changes are not undone. Returns what was changed, for the keeper.
+     */
+    public List<String> sortOutPlaces() {
+        List<String> notes = new ArrayList<>();
+        if (places == null) {
+            return notes;
+        }
+        for (java.util.Iterator<Place> it = places.iterator(); it.hasNext(); ) {
+            Place p = it.next();
+            String name = p.name == null ? "" : p.name.trim().toLowerCase(Locale.ROOT);
+            String idWords = p.id == null ? "" : p.id.toLowerCase(Locale.ROOT).replace('_', ' ');
+            if (any(BUILDING, name, idWords) || p.outdoor && GROUND_KINDS.contains(p.kind)) {
+                continue;
+            }
+            String label = p.name == null || p.name.isBlank() ? p.id : p.name;
+            if (TOWN.matcher(name).find()) {
+                if (!referenced(p.id)) {
+                    it.remove();
+                    notes.add(label + ": 마을 전체라 장소에서 뺐어요");
+                } else {
+                    p.kind = "square";
+                    p.outdoor = true;
+                    notes.add(label + ": 마을 전체라 마을 한가운데 공터로 바꿨어요");
+                }
+                continue;
+            }
+            String kind = any(SCENE, name, idWords) ? "scene" : any(GRAVES, name, idWords) ? "cemetery"
+                : any(WILD, name, idWords) ? "woods" : any(LANDMARK, name, idWords) ? "landmark" : null;
+            if (kind == null) {
+                continue;
+            }
+            p.kind = kind;
+            p.outdoor = true;
+            p.basement = false;
+            if ("scene".equals(kind) || "landmark".equals(kind)) {
+                p.size = "S";
+            }
+            notes.add(label + ": " + switch (kind) {
+                case "scene" -> "길가의 현장 (야외)";
+                case "cemetery" -> "묘지 (야외)";
+                case "woods" -> "숲 (야외)";
+                default -> "작은 야외 소품";
+            } + "으로 바꿨어요");
+        }
+        return notes;
+    }
+
+    private static boolean any(java.util.regex.Pattern pattern, String name, String idWords) {
+        return pattern.matcher(name).find() || pattern.matcher(idWords).find();
+    }
+
+    /** Whether an NPC, clue or link names the place. */
+    private boolean referenced(String id) {
+        if (id == null) {
+            return false;
+        }
+        for (Npc n : npcs == null ? List.<Npc>of() : npcs) {
+            if (id.equals(n.place)) {
+                return true;
+            }
+        }
+        for (Clue c : clues == null ? List.<Clue>of() : clues) {
+            if (id.equals(c.place)) {
+                return true;
+            }
+        }
+        for (Link l : links == null ? List.<Link>of() : links) {
+            if (id.equals(l.from) || id.equals(l.to)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The sheet's period, or a guess from its words when it has none. */

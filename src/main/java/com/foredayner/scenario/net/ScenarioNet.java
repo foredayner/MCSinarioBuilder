@@ -126,6 +126,22 @@ public final class ScenarioNet {
         }
     }
 
+    /** Server -> client: the small picture of the keeper's map (PNG; empty = no map). */
+    public record MapS2C(String id, byte[] png) implements CustomPayload {
+        public static final Id<MapS2C> ID = new Id<>(Identifier.of(ScenarioBuilderMod.MOD_ID, "map"));
+        public static final PacketCodec<RegistryByteBuf, MapS2C> CODEC = PacketCodec.tuple(
+            PacketCodecs.STRING, MapS2C::id, PacketCodecs.BYTE_ARRAY, MapS2C::png, MapS2C::new);
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
+    }
+
+    public static void map(ServerPlayerEntity player, String id, byte[] png) {
+        ServerPlayNetworking.send(player, new MapS2C(id, png == null ? new byte[0] : png));
+    }
+
     /** Pictures are at most this many parts (4.5 MB). */
     private static final int MAX_REF_PARTS = 160;
     private static final Map<UUID, byte[][]> REF_UPLOADS = new HashMap<>();
@@ -152,6 +168,10 @@ public final class ScenarioNet {
         ByteArrayOutputStream all = new ByteArrayOutputStream();
         for (byte[] part : parts) {
             all.writeBytes(part);
+        }
+        if (com.foredayner.scenario.layout.MapService.UPLOAD_KEY.equals(p.place())) {
+            com.foredayner.scenario.layout.MapService.saveFile(player, p.id(), all.toByteArray());
+            return;
         }
         try {
             String ref = com.foredayner.scenario.town.RefService.saveFile(p.id(), p.place(), all.toByteArray());
@@ -195,6 +215,7 @@ public final class ScenarioNet {
         PayloadTypeRegistry.playS2C().register(ConfigS2C.ID, ConfigS2C.CODEC);
         PayloadTypeRegistry.playS2C().register(LayoutPayload.ID, LayoutPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(BuildPayload.ID, BuildPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(MapS2C.ID, MapS2C.CODEC);
         PayloadTypeRegistry.playC2S().register(RefUploadC2S.ID, RefUploadC2S.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(RefUploadC2S.ID, (p, ctx) -> ctx.server().execute(() -> receiveRef(ctx.player(), p)));
         PayloadTypeRegistry.playC2S().register(LayoutPayload.ID, LayoutPayload.CODEC);
@@ -248,6 +269,13 @@ public final class ScenarioNet {
                     }
                 }
             }
+            case "map_url" -> {
+                int nl = p.arg().indexOf('\n');
+                if (nl > 0) {
+                    com.foredayner.scenario.layout.MapService.setUrl(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
+                }
+            }
+            case "map_clear" -> com.foredayner.scenario.layout.MapService.clear(player, p.arg());
             case "style" -> com.foredayner.scenario.town.StyleService.make(player.getServer(), player, p.arg(), guide -> { });
             case "build_here" -> com.foredayner.scenario.town.BuildService.here(player, p.arg());
             case "build_start" -> com.foredayner.scenario.town.BuildService.start(player, p.arg());
@@ -280,6 +308,7 @@ public final class ScenarioNet {
                     }
                     var layout = com.foredayner.scenario.layout.LayoutService.load(p.arg());
                     ServerPlayNetworking.send(player, new LayoutPayload(p.arg(), layout == null ? new byte[0] : gzip(layout.toJson())));
+                    map(player, p.arg(), com.foredayner.scenario.layout.MapService.thumbnail(p.arg()));
                     build(player, p.arg(), com.foredayner.scenario.town.BuildService.current(p.arg()),
                         com.foredayner.scenario.town.BuildService.canUndo(p.arg()));
                     status(player, "", p.arg());

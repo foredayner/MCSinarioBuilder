@@ -71,6 +71,39 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> ScenarioScreen.pickForTests("lighthouse"));
             context.waitTicks(3);
             context.takeScreenshot("03d_layout_picked");
+            // A keeper's map (drawn here: green ground, a grey road, two dark houses) under the layout, and its window.
+            context.runOnClient(client -> {
+                var img = new java.awt.image.BufferedImage(400, 400, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                var g = img.createGraphics();
+                g.setColor(new java.awt.Color(40, 64, 18));
+                g.fillRect(0, 0, 400, 400);
+                g.setColor(new java.awt.Color(85, 80, 75));
+                g.fillRect(0, 180, 400, 40);
+                g.fillRect(180, 0, 40, 400);
+                g.setColor(java.awt.Color.BLACK);
+                g.fillRect(60, 100, 60, 60);
+                g.fillRect(260, 260, 60, 60);
+                g.dispose();
+                var out = new java.io.ByteArrayOutputStream();
+                try {
+                    javax.imageio.ImageIO.write(img, "png", out);
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+                var sheet = com.foredayner.scenario.client.ScenarioClientState.sheet();
+                sheet.mapImage = "file:map.png";
+                com.foredayner.scenario.client.ScenarioClientState.showMapForTests(com.foredayner.scenario.client.ScenarioClientState.selected(),
+                    com.foredayner.scenario.layout.MapImages.thumbnail(out.toByteArray()));
+            });
+            context.waitTicks(3);
+            context.takeScreenshot("03d1_layout_map");
+            context.setScreen(() -> new com.foredayner.scenario.client.MapScreen(null));
+            context.waitTicks(3);
+            context.takeScreenshot("03d1b_map_window");
+            context.runOnClient(client -> {
+                com.foredayner.scenario.client.ScenarioClientState.sheet().mapImage = "";
+                com.foredayner.scenario.client.ScenarioClientState.showMapForTests("", new byte[0]);
+            });
             // The reference picture window of the lighthouse, with a description as the AI would write it.
             context.runOnClient(client -> {
                 var sheet = com.foredayner.scenario.client.ScenarioClientState.sheet();

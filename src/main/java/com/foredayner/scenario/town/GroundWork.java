@@ -200,6 +200,15 @@ public final class GroundWork {
                         top = n < 45 ? Blocks.COARSE_DIRT.getDefaultState() : n < 75 ? Blocks.DIRT_PATH.getDefaultState()
                             : n < 90 ? Blocks.DIRT.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
                     }
+                    case "scene" -> {
+                        // A trodden patch by the road.
+                        int n = GroundPlan.noise(x, z, 47);
+                        top = n < 30 ? Blocks.COARSE_DIRT.getDefaultState() : n < 50 ? Blocks.DIRT_PATH.getDefaultState()
+                            : n < 58 ? Blocks.GRAVEL.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
+                        if (top.isOf(Blocks.GRAVEL)) {
+                            soil = Blocks.COBBLESTONE.getDefaultState();
+                        }
+                    }
                     case "pine" -> top = GroundPlan.noise(x, z, 43) < 40 ? Blocks.PODZOL.getDefaultState() : Blocks.GRASS_BLOCK.getDefaultState();
                     default -> top = Blocks.GRASS_BLOCK.getDefaultState();
                 }

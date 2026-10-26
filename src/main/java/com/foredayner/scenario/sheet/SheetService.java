@@ -48,7 +48,7 @@ public final class SheetService {
             ScenarioNet.status(player, "시나리오를 찾지 못했어요.", "");
             return;
         }
-        run(player, id, SheetPrompt.analyze(text), "시나리오를 읽는 중이에요...");
+        run(player, id, SheetPrompt.analyze(text), "시나리오를 읽는 중이에요...", true);
     }
 
     /** Change the sheet as the keeper asks (e.g. "add a general store", "the church is bigger"). */
@@ -59,22 +59,23 @@ public final class SheetService {
                 ScenarioNet.status(player, "먼저 시트를 만들어 주세요.", id);
                 return;
             }
-            run(player, id, SheetPrompt.revise(sheet.toJson(), instruction, ScenarioStore.text(id)), "시트를 고치는 중이에요...");
+            run(player, id, SheetPrompt.revise(sheet.toJson(), instruction, ScenarioStore.text(id)), "시트를 고치는 중이에요...", false);
         } catch (IOException e) {
             ScenarioNet.status(player, "시트를 읽지 못했어요: " + e.getMessage(), id);
         }
     }
 
-    private static void run(ServerPlayerEntity player, String id, AiPrompt prompt, String busyMessage) {
+    /** @param fresh a first reading: places that are not buildings are sorted out */
+    private static void run(ServerPlayerEntity player, String id, AiPrompt prompt, String busyMessage, boolean fresh) {
         if (!BUSY.add(id)) {
             ScenarioNet.status(player, "이미 처리 중이에요. 잠시 기다려 주세요.", id);
             return;
         }
         ScenarioNet.status(player, busyMessage, id);
-        attempt(player, id, prompt, prompt, 0, new int[2]);
+        attempt(player, id, prompt, prompt, 0, new int[2], fresh);
     }
 
-    private static void attempt(ServerPlayerEntity player, String id, AiPrompt base, AiPrompt prompt, int tries, int[] tokens) {
+    private static void attempt(ServerPlayerEntity player, String id, AiPrompt base, AiPrompt prompt, int tries, int[] tokens, boolean fresh) {
         String model = ScenarioConfig.model(ScenarioConfig.get().analysisModel);
         AiBuildApi.ask(player.getServer(), prompt, model).thenAccept(answer -> {
             tokens[0] += answer.inputTokens();
@@ -86,8 +87,12 @@ public final class SheetService {
             }
             String problems;
             ScenarioSheet sheet = null;
+            List<String> sorted = List.of();
             try {
                 sheet = ScenarioSheet.fromAnswer(answer.text());
+                if (fresh) {
+                    sorted = sheet.sortOutPlaces();
+                }
                 List<String> list = sheet.normalize();
                 problems = list.isEmpty() ? null : "- " + String.join("\n- ", list);
             } catch (RuntimeException e) {
@@ -96,10 +101,15 @@ public final class SheetService {
             if (problems == null) {
                 BUSY.remove(id);
                 try {
+                    ScenarioSheet before = load(id);
+                    if (before != null && sheet.mapImage.isBlank()) {
+                        sheet.mapImage = before.mapImage == null ? "" : before.mapImage; // the keeper's map stays
+                    }
                     save(id, sheet);
                     ScenarioNet.sheet(player, id, sheet);
                     ScenarioNet.status(player, "시트를 만들었어요: 장소 " + sheet.places.size() + "곳, NPC " + sheet.npcs.size()
-                        + "명, 단서 " + sheet.clues.size() + "개 (토큰 입력 " + tokens[0] + " / 출력 " + tokens[1] + ").", id);
+                        + "명, 단서 " + sheet.clues.size() + "개 (토큰 입력 " + tokens[0] + " / 출력 " + tokens[1] + ")."
+                        + (sorted.isEmpty() ? "" : " 건물이 아닌 곳: " + String.join(", ", sorted) + "."), id);
                 } catch (IOException e) {
                     ScenarioNet.status(player, "시트를 저장하지 못했어요: " + e.getMessage(), id);
                 }
@@ -109,7 +119,7 @@ public final class SheetService {
             if (tries < max) {
                 ScenarioBuilderMod.LOG.info("Sheet for {} had problems, asking again ({}/{}): {}", id, tries + 1, max, problems);
                 ScenarioNet.status(player, "시트에 문제가 있어 다시 요청해요 (" + (tries + 1) + "/" + max + ")...", id);
-                attempt(player, id, base, SheetPrompt.fix(base, answer.text(), problems), tries + 1, tokens);
+                attempt(player, id, base, SheetPrompt.fix(base, answer.text(), problems), tries + 1, tokens, fresh);
             } else {
                 BUSY.remove(id);
                 ScenarioNet.status(player, "시트를 만들지 못했어요: " + problems.lines().findFirst().orElse(""), id);

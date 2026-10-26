@@ -355,7 +355,13 @@ public class ScenarioScreen extends Screen {
 
     private static final int ENTRY = 11;
     /** Room under the list: the picked place's buttons, its corner line and the check. */
-    private static final int CONTROLS = 44;
+    private static final int CONTROLS = 66;
+    /** Whether the keeper's map lies over the layout preview. */
+    private static boolean showMap = true;
+    /** The reset button was pressed once (press again to clear). */
+    private boolean resetArmed;
+    /** "Remove from the layout" was pressed for this built place: ask whether to clear it in the world too. */
+    private String removeAsk = "";
     private int listScroll;
 
     private int entriesTop() {
@@ -419,11 +425,14 @@ public class ScenarioScreen extends Screen {
 
     private void initLayoutTab() {
         int px = panelX(), y = bodyTop() + 6, pw = right() - 12 - px;
-        int bw = (pw - 8) / 3;
+        int bw = (pw - 12) / 4;
         var layout = ScenarioClientState.layout();
         var sheet = ScenarioClientState.sheet();
         boolean tooMany = sheet != null && sheet.places.size() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
+        boolean hasMap = sheet != null && sheet.mapImage != null && !sheet.mapImage.isBlank();
         WoodUi.WoodButton ai = new WoodUi.WoodButton(px, y, bw, 18, fit("AI로 배치", bw), b -> ScenarioClientState.makeLayout(true), false);
+        ai.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(hasMap
+            ? "AI가 참고 지도를 보고 지도대로 배치해요." : "AI가 이야기에 맞게 배치해요. 참고 지도를 올리면 지도를 따라요.")));
         WoodUi.WoodButton plain = new WoodUi.WoodButton(px + bw + 4, y, bw, 18, fit("기본 배치", bw), b -> ScenarioClientState.makeLayout(false), false);
         ai.active = plain.active = !tooMany;
         if (tooMany) {
@@ -434,8 +443,33 @@ public class ScenarioScreen extends Screen {
         }
         addDrawableChild(ai);
         addDrawableChild(plain);
-        addDrawableChild(new WoodUi.WoodButton(px + 2 * (bw + 4), y, bw, 18, fit("모델 설정", bw),
-            b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
+        WoodUi.WoodButton mapButton = new WoodUi.WoodButton(px + 2 * (bw + 4), y, bw, 18, fit(hasMap ? "참고 지도 ✓" : "참고 지도", bw),
+            b -> this.client.setScreen(new MapScreen(this)), false);
+        mapButton.active = sheet != null;
+        mapButton.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("마을 지도 그림을 올리면 AI가 지도를 따라 배치해요.")));
+        addDrawableChild(mapButton);
+        WoodUi.WoodButton reset = new WoodUi.WoodButton(px + 3 * (bw + 4), y, bw, 18, fit(resetArmed ? "정말 지울까요?" : "배치 초기화", bw), b -> {
+            if (resetArmed) {
+                resetArmed = false;
+                picked = "";
+                ScenarioClientState.clearLayout();
+            } else {
+                resetArmed = true;
+            }
+            clearAndInit();
+        }, true);
+        reset.active = layout != null;
+        reset.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+            "장소 자리, 길, 구역을 모두 지우고 빈 배치도로 돌아가요 (두 번 누르기). 지어진 마을은 그대로예요.")));
+        addDrawableChild(reset);
+        if (sheet != null && MapOverlay.available()) {
+            WoodUi.WoodButton overlay = new WoodUi.WoodButton(mapX() + 2, mapY() + 2, 44, 14, Text.literal(showMap ? "지도 ✓" : "지도"), b -> {
+                showMap = !showMap;
+                clearAndInit();
+            }, false);
+            overlay.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("참고 지도를 배치도 위에 흐리게 겹쳐 보기")));
+            addDrawableChild(overlay);
+        }
         if (layout == null || sheet == null) {
             askField = null;
             layoutProblems = List.of();
@@ -482,6 +516,60 @@ public class ScenarioScreen extends Screen {
                 ? "참고 사진: " + place.refImage + (place.refDescription.isBlank() ? " (아직 읽지 않음)" : " (읽음)")
                 : "실제 건물 사진을 붙이면 AI가 보고 따라 지어요.")));
             addDrawableChild(photo);
+            // Second row: building or outdoor, and taking it off the layout.
+            int by2 = by + 22;
+            WoodUi.WoodButton kind = new WoodUi.WoodButton(px, by2, 66, 18, Text.literal(place.outdoor ? "야외" : "건물"), b -> {
+                place.outdoor = !place.outdoor;
+                if (place.outdoor && !java.util.Set.of("woods", "cemetery", "dock", "beach", "square", "cave", "scene", "landmark",
+                    "pyeongsang", "pine").contains(place.kind)) {
+                    place.kind = "landmark";
+                    place.basement = false;
+                } else if (!place.outdoor && java.util.Set.of("woods", "cemetery", "dock", "beach", "square", "cave", "scene", "landmark",
+                    "pyeongsang", "pine").contains(place.kind)) {
+                    place.kind = "house";
+                }
+                ScenarioClientState.saveSheet();
+                layout.check(sheet);
+                ScenarioClientState.saveLayout();
+                clearAndInit();
+            }, false);
+            kind.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(place.outdoor
+                ? "야외: 건물 없이 땅과 작은 소품만 놓아요. 눌러서 건물로 바꾸기."
+                : "건물: 블록으로 집을 지어요. 눌러서 야외(땅과 소품만)로 바꾸기.")));
+            addDrawableChild(kind);
+            if (site != null) {
+                var bp = ScenarioClientState.build() == null ? null : ScenarioClientState.build().places.get(place.id);
+                boolean built = bp != null && bp.min != null;
+                if (removeAsk.equals(place.id)) {
+                    addDrawableChild(new WoodUi.WoodButton(px + 70, by2, 74, 18, fit("월드도 지우기", 74), b -> {
+                        ScenarioClientState.buildAction("build_clear", place.id);
+                        layout.sites.remove(site);
+                        removeAsk = "";
+                        ScenarioClientState.saveLayout();
+                        clearAndInit();
+                    }, true));
+                    addDrawableChild(new WoodUi.WoodButton(px + 148, by2, 74, 18, fit("배치만 빼기", 74), b -> {
+                        layout.sites.remove(site);
+                        removeAsk = "";
+                        ScenarioClientState.saveLayout();
+                        clearAndInit();
+                    }, false));
+                } else {
+                    WoodUi.WoodButton remove = new WoodUi.WoodButton(px + 70, by2, 96, 18, fit("배치에서 빼기", 96), b -> {
+                        if (built) {
+                            removeAsk = place.id;
+                        } else {
+                            layout.sites.remove(site);
+                            ScenarioClientState.saveLayout();
+                        }
+                        clearAndInit();
+                    }, true);
+                    remove.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(built
+                        ? "이미 지어진 곳이에요. 누르면 월드의 건물도 지울지 물어봐요."
+                        : "배치도에서 자리만 빼요. 시트에는 남아서 \"빈 자리에 놓기\"로 다시 넣을 수 있어요.")));
+                    addDrawableChild(remove);
+                }
+            }
             addDrawableChild(new WoodUi.WoodButton(px + 70, by, 52, 18, Text.literal("크기 " + place.size), b -> {
                 int s = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.indexOf(place.size);
                 place.size = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.get((s + 1) % 4);
@@ -604,6 +692,9 @@ public class ScenarioScreen extends Screen {
         }
         if (layout == null || sheet == null) {
             ctx.fill(x0, y0, x0 + size, y0 + size, 0xFF6E7F57);
+            if (showMap) {
+                MapOverlay.draw(ctx, x0, y0, size, 255);
+            }
             ctx.drawText(this.textRenderer, "아직 배치가 없어요.", px, bodyTop() + 32, WoodUi.INK, false);
             List<OrderedText> lines = this.textRenderer.wrapLines(StringVisitable.plain(
                 "\"AI로 배치\"는 AI가 이야기에 맞게, \"기본 배치\"는 AI 없이 바로 만들어요."), right() - 12 - px);
@@ -637,6 +728,10 @@ public class ScenarioScreen extends Screen {
                     }
                 }
             }
+        }
+        if (showMap) {
+            // The keeper's map, faint, between the ground and the places.
+            MapOverlay.draw(ctx, x0, y0, size, 0x80);
         }
         com.foredayner.scenario.layout.TownLayout.Site hover = siteAt(mouseX, mouseY);
         for (int n = 0; n < layout.sites.size(); n++) {
@@ -711,8 +806,8 @@ public class ScenarioScreen extends Screen {
             String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) + "x"
                 + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size)
                 : (world ? "좌하단 월드 (" : "좌하단 (") + cx + ", " + cz + ") · " + site.w + "x" + site.d;
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 22, WoodUi.INK_SOFT, false);
-            ty += 33;
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 44, WoodUi.INK_SOFT, false);
+            ty += 55;
         } else {
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("지도에서 끌어 옮기기 · 밝은 테두리 = 입구", right() - 12 - px),
                 px, ty, WoodUi.INK_SOFT, false);
@@ -729,7 +824,7 @@ public class ScenarioScreen extends Screen {
                 }
                 ctx.drawOrderedTooltip(this.textRenderer, tip, mouseX, mouseY);
             }
-            int ly = controlsY() + 44;
+            int ly = controlsY() + 66;
             for (String problem : layoutProblems) {
                 for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), right() - 12 - px)) {
                     if (ly > bottom() - 58) {

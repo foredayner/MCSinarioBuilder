@@ -1,5 +1,6 @@
 package com.foredayner.scenario.layout;
 
+import com.example.ai.AiImage;
 import com.example.ai.AiPrompt;
 import com.example.api.AiBuildApi;
 import com.example.config.AiBuilderConfig;
@@ -91,7 +92,9 @@ public final class LayoutService {
                 return;
             }
             TownLayout draft = TownLayout.auto(sheet);
-            run(player, id, sheet, draft, LayoutPrompt.layout(sheet, draft), "AI가 마을을 배치하는 중이에요...");
+            List<AiImage> map = mapOf(id, sheet);
+            run(player, id, sheet, draft, LayoutPrompt.layout(sheet, draft, !map.isEmpty()), map,
+                map.isEmpty() ? "AI가 마을을 배치하는 중이에요..." : "AI가 참고 지도를 보며 마을을 배치하는 중이에요...");
         } catch (IOException e) {
             ScenarioNet.status(player, "시트를 읽지 못했어요: " + e.getMessage(), id);
         }
@@ -110,25 +113,38 @@ public final class LayoutService {
             if (tooMany(player, id, sheet)) {
                 return;
             }
-            run(player, id, sheet, current, LayoutPrompt.revise(sheet, current, instruction), "배치를 고치는 중이에요...");
+            List<AiImage> map = mapOf(id, sheet);
+            run(player, id, sheet, current, LayoutPrompt.revise(sheet, current, instruction, !map.isEmpty()), map, "배치를 고치는 중이에요...");
         } catch (IOException e) {
             ScenarioNet.status(player, "배치를 읽지 못했어요: " + e.getMessage(), id);
         }
     }
 
-    private static void run(ServerPlayerEntity player, String id, ScenarioSheet sheet, TownLayout fallback, AiPrompt prompt, String busy) {
+    /** The keeper's map as a picture for the AI, or nothing. */
+    private static List<AiImage> mapOf(String id, ScenarioSheet sheet) {
+        try {
+            AiImage map = MapService.image(id, sheet);
+            return map == null ? List.of() : List.of(map);
+        } catch (IOException | RuntimeException e) {
+            ScenarioBuilderMod.LOG.warn("Map of {} could not be read: {}", id, e.toString());
+            return List.of();
+        }
+    }
+
+    private static void run(ServerPlayerEntity player, String id, ScenarioSheet sheet, TownLayout fallback, AiPrompt prompt,
+                            List<AiImage> images, String busy) {
         if (!BUSY.add(id)) {
             ScenarioNet.status(player, "이미 처리 중이에요. 잠시 기다려 주세요.", id);
             return;
         }
         ScenarioNet.status(player, busy, id);
-        attempt(player, id, sheet, fallback, prompt, prompt, 0, new int[2]);
+        attempt(player, id, sheet, fallback, prompt, prompt, images, 0, new int[2]);
     }
 
     private static void attempt(ServerPlayerEntity player, String id, ScenarioSheet sheet, TownLayout fallback,
-                                AiPrompt base, AiPrompt prompt, int tries, int[] tokens) {
+                                AiPrompt base, AiPrompt prompt, List<AiImage> images, int tries, int[] tokens) {
         String model = ScenarioConfig.model(ScenarioConfig.get().layoutModel);
-        AiBuildApi.ask(player.getServer(), prompt, model).thenAccept(answer -> {
+        AiBuildApi.ask(player.getServer(), prompt, model, images).thenAccept(answer -> {
             tokens[0] += answer.inputTokens();
             tokens[1] += answer.outputTokens();
             if (!answer.ok()) {
@@ -145,14 +161,17 @@ public final class LayoutService {
                 problems = "- the answer is not valid JSON of the required shape: " + e.getMessage();
             }
             if (problems == null) {
-                finish(player, id, layout, "AI가 마을을 배치했어요 (토큰 입력 " + tokens[0] + " / 출력 " + tokens[1] + ").");
+                int unnamed = images.isEmpty() ? -1 : LayoutPrompt.unnamed(answer.text());
+                finish(player, id, layout, (images.isEmpty() ? "AI가 마을을 배치했어요" : "AI가 지도를 따라 배치했어요") + " (토큰 입력 "
+                    + tokens[0] + " / 출력 " + tokens[1] + ")." + (unnamed > 0 ? " 지도에 이름 없는 건물이 " + unnamed
+                    + "채 더 있어요. 필요하면 시트에 장소로 넣어 주세요." : ""));
                 return;
             }
             int max = AiBuilderConfig.get().autoRetries;
             if (tries < max) {
                 ScenarioBuilderMod.LOG.info("Layout for {} had problems, asking again ({}/{}): {}", id, tries + 1, max, problems);
                 ScenarioNet.status(player, "배치에 문제가 있어 다시 요청해요 (" + (tries + 1) + "/" + max + ")...", id);
-                attempt(player, id, sheet, fallback, base, LayoutPrompt.fix(base, answer.text(), problems), tries + 1, tokens);
+                attempt(player, id, sheet, fallback, base, LayoutPrompt.fix(base, answer.text(), problems), images, tries + 1, tokens);
             } else {
                 finish(player, id, fallback, "AI 배치가 검사를 통과하지 못해 기본 배치를 썼어요: " + problems.lines().findFirst().orElse(""));
             }

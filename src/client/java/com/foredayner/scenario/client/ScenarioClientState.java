@@ -33,6 +33,8 @@ public final class ScenarioClientState {
     private static boolean canUndo;
     private static com.foredayner.scenario.layout.TownLayout layout;
     private static String layoutId = "";
+    private static byte[] mapPng = new byte[0];
+    private static String mapId = "";
     private static com.foredayner.scenario.store.ScenarioConfig config = new com.foredayner.scenario.store.ScenarioConfig();
 
     private ScenarioClientState() {
@@ -55,6 +57,11 @@ public final class ScenarioClientState {
             } catch (IOException | RuntimeException e) {
                 message = "배치를 읽지 못했어요: " + e.getMessage();
             }
+            refresh();
+        }));
+        ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.MapS2C.ID, (p, ctx) -> ctx.client().execute(() -> {
+            mapPng = p.png();
+            mapId = p.id();
             refresh();
         }));
         ClientPlayNetworking.registerGlobalReceiver(ScenarioNet.BuildPayload.ID, (p, ctx) -> ctx.client().execute(() -> {
@@ -177,6 +184,48 @@ public final class ScenarioClientState {
         com.foredayner.scenario.layout.TownLayout l = layout();
         if (l != null) {
             ClientPlayNetworking.send(new ScenarioNet.LayoutPayload(selected, ScenarioNet.gzip(l.toJson())));
+        }
+    }
+
+    /** The small picture of the selected scenario's map (PNG), or an empty array. */
+    public static byte[] mapPng() {
+        return selected.equals(mapId) ? mapPng : new byte[0];
+    }
+
+    /** Tests: show a map picture as if the server had sent it. */
+    public static void showMapForTests(String id, byte[] png) {
+        mapId = id;
+        mapPng = png;
+        refresh();
+    }
+
+    /** Set the town's map by web address. */
+    public static void mapUrl(String url) {
+        if (!selected.isEmpty() && url != null && !url.isBlank()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("map_url", selected + "\n" + url.trim()));
+        }
+    }
+
+    /** Take the map away. */
+    public static void mapClear() {
+        if (!selected.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("map_clear", selected));
+        }
+    }
+
+    /** Send a map picture file (in parts, like a place's photo). */
+    public static void mapFile(Path file) {
+        refFile(com.foredayner.scenario.layout.MapService.UPLOAD_KEY, file);
+        message = "지도를 보내는 중...";
+        refresh();
+    }
+
+    /** Start the layout over: no sites, roads or zones (the world is not touched). */
+    public static void clearLayout() {
+        if (!selected.isEmpty()) {
+            layout = new com.foredayner.scenario.layout.TownLayout();
+            layoutId = selected;
+            saveLayout();
         }
     }
 
@@ -388,6 +437,8 @@ public final class ScenarioClientState {
         } else if (MinecraftClient.getInstance().currentScreen instanceof StyleScreen screen) {
             screen.refresh();
         } else if (MinecraftClient.getInstance().currentScreen instanceof RefImageScreen screen) {
+            screen.refresh();
+        } else if (MinecraftClient.getInstance().currentScreen instanceof MapScreen screen) {
             screen.refresh();
         }
     }
