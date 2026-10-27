@@ -69,6 +69,8 @@ public final class BuildService {
     /** Ground columns per tick. */
     public static int columnsPerTick = 300;
     public static final double PROP_SIZE = 4.0;
+    public static final int PROP_LOT = BuildPrompts.PROP_LOT;
+    public static final int PROP_HEIGHT = BuildPrompts.PROP_HEIGHT;
 
     private static final Map<String, Job> JOBS = new HashMap<>();
     /** The land as it was before each town (memory only). */
@@ -643,6 +645,11 @@ public final class BuildService {
         return job.origin.add(s.x, 0, s.z);
     }
 
+    /** The north-west corner of the small square an outdoor place's object stands on. */
+    private static BlockPos propMin(Job job, TownLayout.Site s) {
+        return job.origin.add(s.x + Math.max(0, (s.w - PROP_LOT) / 2), 0, s.z + Math.max(0, (s.d - PROP_LOT) / 2));
+    }
+
     private static void design(Job job, String placeId) {
         ScenarioSheet.Place p = job.sheet.place(placeId);
         TownLayout.Site s = job.layout.site(placeId);
@@ -689,7 +696,11 @@ public final class BuildService {
         String model = ScenarioConfig.buildingModel();
         CompletableFuture<AiBuildApi.Design> future;
         if (s.outdoor) {
-            future = designer.object(job.world, siteMin(job, s), BuildPrompts.prop(job.sheet, p), PROP_SIZE, model);
+            // Blocks, like a building, on a small square in the middle of the lot (never display entities).
+            AiBuildApi.Site small = new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT);
+            AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(), model);
+            future = designer.building(job.world, propMin(job, s), small, req);
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
@@ -746,12 +757,19 @@ public final class BuildService {
             }
         });
         if (s.outdoor) {
-            BlockPos onTop = job.origin.add(s.x + s.w / 2, -1, s.z + s.d / 2);
-            AiBuildApi.placeObject(job.world, design.plan(), onTop, s.front, tag, lane);
+            AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), propMin(job, s),
+                new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT), s.front, tag, lane, done);
             bp.prop = true;
             bp.min = new int[] { job.origin.getX() + s.x, job.origin.getY(), job.origin.getZ() + s.z };
-            bp.max = new int[] { job.origin.getX() + s.x + s.w - 1, job.origin.getY() + (int) Math.ceil(PROP_SIZE), job.origin.getZ() + s.z + s.d - 1 };
-            BuildTaskQueue.whenEmpty(lane, done);
+            bp.max = new int[] { job.origin.getX() + s.x + s.w - 1, job.origin.getY() + PROP_HEIGHT, job.origin.getZ() + s.z + s.d - 1 };
+            bp.marks.clear();
+            for (var e : placed.marks().entrySet()) {
+                List<int[]> list = new ArrayList<>();
+                for (BlockPos pos : e.getValue()) {
+                    list.add(new int[] { pos.getX(), pos.getY(), pos.getZ() });
+                }
+                bp.marks.put(e.getKey(), list);
+            }
         } else {
             ScenarioSheet.Place p = job.sheet.place(placeId);
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));

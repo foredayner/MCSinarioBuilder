@@ -27,6 +27,7 @@ class PlaceSortingTest {
         sheet.places.add(place("shrine", "손의 신당", "other"));
         sheet.places.add(place("forest", "범이 사는 배산 숲", "other"));
         sheet.places.add(place("graves", "뒷산 공동묘지", "other"));
+        sheet.places.add(place("site", "빈 집터 (탐사자 4의 옛집)", "house"));
         List<String> notes = sheet.sortOutPlaces();
 
         assertNull(sheet.place("village"), "the village itself is the map, not a place: " + notes);
@@ -40,7 +41,10 @@ class PlaceSortingTest {
         assertEquals("cemetery", sheet.place("graves").kind);
         assertFalse(sheet.place("shaman").outdoor, "a house stays a building");
         assertFalse(sheet.place("shrine").outdoor, "a shrine (신당) stays a building");
-        assertEquals(5, notes.size(), notes.toString());
+        assertEquals("ruins", sheet.place("site").kind, "a house site is a ruin of blocks");
+        assertFalse(sheet.place("site").outdoor);
+        assertEquals("abandoned", sheet.place("site").condition);
+        assertEquals(6, notes.size(), notes.toString());
         assertTrue(sheet.normalize().isEmpty(), "the sorted sheet is consistent");
     }
 

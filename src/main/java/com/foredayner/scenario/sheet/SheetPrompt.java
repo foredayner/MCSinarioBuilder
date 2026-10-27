@@ -20,7 +20,7 @@ public final class SheetPrompt {
           "style": "building style rules for the whole town, 3-6 short lines, naming Minecraft blocks",
           "places": [ { "id": "short_ascii_id", "name": "name as in the scenario", "kind": "house|inn|shop|church|library|
                         police|newspaper|school|hospital|mansion|farm|mill|factory|warehouse|dock|lighthouse|cemetery|woods|
-                        square|cave|scene|landmark|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false,
+                        square|cave|scene|landmark|ruins|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false,
                         "rooms": [ { "name": "...", "purpose": "..." } ], "scenes": [ "short scene names here" ],
                         "notes": "what matters for building it", "filler": false, "outdoor": false,
                         "condition": "kept|worn|abandoned|sinister" } ],
@@ -38,6 +38,8 @@ public final class SheetPrompt {
           open common), "outdoor": true. A spot on a road or path (an accident site, a slope, a pass, a crossroads,
           a bridge) is kind "scene", size S, "outdoor": true. A small thing standing on its own (a well, a cairn, a
           stone tablet, a totem pole, an old tree) is kind "landmark", size S, "outdoor": true. Graves are "cemetery".
+          What is left of a building (an empty house site, a ruin) is kind "ruins", "outdoor": false, condition
+          "abandoned". Never list a character as a place or a thing to build.
           4-12 places from the scenario, plus up to 3 "filler": true ordinary houses or shops so the town feels lived in.
         - Sizes: S = 11x11 (shed, cottage), M = 15x15 (house, shop, small church), L = 21x21 (inn, church, police
           station, library), XL = 31x31 (mansion, factory). Outdoor places (cemetery, woods, dock) set "outdoor": true.

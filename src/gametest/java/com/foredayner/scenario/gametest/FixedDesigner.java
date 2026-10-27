@@ -18,6 +18,9 @@ public final class FixedDesigner implements BuildService.Designer {
 
     @Override
     public CompletableFuture<AiBuildApi.Design> building(ServerWorld world, BlockPos near, AiBuildApi.Site site, AiBuildApi.BuildingRequest req) {
+        if (req.description().startsWith("outdoor object")) {
+            return CompletableFuture.completedFuture(new AiBuildApi.Design(false, "no props in tests", null, "", 0, 0, 0));
+        }
         int w = site.width(), d = site.depth();
         int h = Math.min(site.maxHeight() - 2, 6);
         StringBuilder s = new StringBuilder();

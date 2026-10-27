@@ -40,6 +40,11 @@ public final class Archetypes {
     public static String features(String kind, String periodOrEra) {
         String period = periodOf(periodOrEra);
         String k = kind == null ? "" : kind;
+        if ("ruins".equals(k) && !Period.OTHER.equals(period)) {
+            return "a ruined house site: the stone or earth foundation of a house, broken wall stumps 1-3 blocks high"
+                + " (gaps and fallen blocks), a doorway step, collapsed and charred beams lying across, a cold fireplace or"
+                + " fire hole, weeds and moss in the corners, no roof";
+        }
         return switch (period) {
             case Period.WEST_MEDIEVAL -> westMedieval(k);
             case Period.WEST_MODERN -> west(k, false);

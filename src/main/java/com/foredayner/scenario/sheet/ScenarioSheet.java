@@ -301,6 +301,9 @@ public final class ScenarioSheet {
         return java.util.regex.Pattern.compile(regex);
     }
 
+    /** What is left of a building: built of blocks as a ruin (foundations and broken walls). */
+    private static final java.util.regex.Pattern RUINS = words("집터|폐가|폐허|빈터|옛터|절터|성터|ruin|ruins|house site");
+
     /** Names that say "a building" (these stay buildings whatever else the name says). */
     private static final java.util.regex.Pattern BUILDING = words("집|가옥|신당|사당|당집|회관|사무소|가게|상점|주막|여관|여인숙|교회|성당|사찰"
         + "|암자|학교|서당|병원|의원|약방|창고|헛간|오두막|움막|별장|산장|저택|관아|주재소|지서|파출소|정자|방앗간|공장|등대|도서관"
@@ -338,6 +341,13 @@ public final class ScenarioSheet {
             Place p = it.next();
             String name = p.name == null ? "" : p.name.trim().toLowerCase(Locale.ROOT);
             String idWords = p.id == null ? "" : p.id.toLowerCase(Locale.ROOT).replace('_', ' ');
+            if (any(RUINS, name, idWords) && !"ruins".equals(p.kind)) {
+                p.kind = "ruins";
+                p.outdoor = false;
+                p.condition = "abandoned";
+                notes.add((p.name == null || p.name.isBlank() ? p.id : p.name) + ": 폐허(무너진 건물터)로 바꿨어요");
+                continue;
+            }
             if (any(BUILDING, name, idWords) || p.outdoor && GROUND_KINDS.contains(p.kind)) {
                 continue;
             }

@@ -162,6 +162,19 @@ class BuildPromptsTest {
     }
 
     @Test
+    void nothingIsAFigureAndOutdoorThingsAreBlocks() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        assertTrue(BuildPrompts.extra(sheet, sheet.place("inn"), 21).contains("NEVER build people"));
+        String prop = BuildPrompts.propExtra();
+        assertTrue(prop.contains("NOT a building") && prop.contains("NEVER build people"), prop);
+        ScenarioSheet.Place well = new ScenarioSheet.Place();
+        well.name = "우물";
+        well.kind = "landmark";
+        assertTrue(BuildPrompts.propDescription(sheet, well).startsWith("outdoor object"));
+        assertTrue(Archetypes.checklist("ruins", Period.EAST_POSTWAR).contains("no roof"));
+    }
+
+    @Test
     void sameAsMustNameAnotherPlace() throws Exception {
         ScenarioSheet sheet = greymouth();
         sheet.places.get(0).sameAs = sheet.places.get(0).id;

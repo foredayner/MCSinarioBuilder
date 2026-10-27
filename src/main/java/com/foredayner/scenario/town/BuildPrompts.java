@@ -12,10 +12,34 @@ public final class BuildPrompts {
     private BuildPrompts() {
     }
 
+    /** An outdoor place's object is built of blocks on a square this wide in the middle of its lot. */
+    public static final int PROP_LOT = 7;
+    /** And at most this high. */
+    public static final int PROP_HEIGHT = 6;
+
+    /** Never: figures of people or animals (the scenario's characters are played, not built). */
+    public static final String NO_FIGURES = "NEVER build people, figures, bodies, ghosts, animals or statues and dolls shaped like"
+        + " them (no armor stands, no heads, no mannequins, no skeletons), even when the scenario's characters are named"
+        + " here: the characters are played at the table, not built. Everything is made of ordinary Minecraft blocks.";
+
+    /** What an outdoor place's object is: built of blocks on a small square in the middle of its lot. */
+    public static String propDescription(ScenarioSheet sheet, ScenarioSheet.Place p) {
+        return "outdoor object \"" + p.name + "\": " + prop(sheet, p);
+    }
+
+    /** Rules for an outdoor object (it stands in the open; the ground around it is already made). */
+    public static String propExtra() {
+        return "This is NOT a building: build only the object itself, of Minecraft blocks, standing on the open ground of"
+            + " the small square (keep it inside the square, at most " + PROP_HEIGHT + " blocks high). No house, no"
+            + " walls around the square, no roof over it, no floor slab under it, no fence around it; do not change the ground"
+            + " (no grass, dirt or paving). Several small separate pieces are better than one big lump.\n" + NO_FIGURES;
+    }
+
     /** How high a building may go (blocks above the ground). */
     public static int maxHeight(ScenarioSheet.Place p) {
         int h = Math.min(30, p.floors * 5 + 8);
         return switch (p.kind) {
+            case "ruins" -> 6;
             case "lighthouse" -> 36;
             case "church" -> Math.max(h, 26);
             default -> h;
@@ -134,6 +158,7 @@ public final class BuildPrompts {
         if (p.filler) {
             sb.append("\nAn ordinary lived-in town building; nothing in it matters to the story.");
         }
+        sb.append('\n').append(NO_FIGURES);
         return sb.toString();
     }
 
