@@ -113,7 +113,7 @@ public class ScenarioScreen extends Screen {
             };
             // The 로그 tab counts what came while it was closed (red when something went wrong).
             String label = t == Tab.LOG && ScenarioClientState.unread() > 0 && tab != Tab.LOG
-                ? t.label + " " + (ScenarioClientState.unreadError() ? "§c" : "§6") + "•" + Math.min(99, ScenarioClientState.unread())
+                ? t.label + " " + (ScenarioClientState.unreadError() ? "§c" : "§6") + "(" + Math.min(99, ScenarioClientState.unread()) + ")"
                 : t.label;
             WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(label), b -> {
                 tab = t;
@@ -446,9 +446,11 @@ public class ScenarioScreen extends Screen {
         if (toast == null || tab == Tab.LOG) {
             return;
         }
-        String text = this.textRenderer.trimToWidth(toast.text(), right() - left() - 60);
+        // Beside the title, not over it.
+        int room = right() - ((left() + right()) / 2 + 70);
+        String text = this.textRenderer.trimToWidth(toast.text(), Math.max(40, room - 16));
         int w = this.textRenderer.getWidth(text) + 16;
-        int x = (left() + right()) / 2 - w / 2, y = 4;
+        int x = right() - w, y = 3;
         ctx.fill(x, y, x + w, y + 16, 0xF0F4E4C1);
         ctx.fill(x, y + 15, x + w, y + 16, logColor(toast.kind()));
         ctx.drawText(this.textRenderer, text, x + 8, y + 4, logColor(toast.kind()), false);
@@ -1053,7 +1055,7 @@ public class ScenarioScreen extends Screen {
         }
         ctx.disableScissor();
         // Under the map, beside the switches: what the colours mean.
-        int lx = x0 + (MapOverlay.available() ? 148 : 74), legendY = belowMapY() + 3, lend = x0 + size;
+        int lx = x0 + (MapOverlay.available() ? 148 : 74), legendY = belowMapY() + 3, lend = right() - 12; // the panel is free at this height
         List<Object[]> legend = new java.util.ArrayList<>();
         if (anyChosen) {
             legend.add(new Object[] { "■ 파란 테두리: AI가 정한 곳", 0xFF2E6DA4 });
