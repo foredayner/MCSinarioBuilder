@@ -48,7 +48,16 @@ public final class SheetService {
             ScenarioNet.status(player, "시나리오를 찾지 못했어요.", "");
             return;
         }
-        run(player, id, SheetPrompt.analyze(text), "시나리오를 읽는 중이에요...", true);
+        String stage = "";
+        try {
+            ScenarioSheet before = load(id);
+            if (before != null && before.building()) {
+                stage = "building"; // the keeper switched the stage before reading again
+            }
+        } catch (IOException ignored) {
+            // No sheet yet.
+        }
+        run(player, id, SheetPrompt.analyze(text, stage), "시나리오를 읽는 중이에요...", true);
     }
 
     /** Change the sheet as the keeper asks (e.g. "add a general store", "the church is bigger"). */
@@ -90,7 +99,7 @@ public final class SheetService {
             List<String> sorted = List.of();
             try {
                 sheet = ScenarioSheet.fromAnswer(answer.text());
-                if (fresh) {
+                if (fresh && !"building".equals(sheet.stage)) {
                     sorted = sheet.sortOutPlaces();
                 }
                 List<String> list = sheet.normalize();
@@ -104,6 +113,12 @@ public final class SheetService {
                     ScenarioSheet before = load(id);
                     if (before != null && sheet.mapImage.isBlank()) {
                         sheet.mapImage = before.mapImage == null ? "" : before.mapImage; // the keeper's map stays
+                    }
+                    if (before != null) {
+                        // The keeper's map settings stay too.
+                        sheet.mapKind = before.mapKind;
+                        sheet.mapFillers = before.mapFillers;
+                        sheet.floorImages = before.floorImages == null ? new java.util.ArrayList<>() : before.floorImages;
                     }
                     save(id, sheet);
                     ScenarioNet.sheet(player, id, sheet);

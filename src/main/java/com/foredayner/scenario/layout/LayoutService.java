@@ -70,7 +70,7 @@ public final class LayoutService {
             if (tooMany(player, id, sheet)) {
                 return;
             }
-            TownLayout layout = TownLayout.auto(sheet);
+            TownLayout layout = sheet.building() ? IndoorPlan.auto(sheet) : TownLayout.auto(sheet);
             List<String> problems = layout.check(sheet);
             save(id, layout);
             ScenarioNet.layout(player, id, layout);
@@ -90,6 +90,14 @@ public final class LayoutService {
             }
             sheet.normalize();
             if (tooMany(player, id, sheet)) {
+                return;
+            }
+            if (sheet.building()) {
+                // One building: the floor plan, after the scenario's plans if the keeper gave them.
+                List<AiImage> plans = MapService.images(id, sheet);
+                TownLayout draft = IndoorPlan.auto(sheet);
+                run(player, id, sheet, draft, IndoorPrompt.plan(sheet, draft, !plans.isEmpty()), plans,
+                    plans.isEmpty() ? "AI가 건물 평면도를 그리는 중이에요..." : "AI가 평면도 그림을 보며 건물을 배치하는 중이에요...");
                 return;
             }
             List<AiImage> map = "indoor".equals(sheet.mapKind) ? List.of() : mapOf(id, sheet);
@@ -117,6 +125,11 @@ public final class LayoutService {
             }
             sheet.normalize();
             if (tooMany(player, id, sheet)) {
+                return;
+            }
+            if (sheet.building()) {
+                List<AiImage> plans = MapService.images(id, sheet);
+                run(player, id, sheet, current, IndoorPrompt.revise(sheet, current, instruction, !plans.isEmpty()), plans, "평면도를 고치는 중이에요...");
                 return;
             }
             List<AiImage> map = mapOf(id, sheet);
@@ -164,11 +177,11 @@ public final class LayoutService {
             TownLayout layout = null;
             String problems;
             List<String> fixed = List.of();
-            String kind = images.isEmpty() ? "" : LayoutPrompt.mapKind(answer.text());
+            String kind = images.isEmpty() || sheet.building() ? "" : LayoutPrompt.mapKind(answer.text());
             int fillers = 0;
             try {
-                layout = TownLayout.fromAnswer(answer.text(), sheet);
-                if (!images.isEmpty()) {
+                layout = sheet.building() ? IndoorPlan.fromAnswer(answer.text(), sheet) : TownLayout.fromAnswer(answer.text(), sheet);
+                if (!images.isEmpty() && !sheet.building()) {
                     sheet.places.removeIf(p -> p.mapFiller);
                     if (sheet.mapFillers && !"indoor".equals(kind)) {
                         fillers = addFillers(sheet, layout, LayoutPrompt.extras(answer.text()));
@@ -205,7 +218,7 @@ public final class LayoutService {
                 problems = problems(layout, sheet);
             }
             if (problems == null) {
-                if (!images.isEmpty()) {
+                if (!images.isEmpty() && !sheet.building()) {
                     saveSheet(player, id, sheet);
                 }
                 String kindNote = switch (kind) {
@@ -213,7 +226,9 @@ public final class LayoutService {
                     case "outdoor" -> " 야외 지도로 읽었어요.";
                     default -> "";
                 };
-                finish(player, id, layout, (images.isEmpty() ? "AI가 마을을 배치했어요" : "AI가 지도를 따라 배치했어요") + " (토큰 입력 "
+                String what = sheet.building() ? (images.isEmpty() ? "AI가 건물 평면도를 그렸어요" : "AI가 평면도 그림을 따라 건물을 배치했어요")
+                    : images.isEmpty() ? "AI가 마을을 배치했어요" : "AI가 지도를 따라 배치했어요";
+                finish(player, id, layout, what + " (토큰 입력 "
                     + tokens[0] + " / 출력 " + tokens[1] + ")." + (fixed.isEmpty() ? "" : " 바로잡은 것: " + String.join(", ", fixed) + ".")
                     + (fillers > 0 ? " 지도의 이름 없는 건물 " + fillers + "채를 민가로 넣었어요." : "") + kindNote);
                 return;

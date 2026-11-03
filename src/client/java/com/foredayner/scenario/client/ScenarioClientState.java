@@ -220,6 +220,13 @@ public final class ScenarioClientState {
         refresh();
     }
 
+    /** Building stage: send one more floor plan picture. */
+    public static void floorFile(Path file) {
+        refFile(com.foredayner.scenario.layout.MapService.FLOOR_KEY, file);
+        message = "평면도를 보내는 중...";
+        refresh();
+    }
+
     /** Start the layout over: no sites, roads or zones (the world is not touched). */
     public static void clearLayout() {
         if (!selected.isEmpty()) {

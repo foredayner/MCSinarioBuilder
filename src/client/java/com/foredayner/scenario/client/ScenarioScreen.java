@@ -254,6 +254,20 @@ public class ScenarioScreen extends Screen {
                     + "닫힘: 바깥이 가파른 숲 언덕으로 막히고, 나가는 길은 낙석으로 막혀요 (고립되는 시나리오).\n"
                     + "없음: 마을 땅만 지어요.\n짓기 전에 정해 주세요.")));
             addDrawableChild(outerButton);
+            // The stage: a town of buildings, or one building whose rooms are the places.
+            WoodUi.WoodButton stageButton = new WoodUi.WoodButton(colX(0) + colWidth() - 168, listTop() - 16, 80, 14,
+                fit(sheet.building() ? "무대: 건물" : "무대: 마을", 80), b -> {
+                    sheet.stage = sheet.building() ? "town" : "building";
+                    ScenarioClientState.saveSheet();
+                    ScenarioClientState.setMessage(sheet.building()
+                        ? "무대를 건물로 바꿨어요. \"AI로 다시 읽기\"를 누르면 장소를 이 건물의 방(층별)으로 다시 읽어요."
+                        : "무대를 마을로 바꿨어요. \"AI로 다시 읽기\"로 장소를 건물들로 다시 읽어요.");
+                    clearAndInit();
+                }, false);
+            stageButton.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+                "마을: 장소가 마을의 건물들이에요.\n건물: 시나리오 전체가 한 건물(저택, 병원, 배...) 안이에요. 장소가 방이 되고, "
+                    + "층별 평면도로 배치해서 벽·바닥·문·계단은 코드가, 방 꾸미기는 AI가 해요.")));
+            addDrawableChild(stageButton);
         }
         if (sheet != null) {
             int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
@@ -348,7 +362,20 @@ public class ScenarioScreen extends Screen {
     }
 
     private float scale() {
-        return mapSize() / (float) com.foredayner.scenario.layout.TownLayout.SIZE;
+        return mapSize() / (float) view()[2];
+    }
+
+    /** What the plan shows: {x, z, span}: the whole ground, or a building stage's building with a margin. */
+    private static int[] view() {
+        var layout = ScenarioClientState.layout();
+        int size = com.foredayner.scenario.layout.TownLayout.SIZE;
+        if (layout == null || !layout.building() || layout.sites.isEmpty()) {
+            return new int[] { 0, 0, size };
+        }
+        int[] b = com.foredayner.scenario.layout.IndoorPlan.bounds(layout);
+        int span = Math.min(size, Math.max(b[2] - b[0], b[3] - b[1]) + 1 + 12);
+        int cx = (b[0] + b[2]) / 2, cz = (b[1] + b[3]) / 2;
+        return new int[] { Math.max(0, Math.min(size - span, cx - span / 2)), Math.max(0, Math.min(size - span, cz - span / 2)), span };
     }
 
     private int panelX() {
@@ -483,9 +510,35 @@ public class ScenarioScreen extends Screen {
         }
         layoutProblems = layout.check(sheet);
         clampListScroll();
-        var place = sheet.place(picked);
+        // A building's rooms are changed by asking the AI (or by the floor plans): no controls per room.
+        var place = layout.building() ? null : sheet.place(picked);
         var site = layout.site(picked);
         int by = controlsY();
+        if (layout.building()) {
+            // A building: pick the floor to see; rooms are changed by asking the AI (or by the floor plans).
+            int low = 0, high = 0;
+            for (var s : layout.sites) {
+                low = Math.min(low, s.level);
+                high = Math.max(high, s.level);
+            }
+            floorShown = Math.max(low, Math.min(high, floorShown));
+            int lo = low, hi = high;
+            WoodUi.WoodButton down = new WoodUi.WoodButton(px, by, 20, 18, Text.literal("▼"), b -> {
+                floorShown = Math.max(lo, floorShown - 1);
+                picked = "";
+                clearAndInit();
+            }, false);
+            down.active = floorShown > low;
+            addDrawableChild(down);
+            addDrawableChild(new WoodUi.WoodButton(px + 22, by, 70, 18, Text.literal(floorKo(floorShown)), b -> { }, false));
+            WoodUi.WoodButton up = new WoodUi.WoodButton(px + 94, by, 20, 18, Text.literal("▲"), b -> {
+                floorShown = Math.min(hi, floorShown + 1);
+                picked = "";
+                clearAndInit();
+            }, false);
+            up.active = floorShown < high;
+            addDrawableChild(up);
+        }
         if (place != null && site != null) {
             addDrawableChild(new WoodUi.WoodButton(px, by, 66, 18, Text.literal("입구 " + sideKo(site.front)), b -> {
                 int i = com.foredayner.scenario.layout.TownLayout.FRONTS.indexOf(site.front);
@@ -598,12 +651,15 @@ public class ScenarioScreen extends Screen {
     }
 
     private int toScreenX(int x) {
-        return mapX() + Math.round(x * scale());
+        return mapX() + Math.round((x - view()[0]) * scale());
     }
 
     private int toScreenZ(int z) {
-        return mapY() + Math.round(z * scale());
+        return mapY() + Math.round((z - view()[1]) * scale());
     }
+
+    /** Building stage: the floor shown on the plan. */
+    private static int floorShown = 0;
 
     private com.foredayner.scenario.layout.TownLayout.Site siteAt(double mx, double my) {
         var layout = ScenarioClientState.layout();
@@ -612,6 +668,9 @@ public class ScenarioScreen extends Screen {
         }
         for (int i = layout.sites.size() - 1; i >= 0; i--) {
             var s = layout.sites.get(i);
+            if (layout.building() && s.level != floorShown) {
+                continue;
+            }
             if (mx >= toScreenX(s.x) && mx < toScreenX(s.x + s.w) && my >= toScreenZ(s.z) && my < toScreenZ(s.z + s.d)) {
                 return s;
             }
@@ -633,7 +692,8 @@ public class ScenarioScreen extends Screen {
             var s = siteAt(mx, my);
             picked = s == null ? "" : s.id;
             showPicked();
-            if (s != null) {
+            var plan = ScenarioClientState.layout();
+            if (s != null && plan != null && !plan.building()) { // a building's rooms stay where the plan has them
                 dragging = true;
                 dragMoved = false;
                 dragDx = (int) Math.floor((mx - mapX()) / scale()) - s.x;
@@ -690,6 +750,10 @@ public class ScenarioScreen extends Screen {
         };
     }
 
+    private static String floorKo(int level) {
+        return level < 0 ? "지하 " + (-level) + "층" : (level + 1) + "층";
+    }
+
     private void renderLayout(DrawContext ctx, int mouseX, int mouseY) {
         int px = panelX();
         var layout = ScenarioClientState.layout();
@@ -738,7 +802,7 @@ public class ScenarioScreen extends Screen {
                 }
             }
         }
-        if (showMap) {
+        if (showMap && !layout.building()) {
             // The keeper's map, faint, between the ground and the places.
             MapOverlay.draw(ctx, x0, y0, size, 0x80);
         }
@@ -747,6 +811,9 @@ public class ScenarioScreen extends Screen {
         boolean anyChosen = false;
         for (int n = 0; n < layout.sites.size(); n++) {
             var s = layout.sites.get(n);
+            if (layout.building() && s.level != floorShown) {
+                continue;
+            }
             int sx = toScreenX(s.x), sz = toScreenZ(s.z), ex = toScreenX(s.x + s.w), ez = toScreenZ(s.z + s.d);
             boolean sel = s.id.equals(picked);
             var sitePlace = sheet.place(s.id);
@@ -757,10 +824,12 @@ public class ScenarioScreen extends Screen {
             ctx.fill(sx, sz, ex, ez, sel ? 0xFF2B1D10 : chosen ? 0xFF2E6DA4 : 0xFF4A3420);
             ctx.fill(sx + 1, sz + 1, ex - 1, ez - 1, s.outdoor ? 0xFF9D8C69 : sel ? 0xFFE0B25A : mapHouse ? 0xFFB9A88C : 0xFFC28A4E);
             int edge = 0xFFFFF4D6;
-            switch (s.front) {
+            switch (layout.building() ? "" : s.front) {
                 case "north" -> ctx.fill(sx + 1, sz, ex - 1, sz + 2, edge);
                 case "east" -> ctx.fill(ex - 2, sz + 1, ex, ez - 1, edge);
                 case "west" -> ctx.fill(sx, sz + 1, sx + 2, ez - 1, edge);
+                case "" -> {
+                }
                 default -> ctx.fill(sx + 1, ez - 2, ex - 1, ez, edge);
             }
             // The place's number in the sheet (its name is in the list beside the map).
@@ -776,6 +845,30 @@ public class ScenarioScreen extends Screen {
                 ctx.drawText(this.textRenderer, num, 0, 0, 0xFF1E140A, false);
                 m.pop();
             }
+        }
+        if (layout.building()) {
+            // Doors (light) and stairs (an arrow of dark steps) on the floor shown.
+            for (var d : layout.doors) {
+                if (d.level == floorShown) {
+                    ctx.fill(toScreenX(d.x), toScreenZ(d.z), toScreenX(d.x + 1), toScreenZ(d.z + 1), d.entrance ? 0xFF3FA34D : 0xFFFFF4D6);
+                }
+            }
+            for (var st : layout.stairs) {
+                if (st.level == floorShown || st.level + 1 == floorShown) {
+                    int[] dir = switch (st.dir) {
+                        case "east" -> new int[] { 1, 0 };
+                        case "south" -> new int[] { 0, 1 };
+                        case "west" -> new int[] { -1, 0 };
+                        default -> new int[] { 0, -1 };
+                    };
+                    for (int i = 0; i < com.foredayner.scenario.layout.IndoorPlan.STAIR_RUN; i++) {
+                        int cx = st.x + dir[0] * i, cz = st.z + dir[1] * i;
+                        int shade = st.level == floorShown ? 0xFF3A2A18 + i * 0x00141008 : 0x803A2A18;
+                        ctx.fill(toScreenX(cx), toScreenZ(cz), toScreenX(cx + 1), toScreenZ(cz + 1), shade);
+                    }
+                }
+            }
+            anyChosen = false;
         }
         if (anyChosen) {
             String legend = "파란 테두리: 지도에 없어 AI가 자리를 정한 곳";

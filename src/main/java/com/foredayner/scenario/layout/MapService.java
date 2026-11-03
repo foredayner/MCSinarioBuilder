@@ -50,6 +50,70 @@ public final class MapService {
         return Files.exists(f) ? AiImage.ofBytes(Files.readAllBytes(f)) : null;
     }
 
+    /** The map and the extra floor plans (building stage) for the AI. */
+    public static java.util.List<AiImage> images(String id, ScenarioSheet sheet) {
+        java.util.List<AiImage> out = new java.util.ArrayList<>();
+        try {
+            AiImage main = image(id, sheet);
+            if (main != null) {
+                out.add(main);
+            }
+            for (String f : sheet.floorImages) {
+                String name = f.startsWith("file:") ? f.substring(5) : "";
+                if (name.matches("floor[1-5]\\.(png|jpg|gif|webp)")) {
+                    Path p = dir(id).resolve(name);
+                    if (Files.exists(p)) {
+                        out.add(AiImage.ofBytes(Files.readAllBytes(p)));
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            com.foredayner.scenario.ScenarioBuilderMod.LOG.warn("Plans of {} could not be read: {}", id, e.toString());
+        }
+        return out;
+    }
+
+    /** Most extra floor plans. */
+    public static final int MAX_FLOORS = 5;
+    /** The "place" a floor plan upload is sent for. */
+    public static final String FLOOR_KEY = "#floor";
+
+    /** Keep one more floor plan (building stage): the first picture is the map, the next ones floors. */
+    public static void addFloor(ServerPlayerEntity player, String id, byte[] data) {
+        try {
+            ScenarioSheet sheet = SheetService.load(id);
+            if (sheet == null) {
+                say(player, "먼저 시트를 만들어 주세요.", id);
+                return;
+            }
+            if (sheet.mapImage == null || sheet.mapImage.isBlank()) {
+                saveFile(player, id, data); // the first plan is the main one
+                return;
+            }
+            if (sheet.floorImages.size() >= MAX_FLOORS) {
+                say(player, "평면도는 " + (MAX_FLOORS + 1) + "장까지예요.", id);
+                return;
+            }
+            AiImage checked = AiImage.ofBytes(data);
+            String ext = switch (checked.mediaType()) {
+                case "image/png" -> "png";
+                case "image/gif" -> "gif";
+                case "image/webp" -> "webp";
+                default -> "jpg";
+            };
+            String name = "floor" + (sheet.floorImages.size() + 1) + "." + ext;
+            Files.write(dir(id).resolve(name), data);
+            sheet.floorImages.add("file:" + name);
+            SheetService.save(id, sheet);
+            if (player != null) {
+                ScenarioNet.sheet(player, id, sheet);
+            }
+            say(player, "평면도를 더했어요 (모두 " + (sheet.floorImages.size() + 1) + "장).", id);
+        } catch (IOException | RuntimeException e) {
+            say(player, "평면도를 저장하지 못했어요: " + e.getMessage(), id);
+        }
+    }
+
     /** The small copy under the layout (PNG), or an empty array. */
     public static byte[] thumbnail(String id) {
         try {
@@ -134,6 +198,7 @@ public final class MapService {
             ScenarioSheet sheet = SheetService.load(id);
             if (sheet != null) {
                 sheet.mapImage = "";
+                sheet.floorImages.clear();
                 SheetService.save(id, sheet);
                 if (player != null) {
                     ScenarioNet.sheet(player, id, sheet);
@@ -151,6 +216,11 @@ public final class MapService {
     private static void removeFiles(String id) throws IOException {
         for (String name : new String[] { "map.png", "map.jpg", "map.gif", "map.webp", THUMB }) {
             Files.deleteIfExists(dir(id).resolve(name));
+        }
+        try (var files = Files.list(dir(id))) {
+            for (Path p : (Iterable<Path>) files.filter(f -> f.getFileName().toString().matches("floor[1-5]\\..*"))::iterator) {
+                Files.deleteIfExists(p);
+            }
         }
     }
 

@@ -169,6 +169,10 @@ public final class ScenarioNet {
         for (byte[] part : parts) {
             all.writeBytes(part);
         }
+        if (com.foredayner.scenario.layout.MapService.FLOOR_KEY.equals(p.place())) {
+            com.foredayner.scenario.layout.MapService.addFloor(player, p.id(), all.toByteArray());
+            return;
+        }
         if (com.foredayner.scenario.layout.MapService.UPLOAD_KEY.equals(p.place())) {
             com.foredayner.scenario.layout.MapService.saveFile(player, p.id(), all.toByteArray());
             return;

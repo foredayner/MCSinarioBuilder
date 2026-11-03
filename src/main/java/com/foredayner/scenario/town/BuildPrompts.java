@@ -60,6 +60,37 @@ public final class BuildPrompts {
         return sb.toString();
     }
 
+    /** Building stage: one room to furnish (its walls, floor, ceiling, doors and windows are built by code). */
+    public static String roomDescription(ScenarioSheet sheet, ScenarioSheet.Place p) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("the furnishing of the room \"").append(p.name).append("\" inside ").append(sheet.title.isBlank() ? "the building" : sheet.title)
+            .append(" (").append(sheet.setting).append(", ").append(sheet.era).append(", a Call of Cthulhu scenario).");
+        if (!p.notes.isBlank()) {
+            sb.append(' ').append(p.notes);
+        }
+        if (!p.scenes.isEmpty()) {
+            sb.append(" Scenes here: ").append(String.join("; ", p.scenes)).append('.');
+        }
+        sb.append(" Condition: ").append(p.condition).append('.');
+        if (!sheet.mood.isBlank()) {
+            sb.append(" Mood: ").append(sheet.mood).append('.');
+        }
+        return sb.toString();
+    }
+
+    /** What a room's furnishing must and must not do. */
+    public static final String ROOM_EXTRA = """
+        THIS IS NOT A BUILDING: it is the inside of ONE ROOM whose walls, floor, ceiling, doors and windows already
+        stand just outside this space. Do NOT build walls, a floor, a ceiling, a roof, doors or windows.
+        - The site is the room's empty inside, from the floor (y = 0) to just under the ceiling. Fill it with the
+          furniture and things this room is for, mostly along the walls (beds, tables and chairs, shelves, cupboards,
+          a stove, rugs of carpet, paintings and banners on the walls, plants), in the period's style.
+        - The door is in the middle of the FRONT edge (z = -1 side): keep a clear path 1 block wide from there into
+          the room, and the middle of the room walkable.
+        - Light it: a lantern, candles or lamps (one or two light sources).
+        - Doors to other rooms may be in the other walls too: keep the middle block of each wall free on the floor.
+        """;
+
     /** The town's style for every building: the keeper's guide if there is one, else the sheet's short style notes. */
     public static String style(ScenarioSheet sheet) {
         return sheet.styleGuide == null || sheet.styleGuide.isBlank() ? sheet.style : sheet.styleGuide;

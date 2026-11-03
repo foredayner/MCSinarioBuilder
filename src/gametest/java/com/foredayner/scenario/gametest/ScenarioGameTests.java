@@ -87,6 +87,92 @@ public class ScenarioGameTests implements FabricGameTest {
         context.complete();
     }
 
+    /**
+     * A building stage: rooms on three floors (a cellar, the ground floor, the floor above) laid out
+     * by the plain plan, built with its shell by code (floors, walls, doors, stairs, roof) and each
+     * room furnished (a fixed design in place of the AI), then undone.
+     */
+    @GameTest(templateName = EMPTY_STRUCTURE, batchId = "building", tickLimit = 4000)
+    public void buildsABuildingStageAndUndoes(TestContext context) throws Exception {
+        Path root = Files.createTempDirectory("scenario_building_test");
+        ScenarioStore.useRoot(root);
+        ScenarioStore.Info info = ScenarioStore.save("저택", testScenario(), false);
+        String id = info.id;
+        var sheet = new com.foredayner.scenario.sheet.ScenarioSheet();
+        sheet.title = "저택";
+        sheet.stage = "building";
+        sheet.period = com.foredayner.scenario.sheet.Period.WEST_MODERN;
+        String[][] rooms = { { "hall", "L", "0" }, { "study", "M", "0" }, { "kitchen", "M", "0" }, { "bedroom", "M", "1" },
+            { "nursery", "S", "1" }, { "cellar", "M", "-1" } };
+        for (String[] r : rooms) {
+            var p = new com.foredayner.scenario.sheet.ScenarioSheet.Place();
+            p.id = r[0];
+            p.name = r[0];
+            p.size = r[1];
+            p.level = Integer.parseInt(r[2]);
+            sheet.places.add(p);
+        }
+        sheet.styleGuide = "plain";
+        check(sheet.normalize().isEmpty(), "the rooms are a sheet");
+        com.foredayner.scenario.sheet.SheetService.save(id, sheet);
+        var layout = com.foredayner.scenario.layout.IndoorPlan.auto(sheet);
+        check(layout.check(sheet).isEmpty(), "the plain plan passes: " + layout.check(sheet));
+        com.foredayner.scenario.layout.LayoutService.save(id, layout);
+        var world = context.getWorld();
+        var state = new com.foredayner.scenario.town.BuildState();
+        com.foredayner.scenario.town.BuildService.placeAt(state, world, context.getAbsolutePos(net.minecraft.util.math.BlockPos.ORIGIN).add(-4000, 0, 0));
+        com.foredayner.scenario.town.BuildService.save(id, state);
+        var origin = new net.minecraft.util.math.BlockPos(state.originX, state.originY, state.originZ);
+        var hall = layout.site("_hall0");
+        var entrance = layout.doors.stream().filter(d -> d.entrance).findFirst().orElseThrow();
+        var stair = layout.stairs.stream().filter(st -> st.level == 0).findFirst().orElseThrow();
+        net.minecraft.util.math.BlockPos inHall = origin.add(hall.x + 2, 1, hall.z + 2);
+        var before = world.getBlockState(origin.add(hall.x + 2, 5, hall.z + 2));
+        com.example.config.AiBuilderConfig.get().ticksPerBlock = 1;
+        com.foredayner.scenario.town.BuildService.designer = new FixedDesigner();
+        com.foredayner.scenario.town.BuildService.columnsPerTick = 1500;
+        com.foredayner.scenario.town.BuildService.startForTests(world.getServer(), id);
+        Runnable restoreRoot = () -> {
+            com.foredayner.scenario.town.BuildService.designer = com.foredayner.scenario.town.BuildService.AI;
+            com.foredayner.scenario.town.BuildService.columnsPerTick = 300;
+            ScenarioStore.useRoot(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("scenario_builder"));
+        };
+        whenIdle(context, id, 300, () -> {
+            try {
+                var built = com.foredayner.scenario.town.BuildService.load(id);
+                check("done".equals(built.ground), "the ground and the shell are done: " + built.ground);
+                for (var p : sheet.places) {
+                    var bp = built.places.get(p.id);
+                    check(bp != null && "done".equals(bp.state), p.id + " is furnished: " + (bp == null ? "-" : bp.state + " " + bp.error));
+                }
+                int h = com.foredayner.scenario.layout.IndoorPlan.FLOOR_H;
+                check(world.getBlockState(origin.add(entrance.x, 0, entrance.z)).getBlock() instanceof net.minecraft.block.DoorBlock,
+                    "the entrance is a door: " + world.getBlockState(origin.add(entrance.x, 0, entrance.z)));
+                check(world.getBlockState(origin.add(stair.x, 0, stair.z)).getBlock() instanceof net.minecraft.block.StairsBlock,
+                    "the stairs start in the hall: " + world.getBlockState(origin.add(stair.x, 0, stair.z)));
+                check(world.getBlockState(origin.add(hall.x + 2, h - 1, hall.z + 2)).isOf(net.minecraft.block.Blocks.DARK_OAK_PLANKS),
+                    "the floor above stands over the hall: " + world.getBlockState(origin.add(hall.x + 2, h - 1, hall.z + 2)));
+                check(world.getBlockState(origin.add(hall.x, 0, hall.z + 1)).isOf(net.minecraft.block.Blocks.BRICKS)
+                    || world.getBlockState(origin.add(hall.x, 0, hall.z + 1)).isOf(net.minecraft.block.Blocks.STRIPPED_DARK_OAK_LOG),
+                    "the outside wall: " + world.getBlockState(origin.add(hall.x, 0, hall.z + 1)));
+                var cellar = layout.site("cellar");
+                check(world.getBlockState(origin.add(cellar.x + 2, -h + 1, cellar.z + 2)).isAir()
+                    || !world.getBlockState(origin.add(cellar.x + 2, -h + 1, cellar.z + 2)).isOf(net.minecraft.block.Blocks.STONE),
+                    "the cellar is dug out");
+                check(!world.getBlockState(inHall).isOf(net.minecraft.block.Blocks.BRICKS), "the hall's inside is not wall");
+            } catch (java.io.IOException e) {
+                restoreRoot.run();
+                throw new GameTestException(e.toString());
+            }
+            com.foredayner.scenario.town.BuildService.undoForTests(world.getServer(), id);
+            whenIdle(context, id, 150, () -> {
+                check(world.getBlockState(origin.add(hall.x + 2, 5, hall.z + 2)) == before, "the land is back");
+                restoreRoot.run();
+                context.complete();
+            });
+        });
+    }
+
     /** Run {@code next} once nothing is being built for the scenario. */
     private static void whenIdle(TestContext context, String id, int left, Runnable next) {
         context.waitAndRun(10, () -> {

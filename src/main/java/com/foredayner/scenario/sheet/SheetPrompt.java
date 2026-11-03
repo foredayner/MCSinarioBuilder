@@ -29,10 +29,16 @@ public final class SheetPrompt {
                        "form": "book|note|map|item", "place": "place id", "room": "room name", "hidden": true|false } ],
           "links": [ { "from": "place id", "to": "place id", "kind": "road|path|secret" } ],
           "terrain": { "coast": "none|north|east|south|west", "woods": "none|north|east|south|west", "notes": "..." },
-          "outer": "open|closed"
+          "outer": "open|closed",
+          "stage": "town|building"
         }
 
         Rules:
+        - stage: "building" when the whole scenario happens inside ONE building (a mansion, a hospital, an asylum, a
+          ship, a school) and the investigators never go out to a town; otherwise "town". In a "building" stage the
+          places are that building's ROOMS (and corridors or halls that matter): kind "room", "level": 0 for the ground
+          floor, 1 for the floor above, 2..., -1 for a basement; size S = a small room (about 6 x 6), M = a room
+          (8 x 8), L = a big room or hall (10 x 10), XL = a great hall (14 x 14); "rooms": []; up to 14 rooms.
         - outer: "closed" when the story keeps the investigators from leaving the area (cut off by a storm, a curse,
           a blocked road, a quarantine, woods that will not let them out); otherwise "open".
         - Places: every place the investigators visit or that matters to the story; merge tiny ones into a bigger one.
@@ -68,7 +74,14 @@ public final class SheetPrompt {
 
     /** Read a scenario. */
     public static AiPrompt analyze(String scenarioText) {
-        return new AiPrompt(SYSTEM, "SCENARIO:\n" + scenarioText + "\n\nAnswer with the JSON object now.");
+        return analyze(scenarioText, "");
+    }
+
+    /** stage: the keeper's choice ("town" or "building"), or "" to let the AI decide. */
+    public static AiPrompt analyze(String scenarioText, String stage) {
+        String told = "building".equals(stage) ? "\n\nTHE KEEPER SET THE STAGE: \"building\" (the places are the rooms of one building)."
+            : "town".equals(stage) ? "\n\nTHE KEEPER SET THE STAGE: \"town\"." : "";
+        return new AiPrompt(SYSTEM, "SCENARIO:\n" + scenarioText + told + "\n\nAnswer with the JSON object now.");
     }
 
     /** Change an existing sheet as the keeper asks. */

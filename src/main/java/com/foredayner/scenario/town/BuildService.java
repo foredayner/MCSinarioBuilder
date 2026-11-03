@@ -198,6 +198,8 @@ public final class BuildService {
         GroundWork ground;
         /** The ring of land around the town (after the town's ground), or null. */
         BandWork band;
+        /** Building stage: the building's walls, floors, doors, stairs and roof (after the ground), or null. */
+        ShellWork shell;
         TownSnapshot capture;
         TownSnapshot restore;
         final Deque<Clear> clears = new ArrayDeque<>();
@@ -227,7 +229,7 @@ public final class BuildService {
 
         boolean finished() {
             return capture == null && restore == null && clears.isEmpty() && (ground == null || ground.done())
-                && (band == null || band.done()) && waiting.isEmpty()
+                && (band == null || band.done()) && (shell == null || shell.done()) && waiting.isEmpty()
                 && later.isEmpty() && designing == 0 && placing.isEmpty() && (ready.isEmpty() || cancelled);
         }
     }
@@ -314,6 +316,9 @@ public final class BuildService {
                         job.origin.add(TownLayout.SIZE - 1 + ring, high, TownLayout.SIZE - 1 + ring));
                 }
                 job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1, job.sheet.period());
+                if (job.layout.building()) {
+                    job.shell = new ShellWork(job.world, job.origin, job.layout, job.sheet.period());
+                }
                 if (outer) {
                     job.band = new BandWork(job.world, job.origin, job.plan, new OuterBand(job.plan, "closed".equals(job.sheet.outer)),
                         job.sheet.period());
@@ -373,6 +378,22 @@ public final class BuildService {
                 rects.add(new int[] { site.x, site.z, site.x + site.w - 1, site.z + site.d - 1 });
             }
             String tag = bp.tag;
+            if (job.layout.building() && site != null) {
+                // A room: empty its inside (the walls, floors and the rooms around stay).
+                BlockPos min = roomMin(job, site);
+                AiBuildApi.Site inside = roomSite(site);
+                for (int x = 0; x < inside.width(); x++) {
+                    for (int z = 0; z < inside.depth(); z++) {
+                        for (int y = 0; y <= inside.maxHeight(); y++) {
+                            BlockPos at = min.add(x, y, z);
+                            if (!job.world.getBlockState(at).isAir() && !(job.world.getBlockState(at).getBlock() instanceof net.minecraft.block.StairsBlock)) {
+                                job.world.setBlockState(at, net.minecraft.block.Blocks.AIR.getDefaultState(), net.minecraft.block.Block.NOTIFY_LISTENERS);
+                            }
+                        }
+                    }
+                }
+                rects.clear();
+            }
             for (int i = 0; i < rects.size(); i++) {
                 int[] r = rects.get(i);
                 boolean last = i == rects.size() - 1;
@@ -396,7 +417,22 @@ public final class BuildService {
                 }));
             }
             if (rects.isEmpty()) {
-                job.clears.add(new Clear(new GroundWork(job.world, job.origin, job.plan, 0, 0, -1, -1), () -> bp.state = "cleared"));
+                job.clears.add(new Clear(new GroundWork(job.world, job.origin, job.plan, 0, 0, -1, -1), () -> {
+                    if (!tag.isEmpty()) {
+                        AiBuildApi.removeTagged(job.world, tag);
+                    }
+                    bp.min = null;
+                    bp.max = null;
+                    bp.marks.clear();
+                    if (build && site != null) {
+                        bp.state = "waiting";
+                        bp.error = "";
+                        job.waiting.add(placeId);
+                    } else {
+                        bp.state = "cleared";
+                    }
+                    job.dirty = true;
+                }));
             }
             int[] all = bounds(rects);
             begin(job, all[0], all[1], all[2], all[3]);
@@ -443,8 +479,9 @@ public final class BuildService {
         }
         job.ready.clear();
         job.band = null; // the land around stays as far as it got
-        if (job.ground != null && !job.ground.done()) {
+        if (job.ground != null && !job.ground.done() || job.shell != null && !job.shell.done()) {
             job.ground = null;
+            job.shell = null;
             job.state.ground = "stopped";
         }
         job.dirty = true;
@@ -586,6 +623,7 @@ public final class BuildService {
                 job.restore = null;
                 job.ground = null;
                 job.band = null;
+                job.shell = null;
                 job.clears.clear();
             }
             if (job.finished()) {
@@ -631,15 +669,25 @@ public final class BuildService {
         if (job.ground != null && !job.ground.done()) {
             job.ground.step(columnsPerTick);
             job.state.groundPercent = job.ground.percent();
-            if (job.ground.done()) {
+            if (job.ground.done() && job.shell == null) {
                 job.state.ground = "done";
                 job.dirty = true;
             }
-        } else if (job.band != null && !job.band.done() && !job.cancelled) {
-            // The land around the town, while the buildings go up.
-            job.band.step(columnsPerTick);
-            if (job.band.done()) {
-                job.dirty = true;
+        } else {
+            if (job.shell != null && !job.shell.done()) {
+                // Building stage: the building's shell by code, before its rooms are furnished.
+                job.shell.step(columnsPerTick * 4);
+                if (job.shell.done()) {
+                    job.state.ground = "done";
+                    job.dirty = true;
+                }
+            }
+            if (job.band != null && !job.band.done() && !job.cancelled) {
+                // The land around the town, while the buildings go up.
+                job.band.step(columnsPerTick);
+                if (job.band.done()) {
+                    job.dirty = true;
+                }
             }
         }
         for (int n = job.later.size(); n > 0 && !job.cancelled; n--) {
@@ -648,7 +696,7 @@ public final class BuildService {
         while (!job.cancelled && job.designing < parallel && !job.waiting.isEmpty()) {
             design(job, job.waiting.poll());
         }
-        boolean groundReady = job.ground == null || job.ground.done();
+        boolean groundReady = (job.ground == null || job.ground.done()) && (job.shell == null || job.shell.done());
         if (groundReady && !job.cancelled && !job.ready.isEmpty()) {
             for (var e : new ArrayList<>(job.ready.entrySet())) {
                 job.ready.remove(e.getKey());
@@ -663,6 +711,39 @@ public final class BuildService {
 
     private static BlockPos siteMin(Job job, TownLayout.Site s) {
         return job.origin.add(s.x, 0, s.z);
+    }
+
+    /** Building stage: the first block inside a room, on its floor. */
+    private static BlockPos roomMin(Job job, TownLayout.Site s) {
+        return job.origin.add(s.x + 1, s.level * com.foredayner.scenario.layout.IndoorPlan.FLOOR_H, s.z + 1);
+    }
+
+    private static AiBuildApi.Site roomSite(TownLayout.Site s) {
+        return new AiBuildApi.Site(Math.max(1, s.w - 2), Math.max(1, s.d - 2), com.foredayner.scenario.layout.IndoorPlan.FLOOR_H - 2);
+    }
+
+    /** The side of a room its (first) door is in: its furnishing keeps that side's middle clear. */
+    static String roomFront(TownLayout l, TownLayout.Site s) {
+        for (TownLayout.Door d : l.doors) {
+            if (d.level != s.level) {
+                continue;
+            }
+            boolean inX = d.x > s.x && d.x < s.x + s.w - 1;
+            boolean inZ = d.z > s.z && d.z < s.z + s.d - 1;
+            if (inX && d.z == s.z) {
+                return "north";
+            }
+            if (inX && d.z == s.z + s.d - 1) {
+                return "south";
+            }
+            if (inZ && d.x == s.x) {
+                return "west";
+            }
+            if (inZ && d.x == s.x + s.w - 1) {
+                return "east";
+            }
+        }
+        return "south";
     }
 
     /** The north-west corner of the small square an outdoor place's object stands on. */
@@ -715,7 +796,12 @@ public final class BuildService {
         job.dirty = true;
         String model = ScenarioConfig.buildingModel();
         CompletableFuture<AiBuildApi.Design> future;
-        if (s.outdoor) {
+        if (job.layout.building()) {
+            // A room of the building stage: its furnishing, inside walls built by code.
+            AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.roomDescription(job.sheet, p), BuildPrompts.style(job.sheet),
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA, model);
+            future = designer.building(job.world, roomMin(job, s), roomSite(s), req);
+        } else if (s.outdoor) {
             // Blocks, like a building, on a small square in the middle of the lot (never display entities).
             AiBuildApi.Site small = new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT);
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
@@ -776,7 +862,20 @@ public final class BuildService {
                 job.dirty = true;
             }
         });
-        if (s.outdoor) {
+        if (job.layout.building()) {
+            AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), roomMin(job, s), roomSite(s),
+                roomFront(job.layout, s), tag, lane, done);
+            bp.min = new int[] { placed.min().getX(), placed.min().getY(), placed.min().getZ() };
+            bp.max = new int[] { placed.max().getX(), placed.max().getY(), placed.max().getZ() };
+            bp.marks.clear();
+            for (var e : placed.marks().entrySet()) {
+                List<int[]> list = new ArrayList<>();
+                for (BlockPos pos : e.getValue()) {
+                    list.add(new int[] { pos.getX(), pos.getY(), pos.getZ() });
+                }
+                bp.marks.put(e.getKey(), list);
+            }
+        } else if (s.outdoor) {
             AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), propMin(job, s),
                 new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT), s.front, tag, lane, done);
             bp.prop = true;

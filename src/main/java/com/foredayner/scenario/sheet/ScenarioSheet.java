@@ -51,6 +51,13 @@ public final class ScenarioSheet {
      * the investigators cannot just leave) or "none" (the ground ends where it ends).
      */
     public String outer = "open";
+    /**
+     * "town" (the default: places are buildings in a town) or "building" (the whole scenario is
+     * inside one building: places are its rooms, on floors, laid out as a floor plan).
+     */
+    public String stage = "town";
+    /** More floor plans for a building stage (the main one is mapImage): "file:floor2.png"... */
+    public List<String> floorImages = new ArrayList<>();
     public List<Place> places = new ArrayList<>();
     public List<Npc> npcs = new ArrayList<>();
     public List<Clue> clues = new ArrayList<>();
@@ -84,6 +91,12 @@ public final class ScenarioSheet {
         public String sameAs = "";
         /** An ordinary house for a building drawn on the keeper's map that no place took (made again on each AI layout). */
         public boolean mapFiller;
+        /** Building stage: the room's floor (0 = ground floor, 1 = the floor above, -1 = basement). */
+        public int level;
+    }
+
+    public boolean building() {
+        return "building".equals(stage);
     }
 
     public static final List<String> MAP_KINDS = List.of("auto", "town", "outdoor", "indoor");
@@ -241,6 +254,12 @@ public final class ScenarioSheet {
         if (!OUTERS.contains(outer)) {
             outer = "open";
         }
+        if (!"building".equals(stage)) {
+            stage = "town";
+        }
+        if (floorImages == null) {
+            floorImages = new ArrayList<>();
+        }
         if (counted() > MAX_PLACES) {
             problems.add("there are " + counted() + " places; keep at most " + MAX_PLACES + " (merge small ones, drop fillers)");
         }
@@ -263,7 +282,12 @@ public final class ScenarioSheet {
             p.condition = CONDITIONS.contains(lower(p.condition)) ? lower(p.condition) : "kept";
             // Places under the ground cannot be built as buildings: the town shows their entrance.
             String look = (p.kind + " " + p.name + " " + p.id).toLowerCase(Locale.ROOT);
-            if ("cave".equals(p.kind) || look.matches(".*(동굴|땅굴|지하 ?묘지|광산|터널|\\bcave|cavern|grotto|\\bmine\\b|tunnel|catacomb).*")) {
+            if (building()) {
+                // Rooms of one building: a cellar or a tunnel is just a room below.
+                p.kind = "room";
+                p.outdoor = false;
+                p.level = Math.max(-1, Math.min(3, p.level));
+            } else if ("cave".equals(p.kind) || look.matches(".*(동굴|땅굴|지하 ?묘지|광산|터널|\\bcave|cavern|grotto|\\bmine\\b|tunnel|catacomb).*")) {
                 p.kind = "cave";
                 p.outdoor = true;
             }

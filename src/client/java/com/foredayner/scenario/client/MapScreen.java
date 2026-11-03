@@ -60,6 +60,22 @@ public class MapScreen extends Screen {
                 ScenarioClientState.mapFile(file);
             }
         }, false));
+        var stageSheet = ScenarioClientState.sheet();
+        if (stageSheet != null && stageSheet.building() && hasMap()) {
+            // A building: one picture per floor (or all floors in one).
+            WoodUi.WoodButton more = new WoodUi.WoodButton(x + 216, by - 22, 120, 18,
+                Text.literal("평면도 추가 (" + (1 + stageSheet.floorImages.size()) + "장)"), b -> {
+                    Path file = ScenarioClientState.pickImage();
+                    if (file != null) {
+                        ScenarioClientState.floorFile(file);
+                    }
+                }, false);
+            more.active = stageSheet.floorImages.size() < com.foredayner.scenario.layout.MapService.MAX_FLOORS;
+            more.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+                "층마다 평면도가 따로 있으면 하나씩 더하세요 (모두 " + (com.foredayner.scenario.layout.MapService.MAX_FLOORS + 1)
+                    + "장까지). AI가 그림마다 몇 층인지 읽어요. 지우기는 전부 지워요.")));
+            addDrawableChild(more);
+        }
         WoodUi.WoodButton clear = new WoodUi.WoodButton(x + 92, by, 60, 18, Text.literal("지우기"), b -> {
             url.setText("");
             ScenarioClientState.mapClear();
@@ -134,7 +150,13 @@ public class MapScreen extends Screen {
             ctx.fill(x + 2, top, x + 2 + size, top + size, 0x30000000);
         }
         int tx = x + size + 12, tw = w - size - 14, ty = top;
-        String body = hasMap()
+        var bs = ScenarioClientState.sheet();
+        String body = bs != null && bs.building()
+            ? (hasMap() ? "평면도: " + bs.mapImage.substring(5) + (bs.floorImages.isEmpty() ? "" : " 외 " + bs.floorImages.size() + "장")
+                + "\n\n무대가 건물이에요. 배치도 탭의 \"AI로 배치\"를 누르면 AI가 평면도를 읽어 방, 문, 계단을 층별로 배치해요. "
+                + "벽·바닥·문·창·계단·지붕은 짓기 때 코드가 정확히 짓고, 방마다 가구는 AI가 채워요."
+                : "평면도 그림(층별 또는 한 장에 여러 층)을 올리면 AI가 그대로 건물을 배치해요. 없으면 AI가 방 목록으로 평면도를 그려요.")
+            : hasMap()
             ? "지도: " + ScenarioClientState.sheet().mapImage.substring(5) + "\n\n배치도 탭의 \"AI로 배치\"를 누르면 지도에 적힌 이름과 장소 이름을 맞춰 같은 자리에 놓고, 길도 지도대로 깔아요."
                 + "\n\n지도에 없는 장소는 어울리는 자리(마을 밖 성격이면 산·숲 쪽 가장자리)에 놓고, 배치도에 파란 테두리로 보여요. 길에서 먼 집에는 오솔길을 이어요."
                 + (MapOverlay.available() ? "" : "\n\n(이 형식은 배치도 밑에 겹쳐 보이지 않아요. png나 jpg를 쓰면 겹쳐 볼 수 있어요.)")

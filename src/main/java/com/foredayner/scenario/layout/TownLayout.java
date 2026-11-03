@@ -26,7 +26,34 @@ public final class TownLayout {
     public static final List<String> ZONES = List.of("water", "woods", "field", "cemetery", "square", "garden", "beach", "parking", "park");
 
     public int size = SIZE;
+    /** "town", or "building": the sites are rooms of one building on floors (see {@link IndoorPlan}). */
+    public String stage = "town";
     public List<Site> sites = new ArrayList<>();
+    /** Building stage: doors in the room walls. */
+    public List<Door> doors = new ArrayList<>();
+    /** Building stage: flights of stairs. */
+    public List<Stair> stairs = new ArrayList<>();
+
+    public boolean building() {
+        return "building".equals(stage);
+    }
+
+    /** A door in a wall (building stage): the wall block at (x, z) on that floor. */
+    public static final class Door {
+        public int x;
+        public int z;
+        public int level;
+        /** The way in from outside. */
+        public boolean entrance;
+    }
+
+    /** A straight flight of stairs (building stage) from {@code level} up to the next, starting at (x, z) and climbing toward dir. */
+    public static final class Stair {
+        public int x;
+        public int z;
+        public int level;
+        public String dir = "north";
+    }
     public List<Road> roads = new ArrayList<>();
     public List<Zone> zones = new ArrayList<>();
 
@@ -42,6 +69,8 @@ public final class TownLayout {
         public boolean outdoor;
         /** Put where the keeper's map shows it (false: the AI chose the spot). */
         public boolean fromMap;
+        /** Building stage: the floor of this room (its w and d are its own, walls included). */
+        public int level;
     }
 
     public static final class Road {
@@ -182,6 +211,9 @@ public final class TownLayout {
      * that does not reach a street, streets in more than one piece, sheet places with no site.
      */
     public List<String> check(ScenarioSheet sheet) {
+        if (building()) {
+            return IndoorPlan.check(this, sheet);
+        }
         List<String> problems = new ArrayList<>();
         sites.removeIf(s -> sheet.place(s.id) == null);
         for (Site s : sites) {
@@ -424,6 +456,9 @@ public final class TownLayout {
      * </ul>
      */
     public List<String> repair(ScenarioSheet sheet) {
+        if (building()) {
+            return IndoorPlan.repair(this, sheet);
+        }
         List<String> notes = new ArrayList<>();
         sites.removeIf(s -> sheet.place(s.id) == null);
         for (Site s : sites) {
