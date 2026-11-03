@@ -207,6 +207,72 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             game.getClientWorld().waitForChunksRender();
             context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
             context.takeScreenshot("05c_town_street");
+
+            // A building stage: a mansion on three floors, its plan in the layout tab, then the house from outside and inside.
+            String[] house = new String[1];
+            int[] door = game.getServer().computeOnServer(server -> {
+                try {
+                    var info = com.foredayner.scenario.store.ScenarioStore.save("저택", ScenarioGameTests.testScenario(), false);
+                    house[0] = info.id;
+                    var sheet = new com.foredayner.scenario.sheet.ScenarioSheet();
+                    sheet.title = "저택";
+                    sheet.stage = "building";
+                    sheet.period = com.foredayner.scenario.sheet.Period.WEST_MODERN;
+                    sheet.styleGuide = "plain";
+                    String[][] rooms = { { "hall", "L", "0" }, { "study", "M", "0" }, { "kitchen", "M", "0" }, { "parlour", "M", "0" },
+                        { "bedroom", "M", "1" }, { "nursery", "S", "1" }, { "library", "L", "1" }, { "cellar", "M", "-1" } };
+                    for (String[] r : rooms) {
+                        var p = new com.foredayner.scenario.sheet.ScenarioSheet.Place();
+                        p.id = r[0];
+                        p.name = r[0];
+                        p.size = r[1];
+                        p.level = Integer.parseInt(r[2]);
+                        sheet.places.add(p);
+                    }
+                    sheet.normalize();
+                    com.foredayner.scenario.sheet.SheetService.save(info.id, sheet);
+                    var layout = com.foredayner.scenario.layout.IndoorPlan.auto(sheet);
+                    com.foredayner.scenario.layout.LayoutService.save(info.id, layout);
+                    var state = new com.foredayner.scenario.town.BuildState();
+                    var player = server.getPlayerManager().getPlayerList().get(0);
+                    com.foredayner.scenario.town.BuildService.placeAt(state, player.getServerWorld(), player.getBlockPos().add(400, 0, 0));
+                    com.foredayner.scenario.town.BuildService.save(info.id, state);
+                    com.foredayner.scenario.town.BuildService.startForTests(server, info.id);
+                    var entrance = layout.doors.stream().filter(d -> d.entrance).findFirst().orElseThrow();
+                    var hall = layout.site("_hall0");
+                    return new int[] { state.originX + entrance.x, state.originY, state.originZ + entrance.z,
+                        state.originX + hall.x + hall.w / 2, state.originZ + hall.z + hall.d / 2 };
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            for (int i = 0; i < 150; i++) {
+                context.waitTicks(10);
+                if (game.getServer().computeOnServer(server -> com.foredayner.scenario.town.BuildService.idle(house[0]))) {
+                    break;
+                }
+            }
+            game.getServer().runCommand("gamemode creative @a");
+            context.runOnClient(client -> com.foredayner.scenario.client.ScenarioClientState.select(house[0]));
+            context.waitTicks(10);
+            context.setScreen(ScenarioScreen::new);
+            context.waitTicks(3);
+            context.runOnClient(client -> ScenarioScreen.showTab(ScenarioScreen.Tab.LAYOUT));
+            context.waitTicks(5);
+            context.takeScreenshot("06a_building_plan");
+            context.setScreen(() -> null);
+            game.getServer().runCommand("gamemode spectator @a");
+            // From the garden, in front of the entrance (west side), looking at the house.
+            game.getServer().runCommand("tp @a " + (door[0] - 16) + " " + (door[1] + 9) + " " + (door[2] + 10) + " -115 22");
+            context.waitTicks(40);
+            game.getClientWorld().waitForChunksRender();
+            context.runOnClient(client -> client.inGameHud.getChatHud().clear(false));
+            context.takeScreenshot("06b_building_outside");
+            // Inside, in the ground floor corridor, looking along it toward the stairs.
+            game.getServer().runCommand("tp @a " + (door[0] + 2) + " " + door[1] + " " + door[2] + " -90 10");
+            context.waitTicks(30);
+            game.getClientWorld().waitForChunksRender();
+            context.takeScreenshot("06c_building_inside");
             game.getServer().runCommand("gamemode creative @a");
             context.setScreen(() -> null);
         }
