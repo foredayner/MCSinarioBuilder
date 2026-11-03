@@ -57,6 +57,10 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.setScreen(() -> new com.foredayner.scenario.client.StyleScreen(null));
             context.waitTicks(3);
             context.takeScreenshot("03b2_style_guide");
+            // Adding a place by hand.
+            context.setScreen(() -> new com.foredayner.scenario.client.AddPlaceScreen(null));
+            context.waitTicks(3);
+            context.takeScreenshot("03b3_add_place");
             context.setScreen(ScenarioScreen::new);
             context.waitTicks(3);
             // The layout tab with the automatic layout of the test town, then with a place picked.
@@ -97,6 +101,25 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             });
             context.waitTicks(3);
             context.takeScreenshot("03d1_layout_map");
+            // The view moved past the map's west edge, with a place put out there.
+            int[] keep = new int[2];
+            context.runOnClient(client -> {
+                var layout = com.foredayner.scenario.client.ScenarioClientState.layout();
+                var s = layout.site("lighthouse");
+                keep[0] = s.x;
+                keep[1] = s.z;
+                s.x = -layout.reach() + 2;
+                s.z = 6;
+                ScenarioScreen.panForTests(-layout.reach(), 0);
+            });
+            context.waitTicks(3);
+            context.takeScreenshot("03d1c_layout_past_map");
+            context.runOnClient(client -> {
+                var s = com.foredayner.scenario.client.ScenarioClientState.layout().site("lighthouse");
+                s.x = keep[0];
+                s.z = keep[1];
+                ScenarioScreen.panForTests(0, 0);
+            });
             context.setScreen(() -> new com.foredayner.scenario.client.MapScreen(null));
             context.waitTicks(3);
             context.takeScreenshot("03d1b_map_window");
@@ -174,6 +197,22 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> ScenarioScreen.showTab(ScenarioScreen.Tab.BUILD));
             context.waitTicks(3);
             context.takeScreenshot("03f_build_tab");
+            // The 로그 tab, and a notice at the top when something goes wrong on another tab.
+            context.runOnClient(client -> {
+                com.foredayner.scenario.client.ScenarioClientState.log("AI가 시트를 읽는 중...");
+                com.foredayner.scenario.client.ScenarioClientState.log("배치를 저장했어요.");
+                com.foredayner.scenario.client.ScenarioClientState.log("저장했지만 확인할 것이 있어요: inn's front does not reach a street");
+                com.foredayner.scenario.client.ScenarioClientState.log("사진을 읽지 못했어요: 너무 커요");
+                ScenarioScreen.showTab(ScenarioScreen.Tab.LOG);
+            });
+            context.waitTicks(3);
+            context.takeScreenshot("03g_log_tab");
+            context.runOnClient(client -> {
+                ScenarioScreen.showTab(ScenarioScreen.Tab.BUILD);
+                com.foredayner.scenario.client.ScenarioClientState.log("짓기 상태를 읽지 못했어요: 연결이 끊겼어요");
+            });
+            context.waitTicks(3);
+            context.takeScreenshot("03h_notice_and_badge");
             context.setScreen(() -> null);
             int[] mid = game.getServer().computeOnServer(server -> {
                 try {

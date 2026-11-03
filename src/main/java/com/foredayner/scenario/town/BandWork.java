@@ -35,6 +35,11 @@ public final class BandWork {
     private final BlockPos.Mutable pos = new BlockPos.Mutable();
 
     public BandWork(ServerWorld world, BlockPos origin, GroundPlan plan, OuterBand band, String period) {
+        this(world, origin, plan, band, period, java.util.List.of());
+    }
+
+    /** keep: {x, z, w, d} of places the keeper put past the map: the ring leaves them (and a block round them) alone. */
+    public BandWork(ServerWorld world, BlockPos origin, GroundPlan plan, OuterBand band, String period, java.util.List<int[]> keep) {
         this.world = world;
         this.ox = origin.getX();
         this.y0 = origin.getY();
@@ -49,13 +54,22 @@ public final class BandWork {
         int[] list = new int[((size + 2 * w) * (size + 2 * w) - size * size) * 2];
         for (int x = -w; x < size + w; x++) {
             for (int z = -w; z < size + w; z++) {
-                if (band.contains(x, z)) {
+                if (band.contains(x, z) && !kept(keep, x, z)) {
                     list[n++] = x;
                     list[n++] = z;
                 }
             }
         }
         this.cols = java.util.Arrays.copyOf(list, n);
+    }
+
+    static boolean kept(java.util.List<int[]> keep, int x, int z) {
+        for (int[] k : keep) {
+            if (x >= k[0] - 1 && z >= k[1] - 1 && x <= k[0] + k[2] && z <= k[1] + k[3]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean done() {

@@ -24,6 +24,94 @@ public final class ScenarioClientState {
     private static ScenarioText.Loaded loaded;
     private static List<ScenarioStore.Info> stored = List.of();
     private static String message = "";
+
+    /** One line of the 로그 tab. kind: ERROR, WARN, DONE, AI, BUILD or INFO. */
+    public record LogLine(long time, String text, int kind) {
+    }
+
+    public static final int INFO = 0, AI = 1, BUILD = 2, WARN = 3, ERROR = 4, DONE = 5;
+    private static final int LOG_MAX = 500;
+    private static final java.util.ArrayDeque<LogLine> LOG = new java.util.ArrayDeque<>();
+    private static int unread;
+    private static boolean unreadError;
+    private static boolean logOpen;
+    /** A short notice at the top of the workshop (errors and things done): text, kind, until when. */
+    private static LogLine toast;
+    private static long toastUntil;
+
+    /** What kind of line this is, from its words. */
+    static int kindOf(String text) {
+        String t = text == null ? "" : text;
+        if (t.matches("(?s).*(못했어요|실패|오류|[Ee]rror|없어요|못 해요|안 돼요).*")) {
+            return ERROR;
+        }
+        if (t.matches("(?s).*(확인할 것|주의|너무|기다려).*")) {
+            return WARN;
+        }
+        if (t.matches("(?s).*(저장했어요|완료|다 지었|불러왔어요|만들었어요|끝났어요|지웠어요|받았어요).*")) {
+            return DONE;
+        }
+        if (t.contains("AI")) {
+            return AI;
+        }
+        if (t.matches("(?s).*(짓|지었|땅|치웠|되돌).*")) {
+            return BUILD;
+        }
+        return INFO;
+    }
+
+    /** A message: shown as the latest, kept in the 로그 tab, counted while that tab is closed. */
+    public static void log(String text) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        message = text;
+        int kind = kindOf(text);
+        LOG.addLast(new LogLine(System.currentTimeMillis(), text, kind));
+        while (LOG.size() > LOG_MAX) {
+            LOG.removeFirst();
+        }
+        if (!logOpen) {
+            unread++;
+            unreadError |= kind == ERROR;
+        }
+        if (kind == ERROR || kind == DONE) {
+            toast = LOG.peekLast();
+            toastUntil = System.currentTimeMillis() + 3000;
+        }
+    }
+
+    public static List<LogLine> logLines() {
+        return List.copyOf(LOG);
+    }
+
+    public static void clearLog() {
+        LOG.clear();
+        unread = 0;
+        unreadError = false;
+    }
+
+    /** The 로그 tab is open (nothing new is counted) or closed. */
+    public static void setLogOpen(boolean open) {
+        logOpen = open;
+        if (open) {
+            unread = 0;
+            unreadError = false;
+        }
+    }
+
+    public static int unread() {
+        return unread;
+    }
+
+    public static boolean unreadError() {
+        return unreadError;
+    }
+
+    /** The notice to show now, or null. */
+    public static LogLine toast() {
+        return toast != null && System.currentTimeMillis() < toastUntil ? toast : null;
+    }
     private static String selected = "";
     private static int uploadId = 1;
     private static com.foredayner.scenario.sheet.ScenarioSheet sheet;
@@ -46,7 +134,7 @@ public final class ScenarioClientState {
                 sheet = com.foredayner.scenario.sheet.ScenarioSheet.fromJson(ScenarioNet.gunzip(p.data()));
                 sheetId = p.id();
             } catch (IOException | RuntimeException e) {
-                message = "시트를 읽지 못했어요: " + e.getMessage();
+                log("시트를 읽지 못했어요: " + e.getMessage());
             }
             refresh();
         }));
@@ -55,7 +143,7 @@ public final class ScenarioClientState {
                 layout = p.data().length == 0 ? null : com.foredayner.scenario.layout.TownLayout.fromJson(ScenarioNet.gunzip(p.data()));
                 layoutId = p.id();
             } catch (IOException | RuntimeException e) {
-                message = "배치를 읽지 못했어요: " + e.getMessage();
+                log("배치를 읽지 못했어요: " + e.getMessage());
             }
             refresh();
         }));
@@ -70,7 +158,7 @@ public final class ScenarioClientState {
                 buildId = p.id();
                 canUndo = p.undo();
             } catch (IOException | RuntimeException e) {
-                message = "짓기 상태를 읽지 못했어요: " + e.getMessage();
+                log("짓기 상태를 읽지 못했어요: " + e.getMessage());
             }
             refresh();
         }));
@@ -89,7 +177,7 @@ public final class ScenarioClientState {
                 stored = List.of();
             }
             if (!p.message().isEmpty()) {
-                message = p.message();
+                log(p.message());
             }
             if (!p.selected().isEmpty()) {
                 selected = p.selected();
@@ -216,14 +304,14 @@ public final class ScenarioClientState {
     /** Send a map picture file (in parts, like a place's photo). */
     public static void mapFile(Path file) {
         refFile(com.foredayner.scenario.layout.MapService.UPLOAD_KEY, file);
-        message = "지도를 보내는 중...";
+        log("지도를 보내는 중...");
         refresh();
     }
 
     /** Building stage: send one more floor plan picture. */
     public static void floorFile(Path file) {
         refFile(com.foredayner.scenario.layout.MapService.FLOOR_KEY, file);
-        message = "평면도를 보내는 중...";
+        log("평면도를 보내는 중...");
         refresh();
     }
 
@@ -306,7 +394,7 @@ public final class ScenarioClientState {
         try {
             byte[] all = java.nio.file.Files.readAllBytes(file);
             if (all.length > 4_500_000) {
-                message = "사진이 너무 커요 (" + all.length / 1000 + " KB, 4500 KB까지).";
+                log("사진이 너무 커요 (" + all.length / 1000 + " KB, 4500 KB까지).");
                 refresh();
                 return;
             }
@@ -315,9 +403,9 @@ public final class ScenarioClientState {
                 byte[] part = Arrays.copyOfRange(all, i * ScenarioNet.PART_SIZE, Math.min(all.length, (i + 1) * ScenarioNet.PART_SIZE));
                 ClientPlayNetworking.send(new ScenarioNet.RefUploadC2S(selected, place, i, total, part));
             }
-            message = "사진을 보내는 중...";
+            log("사진을 보내는 중...");
         } catch (IOException e) {
-            message = "사진을 읽지 못했어요: " + e.getMessage();
+            log("사진을 읽지 못했어요: " + e.getMessage());
         }
         refresh();
     }
@@ -353,7 +441,7 @@ public final class ScenarioClientState {
     }
 
     public static void setMessage(String text) {
-        message = text;
+        log(text);
         refresh();
     }
 
@@ -385,20 +473,20 @@ public final class ScenarioClientState {
     public static void loadFile(Path file) {
         try {
             loaded = ScenarioText.load(file);
-            message = loaded.name() + " 불러왔어요 (" + loaded.text().length() + "자)"
-                + (loaded.cut() ? ", " + loaded.originalChars() + "자 중 앞부분만 써요" : "") + ". 저장을 누르세요.";
+            log(loaded.name() + " 불러왔어요 (" + loaded.text().length() + "자)"
+                + (loaded.cut() ? ", " + loaded.originalChars() + "자 중 앞부분만 써요" : "") + ". 저장을 누르세요.");
         } catch (IOException | RuntimeException e) {
-            message = "읽지 못했어요: " + e.getMessage();
+            log("읽지 못했어요: " + e.getMessage());
         }
         refresh();
     }
 
     public static void loadText(String name, String text) {
         if (text == null || text.isBlank()) {
-            message = "클립보드가 비어 있어요.";
+            log("클립보드가 비어 있어요.");
         } else {
             loaded = ScenarioText.fromText(name, text);
-            message = "붙여 넣었어요 (" + loaded.text().length() + "자). 이름을 확인하고 저장을 누르세요.";
+            log("붙여 넣었어요 (" + loaded.text().length() + "자). 이름을 확인하고 저장을 누르세요.");
         }
         refresh();
     }
@@ -431,9 +519,9 @@ public final class ScenarioClientState {
                 byte[] part = Arrays.copyOfRange(all, i * ScenarioNet.PART_SIZE, Math.min(all.length, (i + 1) * ScenarioNet.PART_SIZE));
                 ClientPlayNetworking.send(new ScenarioNet.UploadC2S(id, i, total, loaded.name(), loaded.cut(), part));
             }
-            message = "서버로 보내는 중...";
+            log("서버로 보내는 중...");
         } catch (IOException e) {
-            message = "보내지 못했어요: " + e.getMessage();
+            log("보내지 못했어요: " + e.getMessage());
         }
         refresh();
     }

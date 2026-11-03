@@ -110,7 +110,18 @@ public final class LayoutPrompt {
         int n = ScenarioSheet.groundSize(sheet);
         return new AiPrompt(SYSTEM, "GROUND: " + n + " x " + n + " blocks.\n\nPLACES:\n" + places(sheet) + "\n\nCURRENT LAYOUT:\n" + answerJson(current)
             + (map ? "\n\nThe keeper's MAP of the town is attached: keep the layout true to it." : "")
+            + (hasOutside(current) ? "\n\nPlaces with x or z below 0 or past " + n + " were put past the edge of the map by the keeper on "
+                + "purpose: keep them exactly where they are." : "")
             + "\n\nTHE KEEPER ASKS: " + instruction + "\n\nAnswer with the whole changed JSON object now.");
+    }
+
+    private static boolean hasOutside(TownLayout l) {
+        for (TownLayout.Site s : l.sites) {
+            if (l.outside(s)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** What the map shows, from an answer made with a map: town, outdoor, indoor, or "" when not said. */

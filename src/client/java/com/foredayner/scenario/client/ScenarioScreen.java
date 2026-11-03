@@ -21,7 +21,7 @@ import java.util.List;
 public class ScenarioScreen extends Screen {
 
     public enum Tab {
-        SCENARIO("시나리오"), SHEET("시트"), LAYOUT("배치도"), BUILD("짓기");
+        SCENARIO("시나리오"), SHEET("시트"), LAYOUT("배치도"), BUILD("짓기"), LOG("로그");
 
         final String label;
 
@@ -40,6 +40,15 @@ public class ScenarioScreen extends Screen {
         }
     }
     private TextFieldWidget nameField;
+
+    /** Tests: move the town view (blocks). */
+    public static void panForTests(int x, int z) {
+        panX = x;
+        panZ = z;
+        if (net.minecraft.client.MinecraftClient.getInstance().currentScreen instanceof ScenarioScreen s) {
+            s.clearAndInit();
+        }
+    }
 
     /** Tests: pick a place on the open layout. */
     public static void pickForTests(String id) {
@@ -100,8 +109,13 @@ public class ScenarioScreen extends Screen {
                 case SHEET -> !ScenarioClientState.selected().isEmpty();
                 case LAYOUT -> ScenarioClientState.sheet() != null;
                 case BUILD -> ScenarioClientState.layout() != null;
+                case LOG -> true;
             };
-            WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(t.label), b -> {
+            // The 로그 tab counts what came while it was closed (red when something went wrong).
+            String label = t == Tab.LOG && ScenarioClientState.unread() > 0 && tab != Tab.LOG
+                ? t.label + " " + (ScenarioClientState.unreadError() ? "§c" : "§6") + "•" + Math.min(99, ScenarioClientState.unread())
+                : t.label;
+            WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(label), b -> {
                 tab = t;
                 clearAndInit();
             }, false).selected(t == tab);
@@ -118,7 +132,10 @@ public class ScenarioScreen extends Screen {
         if (tab == Tab.LAYOUT && ScenarioClientState.sheet() == null) {
             tab = ScenarioClientState.selected().isEmpty() ? Tab.SCENARIO : Tab.SHEET;
         }
-        if (tab == Tab.SCENARIO) {
+        ScenarioClientState.setLogOpen(tab == Tab.LOG);
+        if (tab == Tab.LOG) {
+            initLogTab();
+        } else if (tab == Tab.SCENARIO) {
             initScenarioTab();
         } else if (tab == Tab.SHEET) {
             initSheetTab();
@@ -219,6 +236,9 @@ public class ScenarioScreen extends Screen {
             b -> this.client.setScreen(new ModelSettingsScreen(this)), false));
         var sheet = ScenarioClientState.sheet();
         if (sheet != null) {
+            // Add a place (or a room) by hand.
+            addDrawableChild(new WoodUi.WoodButton(colX(0) + colWidth() - 54, listTop() - 17, 52, 14,
+                Text.literal(sheet.building() ? "+ 방" : "+ 장소"), b -> this.client.setScreen(new AddPlaceScreen(this)), false));
             boolean hasGuide = sheet.styleGuide != null && !sheet.styleGuide.isBlank();
             WoodUi.WoodButton style = new WoodUi.WoodButton(right() - 266, y, 80, 18, fit(hasGuide ? "스타일 가이드" : "스타일 가이드 +", 80),
                 b -> this.client.setScreen(new StyleScreen(this)), false);
@@ -339,6 +359,101 @@ public class ScenarioScreen extends Screen {
         }
     }
 
+    // ------------------------------------------------------------------ 로그
+
+    private static final int LOG_ALL = 0, LOG_ERRORS = 1, LOG_AI = 2, LOG_BUILD = 3;
+    private static int logFilter = LOG_ALL;
+    /** Lines up from the newest (0 = following the newest). */
+    private static int logScroll;
+
+    private void initLogTab() {
+        int x = left() + 12, y = bodyTop() + 4;
+        String[] names = { "전체", "오류", "AI", "짓기" };
+        for (int i = 0; i < names.length; i++) {
+            int f = i;
+            addDrawableChild(new WoodUi.WoodButton(x + i * 54, y, 50, 18, Text.literal(names[i]), b -> {
+                logFilter = f;
+                logScroll = 0;
+                clearAndInit();
+            }, false).selected(logFilter == i));
+        }
+        addDrawableChild(new WoodUi.WoodButton(right() - 72, y, 60, 18, Text.literal("지우기"), b -> {
+            ScenarioClientState.clearLog();
+            logScroll = 0;
+            clearAndInit();
+        }, true));
+    }
+
+    private static boolean logShows(ScenarioClientState.LogLine line) {
+        return switch (logFilter) {
+            case LOG_ERRORS -> line.kind() == ScenarioClientState.ERROR || line.kind() == ScenarioClientState.WARN;
+            case LOG_AI -> line.kind() == ScenarioClientState.AI || line.text().contains("AI");
+            case LOG_BUILD -> line.kind() == ScenarioClientState.BUILD || line.text().matches("(?s).*(짓|지었|땅|치웠).*");
+            default -> true;
+        };
+    }
+
+    private static int logColor(int kind) {
+        return switch (kind) {
+            case ScenarioClientState.ERROR -> 0xFFB0281A;
+            case ScenarioClientState.WARN -> 0xFFC06A10;
+            case ScenarioClientState.DONE -> 0xFF2E6B2E;
+            case ScenarioClientState.AI -> 0xFF2E5FA4;
+            default -> WoodUi.INK;
+        };
+    }
+
+    private static final java.text.SimpleDateFormat CLOCK = new java.text.SimpleDateFormat("HH:mm:ss");
+
+    private void renderLog(DrawContext ctx) {
+        int l = left() + 12, r = right() - 14, t = bodyTop() + 28, b = bottom() - 6;
+        List<OrderedText> rows = new java.util.ArrayList<>();
+        List<Integer> colors = new java.util.ArrayList<>();
+        for (ScenarioClientState.LogLine line : ScenarioClientState.logLines()) {
+            if (!logShows(line)) {
+                continue;
+            }
+            String text = CLOCK.format(new java.util.Date(line.time())) + "  " + line.text();
+            for (OrderedText part : this.textRenderer.wrapLines(StringVisitable.plain(text), r - l)) {
+                rows.add(part);
+                colors.add(logColor(line.kind()));
+            }
+        }
+        if (rows.isEmpty()) {
+            ctx.drawText(this.textRenderer, "아직 로그가 없어요.", l, t + 4, WoodUi.INK_SOFT, false);
+            return;
+        }
+        int fit = Math.max(1, (b - t) / 10);
+        logScroll = Math.max(0, Math.min(logScroll, Math.max(0, rows.size() - fit)));
+        int end = rows.size() - logScroll;
+        int start = Math.max(0, end - fit);
+        int y = t;
+        for (int i = start; i < end; i++) {
+            ctx.drawText(this.textRenderer, rows.get(i), l, y, colors.get(i), false);
+            y += 10;
+        }
+        if (rows.size() > fit) {
+            int h = b - t, barH = Math.max(6, h * fit / rows.size());
+            int barY = t + (h - barH) * (rows.size() - fit - logScroll) / Math.max(1, rows.size() - fit);
+            ctx.fill(right() - 9, t, right() - 7, b, 0x40000000);
+            ctx.fill(right() - 9, barY, right() - 7, barY + barH, 0xFF6B4A2B);
+        }
+    }
+
+    /** Errors and things done show at the top for a moment, whatever tab is open. */
+    private void renderToast(DrawContext ctx) {
+        var toast = ScenarioClientState.toast();
+        if (toast == null || tab == Tab.LOG) {
+            return;
+        }
+        String text = this.textRenderer.trimToWidth(toast.text(), right() - left() - 60);
+        int w = this.textRenderer.getWidth(text) + 16;
+        int x = (left() + right()) / 2 - w / 2, y = 4;
+        ctx.fill(x, y, x + w, y + 16, 0xF0F4E4C1);
+        ctx.fill(x, y + 15, x + w, y + 16, logColor(toast.kind()));
+        ctx.drawText(this.textRenderer, text, x + 8, y + 4, logColor(toast.kind()), false);
+    }
+
     // ------------------------------------------------------------------ 배치도
 
     private static final int GROUND = 0xFF8DAA63;
@@ -369,6 +484,13 @@ public class ScenarioScreen extends Screen {
     private static int[] view() {
         var layout = ScenarioClientState.layout();
         int size = layout == null ? com.foredayner.scenario.layout.TownLayout.SIZE : layout.size;
+        if (layout != null && !layout.building()) {
+            // A town: moved with the right mouse button, up to a quarter of the map past each edge.
+            int r = layout.reach();
+            panX = Math.max(-r, Math.min(r, panX));
+            panZ = Math.max(-r, Math.min(r, panZ));
+            return new int[] { panX, panZ, size };
+        }
         if (layout == null || !layout.building() || layout.sites.isEmpty()) {
             return new int[] { 0, 0, size };
         }
@@ -397,6 +519,19 @@ public class ScenarioScreen extends Screen {
     private WoodUi.WoodButton planButton;
     private static boolean showPlan = true;
     private int listScroll;
+    /** Where the town view is moved to (blocks), and the right-button drag that moves it. */
+    private static int panX;
+    private static int panZ;
+    private boolean panning;
+    private double panFromX;
+    private double panFromY;
+    private int panStartX;
+    private int panStartZ;
+
+    /** The row under the map: the two switches, then what the colours mean. */
+    private int belowMapY() {
+        return mapY() + mapSize() + 5;
+    }
 
     private int entriesTop() {
         return bodyTop() + 30;
@@ -496,27 +631,27 @@ public class ScenarioScreen extends Screen {
         reset.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
             "장소 자리, 길, 구역을 모두 지우고 빈 배치도로 돌아가요 (두 번 누르기). 지어진 마을은 그대로예요.")));
         addDrawableChild(reset);
+        // Under the map (not on it, where they would hide what is under them): the map and the layout on or off.
         overlayButton = null;
+        planButton = null;
+        int sx = mapX();
         if (sheet != null && MapOverlay.available()) {
-            WoodUi.WoodButton overlay = new WoodUi.WoodButton(mapX() + 2, mapY() + 2, 44, 14, Text.literal(showMap ? "지도 ✓" : "지도"), b -> {
+            WoodUi.WoodButton overlay = new WoodUi.WoodButton(sx, belowMapY(), 70, 14, Text.literal(showMap ? "참고 지도 ✓" : "참고 지도"), b -> {
                 showMap = !showMap;
                 clearAndInit();
-            }, false);
+            }, false).selected(showMap);
             overlay.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("참고 지도를 배치도 위에 흐리게 겹쳐 보기")));
             addDrawableChild(overlay);
-            overlayButton = overlay;
+            sx += 74;
         }
-        planButton = null;
         if (layout != null) {
-            // The layout itself on or off (to look at the map alone).
-            WoodUi.WoodButton plan = new WoodUi.WoodButton(mapX() + (overlayButton == null ? 2 : 48), mapY() + 2, 52, 14,
-                Text.literal(showPlan ? "배치도 ✓" : "배치도"), b -> {
+            WoodUi.WoodButton plan = new WoodUi.WoodButton(sx, belowMapY(), 70, 14,
+                Text.literal(showPlan ? "건물 배치 ✓" : "건물 배치"), b -> {
                     showPlan = !showPlan;
                     clearAndInit();
-                }, false);
+                }, false).selected(showPlan);
             plan.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소, 길, 구역을 보이거나 숨기기")));
             addDrawableChild(plan);
-            planButton = plan;
         }
         if (layout == null || sheet == null) {
             askField = null;
@@ -700,10 +835,18 @@ public class ScenarioScreen extends Screen {
             clearAndInit();
             return true;
         }
-        if (tab == Tab.LAYOUT && (overlayButton != null && overlayButton.isMouseOver(mx, my) || planButton != null && planButton.isMouseOver(mx, my))) {
-            return super.mouseClicked(mx, my, button);
+        boolean onMap = mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize();
+        var town = ScenarioClientState.layout();
+        if (tab == Tab.LAYOUT && button == 1 && onMap && town != null && !town.building()) {
+            // The right button moves the view (and lets places be put past the map).
+            panning = true;
+            panFromX = mx;
+            panFromY = my;
+            panStartX = panX;
+            panStartZ = panZ;
+            return true;
         }
-        if (tab == Tab.LAYOUT && button == 0 && mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize()) {
+        if (tab == Tab.LAYOUT && button == 0 && onMap) {
             var s = siteAt(mx, my);
             picked = s == null ? "" : s.id;
             showPicked();
@@ -711,8 +854,8 @@ public class ScenarioScreen extends Screen {
             if (s != null && plan != null && !plan.building()) { // a building's rooms stay where the plan has them
                 dragging = true;
                 dragMoved = false;
-                dragDx = (int) Math.floor((mx - mapX()) / scale()) - s.x;
-                dragDz = (int) Math.floor((my - mapY()) / scale()) - s.z;
+                dragDx = view()[0] + (int) Math.floor((mx - mapX()) / scale()) - s.x;
+                dragDz = view()[1] + (int) Math.floor((my - mapY()) / scale()) - s.z;
             }
             clearAndInit();
             return true;
@@ -722,13 +865,21 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (tab == Tab.LAYOUT && panning) {
+            panX = panStartX - (int) Math.round((mx - panFromX) / scale());
+            panZ = panStartZ - (int) Math.round((my - panFromY) / scale());
+            view(); // keeps it within reach
+            return true;
+        }
         if (tab == Tab.LAYOUT && dragging) {
             var layout = ScenarioClientState.layout();
             var s = layout == null ? null : layout.site(picked);
             if (s != null) {
-                int size = layout.size;
-                int nx = Math.max(0, Math.min(size - s.w, (int) Math.floor((mx - mapX()) / scale()) - dragDx));
-                int nz = Math.max(0, Math.min(size - s.d, (int) Math.floor((my - mapY()) / scale()) - dragDz));
+                int size = layout.size, r = layout.reach();
+                int[] v = view();
+                // Anywhere on the map, or past it as far as the view moves.
+                int nx = Math.max(-r, Math.min(size + r - s.w, v[0] + (int) Math.floor((mx - mapX()) / scale()) - dragDx));
+                int nz = Math.max(-r, Math.min(size + r - s.d, v[1] + (int) Math.floor((my - mapY()) / scale()) - dragDz));
                 if (nx != s.x || nz != s.z) {
                     s.x = nx;
                     s.z = nz;
@@ -742,6 +893,10 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
+        if (tab == Tab.LAYOUT && panning && button == 1) {
+            panning = false;
+            return true;
+        }
         if (tab == Tab.LAYOUT && dragging) {
             dragging = false;
             if (dragMoved) {
@@ -774,10 +929,6 @@ public class ScenarioScreen extends Screen {
         var layout = ScenarioClientState.layout();
         var sheet = ScenarioClientState.sheet();
         int x0 = mapX(), y0 = mapY(), size = mapSize();
-        String message = ScenarioClientState.message();
-        if (!message.isEmpty()) {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, right() - left() - 32), left() + 12, bottom() - 18, WoodUi.INK, false);
-        }
         if (layout == null || sheet == null) {
             ctx.fill(x0, y0, x0 + size, y0 + size, 0xFF6E7F57);
             if (showMap) {
@@ -794,8 +945,15 @@ public class ScenarioScreen extends Screen {
             return;
         }
         float k = scale();
-        ctx.fill(x0, y0, x0 + size, y0 + size, GROUND);
         ctx.enableScissor(x0, y0, x0 + size, y0 + size);
+        boolean town = !layout.building();
+        if (town) {
+            // Past the map (darker): only buildings the keeper puts there are made, nothing else.
+            ctx.fill(x0, y0, x0 + size, y0 + size, 0xFF55633F);
+            ctx.fill(toScreenX(0), toScreenZ(0), toScreenX(layout.size), toScreenZ(layout.size), GROUND);
+        } else {
+            ctx.fill(x0, y0, x0 + size, y0 + size, GROUND);
+        }
         for (var z : showPlan ? layout.zones : List.<com.foredayner.scenario.layout.TownLayout.Zone>of()) {
             ctx.fill(toScreenX(z.x), toScreenZ(z.z), toScreenX(z.x + z.w), toScreenZ(z.z + z.d), zoneColor(z.kind));
         }
@@ -817,9 +975,17 @@ public class ScenarioScreen extends Screen {
                 }
             }
         }
-        if (showMap && !layout.building()) {
-            // The keeper's map, faint, between the ground and the places.
-            MapOverlay.draw(ctx, x0, y0, size, 0x80);
+        if (showMap && town) {
+            // The keeper's map, faint, between the ground and the places (it moves with the view).
+            MapOverlay.draw(ctx, toScreenX(0), toScreenZ(0), toScreenX(layout.size) - toScreenX(0), 0x80);
+        }
+        if (town && (panX != 0 || panZ != 0)) {
+            // The map's edge.
+            int ax = toScreenX(0), az = toScreenZ(0), bx = toScreenX(layout.size), bz = toScreenZ(layout.size);
+            ctx.fill(ax, az, bx, az + 1, 0xA0FFF4D6);
+            ctx.fill(ax, bz - 1, bx, bz, 0xA0FFF4D6);
+            ctx.fill(ax, az, ax + 1, bz, 0xA0FFF4D6);
+            ctx.fill(bx - 1, az, bx, bz, 0xA0FFF4D6);
         }
         com.foredayner.scenario.layout.TownLayout.Site hover = siteAt(mouseX, mouseY);
         boolean mapUsed = sheet.mapImage != null && !sheet.mapImage.isBlank() && layout.sites.stream().anyMatch(t -> t.fromMap);
@@ -885,13 +1051,30 @@ public class ScenarioScreen extends Screen {
             }
             anyChosen = false;
         }
-        if (anyChosen) {
-            String legend = "파란 테두리: 지도에 없어 AI가 자리를 정한 곳";
-            int lw = this.textRenderer.getWidth(legend);
-            ctx.fill(x0 + 2, y0 + size - 13, x0 + 6 + lw, y0 + size - 2, 0xC0F4E4C1);
-            ctx.drawText(this.textRenderer, legend, x0 + 4, y0 + size - 11, 0xFF2E6DA4, false);
-        }
         ctx.disableScissor();
+        // Under the map, beside the switches: what the colours mean.
+        int lx = x0 + (MapOverlay.available() ? 148 : 74), ly = belowMapY() + 3, lend = x0 + size;
+        List<Object[]> legend = new java.util.ArrayList<>();
+        if (anyChosen) {
+            legend.add(new Object[] { "■ 파란 테두리: AI가 정한 곳", 0xFF2E6DA4 });
+        }
+        if (town) {
+            legend.add(new Object[] { "■ 지도 밖(건물만)", 0xFF55633F });
+            legend.add(new Object[] { "우클릭: 이동", WoodUi.INK_SOFT });
+        }
+        for (Object[] part : legend) {
+            String text = (String) part[0];
+            int w = this.textRenderer.getWidth(text);
+            if (lx + w > lend) {
+                text = this.textRenderer.trimToWidth(text, Math.max(0, lend - lx));
+                w = this.textRenderer.getWidth(text);
+            }
+            if (w <= 0) {
+                break;
+            }
+            ctx.drawText(this.textRenderer, text, lx, ly, (int) part[1], false);
+            lx += w + 8;
+        }
         // Side panel: the numbered place list (scrolls when long), the picked place and the check.
         int ew = entryWidth();
         int hoverEntry = entryAt(mouseX, mouseY);
@@ -1080,10 +1263,6 @@ public class ScenarioScreen extends Screen {
         int l = left() + 12, r = right() - 12, y = bodyTop() + 6;
         var build = ScenarioClientState.build();
         var sheet = ScenarioClientState.sheet();
-        String message = ScenarioClientState.message();
-        if (!message.isEmpty()) {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, r - l), l, bottom() - 18, WoodUi.INK, false);
-        }
         if (build == null || !build.placed) {
             ctx.drawText(this.textRenderer, "마을을 지을 곳을 정하세요.", l, y + 1, WoodUi.INK, false);
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("한가운데에 서서 오른쪽 버튼을 누르면 돼요.", r - l - 124), l, y + 12,
@@ -1099,6 +1278,12 @@ public class ScenarioScreen extends Screen {
         int[] c = build.counts();
         String progress = "완료 " + c[0] + "/" + c[2] + (c[1] > 0 ? " · 실패 " + c[1] : "") + " · 토큰 " + build.tokensIn + "/" + build.tokensOut;
         ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(progress, r - l - 258), l + 258, y + 31, WoodUi.INK_SOFT, false);
+        // How far the whole build is: the ground (as it goes) and every place, done or failed.
+        double ground = "done".equals(build.ground) ? 1 : "working".equals(build.ground) ? build.groundPercent / 100.0 : 0;
+        double part = (ground + c[0] + c[1]) / Math.max(1, c[2] + 1);
+        int bx0 = l + 258, bx1 = r, by = y + 42;
+        ctx.fill(bx0, by, bx1, by + 4, 0x40000000);
+        ctx.fill(bx0, by, bx0 + (int) Math.round((bx1 - bx0) * Math.min(1, part)), by + 4, c[1] > 0 ? 0xFFC06A10 : 0xFF2E6B2E);
         if (sheet == null) {
             return;
         }
@@ -1185,6 +1370,10 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        if (tab == Tab.LOG) {
+            logScroll = Math.max(0, logScroll + (int) Math.signum(vertical) * 3);
+            return true;
+        }
         if (tab == Tab.BUILD && mouseY >= buildListTop() && buildRows() > buildVisible()) {
             buildScroll = Math.max(0, Math.min(buildRows() - buildVisible(), buildScroll - (int) Math.signum(vertical)));
             clearAndInit();
@@ -1232,11 +1421,6 @@ public class ScenarioScreen extends Screen {
                 ctx.drawText(this.textRenderer, heads[c], colX(c) + 2, listTop() - 12, WoodUi.INK, false);
             }
         }
-        String message = ScenarioClientState.message();
-        if (!message.isEmpty()) {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(message, right() - l - 20), l, bottom() - 18, WoodUi.INK, false);
-        }
-    }
 
     private static String timeKo(String t) {
         return switch (t == null ? "" : t) {
@@ -1280,6 +1464,11 @@ public class ScenarioScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        renderBody(ctx, mouseX, mouseY, delta);
+        renderToast(ctx);
+    }
+
+    private void renderBody(DrawContext ctx, int mouseX, int mouseY, float delta) {
         super.render(ctx, mouseX, mouseY, delta);
         if (tab == Tab.SHEET) {
             renderSheet(ctx);
@@ -1287,16 +1476,14 @@ public class ScenarioScreen extends Screen {
         }
         if (tab == Tab.LAYOUT) {
             renderLayout(ctx, mouseX, mouseY);
-            if (overlayButton != null) {
-                overlayButton.render(ctx, mouseX, mouseY, delta);
-            }
-            if (planButton != null) {
-                planButton.render(ctx, mouseX, mouseY, delta);
-            }
             return;
         }
         if (tab == Tab.BUILD) {
             renderBuild(ctx, mouseX, mouseY);
+            return;
+        }
+        if (tab == Tab.LOG) {
+            renderLog(ctx);
             return;
         }
         if (tab != Tab.SCENARIO) {
@@ -1328,11 +1515,6 @@ public class ScenarioScreen extends Screen {
         if (ScenarioClientState.stored().isEmpty()) {
             ctx.drawText(this.textRenderer, "아직 없어요.", mid() + 10, bodyTop() + 28, WoodUi.INK_SOFT, false);
         }
-        String message = ScenarioClientState.message();
-        if (!message.isEmpty()) {
-            ctx.drawText(this.textRenderer, message, l, bottom() - 18, WoodUi.INK, false);
-        }
-    }
 
     @Override
     public boolean shouldPause() {

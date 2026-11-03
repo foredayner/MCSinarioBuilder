@@ -42,6 +42,31 @@ class TownLayoutTest {
     }
 
     @Test
+    void placesPutPastTheMapStayThereAndPass() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        TownLayout layout = TownLayout.auto(sheet);
+        assertTrue(layout.check(sheet).isEmpty());
+        TownLayout.Site pick = layout.sites.get(0);
+        for (TownLayout.Site o : layout.sites) {
+            if (o.w < pick.w) {
+                pick = o; // the smallest, so it fits wholly past the edge
+            }
+        }
+        TownLayout.Site s = pick;
+        // Wholly past the west edge, as far as the keeper may go, in the middle of that side.
+        s.x = -layout.reach();
+        s.z = layout.size / 2 - s.d / 2;
+        assertTrue(s.w <= layout.reach() && layout.outside(s) && layout.withinReach(s));
+        List<String> problems = layout.check(sheet);
+        assertTrue(problems.stream().noneMatch(p -> p.contains(s.id)), "no street or edge rule for it: " + problems);
+        layout.repair(sheet);
+        assertEquals(-layout.reach(), s.x, "repair leaves it where the keeper put it");
+        s.x = -layout.reach() - 1;
+        assertTrue(layout.check(sheet).stream().anyMatch(p -> p.contains(s.id) && p.contains("too far")), "but not further than the reach");
+        assertEquals(layout.size / 4, layout.reach(), "a quarter of the side each way");
+    }
+
+    @Test
     void theAutomaticLayoutPassesTheChecksForEveryCoastAndWoods() throws Exception {
         for (ScenarioSheet sheet : List.of(greymouth(), crowded())) {
             for (String coast : ScenarioSheet.SIDES) {
@@ -119,7 +144,7 @@ class TownLayoutTest {
         layout.roads.add(lonely);
         String all = String.join("\n", layout.check(sheet));
         assertTrue(all.contains("inn and church overlap") || all.contains("church and inn overlap"), all);
-        assertTrue(all.contains("mansion") && all.contains("leaves the ground"), all);
+        assertTrue(all.contains("mansion") && all.contains("too far past the edge"), all);
         assertTrue(all.contains("general_store has no site"), all);
         assertTrue(all.contains("separate pieces"), all);
     }

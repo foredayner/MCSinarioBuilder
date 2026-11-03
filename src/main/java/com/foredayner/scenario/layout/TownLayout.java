@@ -211,6 +211,22 @@ public final class TownLayout {
      * the problems: outside the ground, overlapping sites, a site on water or in the woods, a front
      * that does not reach a street, streets in more than one piece, sheet places with no site.
      */
+    /** How far past the map's edge the keeper may put places: a quarter of its side each way. */
+    public int reach() {
+        return size / 4;
+    }
+
+    /** A place the keeper put (partly) past the edge of the map: only its building is made there. */
+    public boolean outside(Site s) {
+        return s.x < 0 || s.z < 0 || s.x + s.w > size || s.z + s.d > size;
+    }
+
+    /** Past the edge, but no further than the keeper may go. */
+    public boolean withinReach(Site s) {
+        int r = reach();
+        return s.x >= -r && s.z >= -r && s.x + s.w <= size + r && s.z + s.d <= size + r;
+    }
+
     public List<String> check(ScenarioSheet sheet) {
         if (building()) {
             return IndoorPlan.check(this, sheet);
@@ -224,7 +240,12 @@ public final class TownLayout {
             ScenarioSheet.Place p = sheet.place(s.id);
             s.w = s.d = ScenarioSheet.footprint(p);
             s.outdoor = p.outdoor;
-            if (s.x < MARGIN || s.z < MARGIN || s.x + s.w > size - MARGIN || s.z + s.d > size - MARGIN) {
+            if (outside(s)) {
+                if (!withinReach(s)) {
+                    problems.add(String.format(Locale.ROOT, "%s (%d,%d size %dx%d) is too far past the edge; keep it inside %d..%d",
+                        s.id, s.x, s.z, s.w, s.d, -reach(), size + reach()));
+                }
+            } else if (s.x < MARGIN || s.z < MARGIN || s.x + s.w > size - MARGIN || s.z + s.d > size - MARGIN) {
                 problems.add(String.format(Locale.ROOT, "%s (%d,%d size %dx%d) leaves the ground; keep it inside %d..%d",
                     s.id, s.x, s.z, s.w, s.d, MARGIN, size - MARGIN));
             }
@@ -244,6 +265,9 @@ public final class TownLayout {
         }
         boolean[][] road = roadGrid();
         for (Site s : sites) {
+            if (outside(s)) {
+                continue; // past the map: only its building is made, with no street to it
+            }
             for (Zone z : zones) {
                 if (("water".equals(z.kind) || "woods".equals(z.kind)) && !"dock".equals(sheet.place(s.id).kind)
                     && overlaps(s.x, s.z, s.w, s.d, z.x, z.z, z.w, z.d, 0)) {
@@ -486,6 +510,10 @@ public final class TownLayout {
         List<Site> placed = new ArrayList<>();
         for (Site s : new ArrayList<>(sites)) {
             ScenarioSheet.Place p = sheet.place(s.id);
+            if (outside(s) && withinReach(s)) {
+                placed.add(s); // the keeper put it past the map on purpose
+                continue;
+            }
             if (!fitsAmong(s, p, roadSum, placed, false)) {
                 int ox = s.x, oz = s.z;
                 if (placeNear(s, p, roadSum, placed)) {
@@ -514,7 +542,7 @@ public final class TownLayout {
         // Fronts: face a street within reach, or get a footpath to the nearest one.
         int lanes = 0;
         for (Site s : sites) {
-            if (s.outdoor || nearRoad(roadGrid(), frontPoint(s), 4)) {
+            if (s.outdoor || outside(s) || nearRoad(roadGrid(), frontPoint(s), 4)) {
                 continue;
             }
             String keep = s.front;

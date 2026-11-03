@@ -22,6 +22,28 @@ class ScenarioSheetTest {
         """;
 
     @Test
+    void theKeeperAddsPlacesByHand() {
+        ScenarioSheet sheet = new ScenarioSheet();
+        ScenarioSheet.Place inn = sheet.newPlace("낡은 여관", "L", "named", 0, " 2층 객실 ");
+        assertEquals("낡은_여관", inn.id);
+        assertEquals("L", inn.size);
+        assertEquals("2층 객실", inn.notes);
+        assertTrue(ScenarioSheet.named(inn));
+        sheet.places.add(inn);
+        ScenarioSheet.Place again = sheet.newPlace("낡은 여관", "Q", "house", 0, "");
+        assertEquals("낡은_여관_2", again.id, "ids stay apart");
+        assertEquals("M", again.size, "an unknown size is M");
+        assertTrue(again.filler, "an ordinary home");
+        ScenarioSheet.Place yard = sheet.newPlace("공터", "S", "outdoor", 0, "");
+        assertTrue(yard.outdoor);
+        assertNull(sheet.newPlace("  ", "M", "named", 0, ""), "a place needs a name");
+        sheet.stage = "building";
+        ScenarioSheet.Place room = sheet.newPlace("서재", "S", "named", 1, "");
+        assertEquals("room", room.kind);
+        assertEquals(1, room.level);
+    }
+
+    @Test
     void readsTheJsonOutOfTheAnswer() {
         ScenarioSheet sheet = ScenarioSheet.fromAnswer(ANSWER);
         assertEquals(2, sheet.places.size());

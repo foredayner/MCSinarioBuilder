@@ -504,6 +504,42 @@ public final class ScenarioSheet {
     }
 
     /** One of the scenario's own buildings (its lot and rooms are doubled). */
+    /**
+     * A place the keeper adds by hand (not yet in the list): kind "named" (a building of the story),
+     * "house" (an ordinary home) or "outdoor"; on a building stage a room on a level. Its id is made
+     * from its name, kept apart from the others. Null when it has no name.
+     */
+    public Place newPlace(String name, String size, String kind, int level, String notes) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty()) {
+            return null;
+        }
+        Place p = new Place();
+        String base = slug(n);
+        if (base.isEmpty()) {
+            base = "place";
+        }
+        String id = base;
+        for (int i = 2; place(id) != null; i++) {
+            id = base + "_" + i;
+        }
+        p.id = id;
+        p.name = n;
+        p.size = SIZES.contains(size) ? size : "M";
+        p.notes = notes == null ? "" : notes.trim();
+        if (building()) {
+            p.kind = "room";
+            p.level = level;
+        } else if ("outdoor".equals(kind)) {
+            p.kind = "scene";
+            p.outdoor = true;
+        } else {
+            p.kind = "house";
+            p.filler = "house".equals(kind);
+        }
+        return p;
+    }
+
     public static boolean named(Place p) {
         return !p.filler && !p.mapFiller && !p.outdoor && !"ruins".equals(p.kind);
     }
