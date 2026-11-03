@@ -1421,6 +1421,7 @@ public class ScenarioScreen extends Screen {
                 ctx.drawText(this.textRenderer, heads[c], colX(c) + 2, listTop() - 12, WoodUi.INK, false);
             }
         }
+    }
 
     private static String timeKo(String t) {
         return switch (t == null ? "" : t) {
@@ -1515,6 +1516,7 @@ public class ScenarioScreen extends Screen {
         if (ScenarioClientState.stored().isEmpty()) {
             ctx.drawText(this.textRenderer, "아직 없어요.", mid() + 10, bodyTop() + 28, WoodUi.INK_SOFT, false);
         }
+    }
 
     @Override
     public boolean shouldPause() {
