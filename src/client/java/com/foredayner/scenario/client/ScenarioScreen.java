@@ -241,8 +241,8 @@ public class ScenarioScreen extends Screen {
             // Around the town: a ring of land (open), the same ending in hills with the roads blocked (closed), or nothing.
             String outer = sheet.outer == null ? "open" : sheet.outer;
             // On the places column's header row (the top row is full on small windows).
-            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(colX(0) + colWidth() - 84, listTop() - 16, 80, 14,
-                fit("바깥: " + ("closed".equals(outer) ? "닫힘" : "none".equals(outer) ? "없음" : "열림"), 80), b -> {
+            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(colX(0) + colWidth() - 68, listTop() - 16, 66, 14,
+                fit("바깥: " + ("closed".equals(outer) ? "닫힘" : "none".equals(outer) ? "없음" : "열림"), 66), b -> {
                     var all = com.foredayner.scenario.sheet.ScenarioSheet.OUTERS;
                     sheet.outer = all.get((Math.max(0, all.indexOf(outer)) + 1) % all.size());
                     ScenarioClientState.saveSheet();
@@ -255,8 +255,8 @@ public class ScenarioScreen extends Screen {
                     + "없음: 마을 땅만 지어요.\n짓기 전에 정해 주세요.")));
             addDrawableChild(outerButton);
             // The stage: a town of buildings, or one building whose rooms are the places.
-            WoodUi.WoodButton stageButton = new WoodUi.WoodButton(colX(0) + colWidth() - 168, listTop() - 16, 80, 14,
-                fit(sheet.building() ? "무대: 건물" : "무대: 마을", 80), b -> {
+            WoodUi.WoodButton stageButton = new WoodUi.WoodButton(colX(0) + colWidth() - 136, listTop() - 16, 66, 14,
+                fit(sheet.building() ? "무대: 건물" : "무대: 마을", 66), b -> {
                     sheet.stage = sheet.building() ? "town" : "building";
                     ScenarioClientState.saveSheet();
                     ScenarioClientState.setMessage(sheet.building()
@@ -923,6 +923,11 @@ public class ScenarioScreen extends Screen {
                 : (world ? "좌하단 월드 (" : "좌하단 (") + cx + ", " + cz + ") · " + site.w + "x" + site.d;
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 44, WoodUi.INK_SOFT, false);
             ty += 55;
+        } else if (layout.building()) {
+            // Under the floor buttons.
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("흰 칸 = 문 · 초록 = 입구 · 짙은 칸 = 계단", right() - 12 - px),
+                px, ty + 22, WoodUi.INK_SOFT, false);
+            ty += 33;
         } else {
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("지도에서 끌어 옮기기 · 밝은 테두리 = 입구", right() - 12 - px),
                 px, ty, WoodUi.INK_SOFT, false);
