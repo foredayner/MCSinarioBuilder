@@ -198,4 +198,24 @@ class TownLayoutTest {
         assertTrue(notes.stream().anyMatch(n -> n.contains("길을 끊었어요")), notes.toString());
         assertTrue(notes.stream().anyMatch(n -> n.contains("오솔길")), notes.toString());
     }
+
+    @Test
+    void readsTheMapKindAndTheMapsUnusedBuildings() {
+        String answer = "{\"map_kind\": \"town\", \"places\": [{\"id\": \"shrine\", \"x\": 20, \"z\": 10, \"front\": \"south\", \"from_map\": false}],"
+            + " \"roads\": [], \"zones\": [], \"extra\": [{\"x\": 40, \"z\": 50, \"size\": \"M\", \"front\": \"east\"}, {\"x\": 70, \"z\": 90}]}";
+        assertEquals("town", LayoutPrompt.mapKind(answer));
+        assertEquals("", LayoutPrompt.mapKind("{}"));
+        List<int[]> extras = LayoutPrompt.extras(answer);
+        assertEquals(2, extras.size());
+        assertArrayEquals(new int[] { 40, 50, 15, 1 }, extras.get(0));
+        assertArrayEquals(new int[] { 70, 90, 11, 2 }, extras.get(1));
+        TownLayout l = TownLayout.fromAnswer(answer, village());
+        assertFalse(l.site("shrine").fromMap);
+        ScenarioSheet sheet = village();
+        ScenarioSheet.Place filler = new ScenarioSheet.Place();
+        filler.id = "map_house_1";
+        filler.mapFiller = true;
+        sheet.places.add(filler);
+        assertEquals(5, sheet.counted(), "map houses do not count toward the limit");
+    }
 }

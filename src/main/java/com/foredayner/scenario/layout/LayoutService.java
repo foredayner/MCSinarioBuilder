@@ -44,10 +44,10 @@ public final class LayoutService {
 
     /** Too many places for the ground: say so and lay out nothing. */
     private static boolean tooMany(ServerPlayerEntity player, String id, ScenarioSheet sheet) {
-        if (sheet.places.size() <= ScenarioSheet.MAX_PLACES) {
+        if (sheet.counted() <= ScenarioSheet.MAX_PLACES) {
             return false;
         }
-        ScenarioNet.status(player, "장소가 " + sheet.places.size() + "곳이에요. 시트에서 " + ScenarioSheet.MAX_PLACES
+        ScenarioNet.status(player, "장소가 " + sheet.counted() + "곳이에요. 시트에서 " + ScenarioSheet.MAX_PLACES
             + "곳 이하로 줄여 주세요 (X로 빼거나 AI에게 합쳐 달라고 하기).", id);
         return true;
     }
@@ -92,8 +92,13 @@ public final class LayoutService {
             if (tooMany(player, id, sheet)) {
                 return;
             }
+            List<AiImage> map = "indoor".equals(sheet.mapKind) ? List.of() : mapOf(id, sheet);
+            if (!map.isEmpty() && sheet.places.removeIf(p -> p.mapFiller)) {
+                // The map's ordinary houses are made again from this layout.
+                SheetService.save(id, sheet);
+                ScenarioNet.sheet(player, id, sheet);
+            }
             TownLayout draft = TownLayout.auto(sheet);
-            List<AiImage> map = mapOf(id, sheet);
             run(player, id, sheet, draft, LayoutPrompt.layout(sheet, draft, !map.isEmpty()), map,
                 map.isEmpty() ? "AI가 마을을 배치하는 중이에요..." : "AI가 참고 지도를 보며 마을을 배치하는 중이에요...");
         } catch (IOException e) {
@@ -159,12 +164,31 @@ public final class LayoutService {
             TownLayout layout = null;
             String problems;
             List<String> fixed = List.of();
+            String kind = images.isEmpty() ? "" : LayoutPrompt.mapKind(answer.text());
+            int fillers = 0;
             try {
                 layout = TownLayout.fromAnswer(answer.text(), sheet);
+                if (!images.isEmpty()) {
+                    sheet.places.removeIf(p -> p.mapFiller);
+                    if (sheet.mapFillers && !"indoor".equals(kind)) {
+                        fillers = addFillers(sheet, layout, LayoutPrompt.extras(answer.text()));
+                    }
+                }
                 // What code can fix (a building on a road, a front far from any street...) is fixed here,
                 // keeping the AI's (and the map's) layout; only the rest goes back to the AI.
                 fixed = layout.repair(sheet);
                 problems = problems(layout, sheet);
+                if (problems != null && fillers > 0) {
+                    // A map house that does not fit is simply left out (it is not one of the scenario's places).
+                    for (TownLayout.Site s : new ArrayList<>(layout.sites)) {
+                        if (s.id.startsWith("map_house_") && (problems.contains(s.id + " ") || problems.contains(s.id + "'"))) {
+                            layout.sites.remove(s);
+                            sheet.places.removeIf(p -> p.id.equals(s.id));
+                            fillers--;
+                        }
+                    }
+                    problems = problems(layout, sheet);
+                }
             } catch (RuntimeException e) {
                 problems = "- the answer is not valid JSON of the required shape: " + e.getMessage();
             }
@@ -181,10 +205,17 @@ public final class LayoutService {
                 problems = problems(layout, sheet);
             }
             if (problems == null) {
-                int unnamed = images.isEmpty() ? -1 : LayoutPrompt.unnamed(answer.text());
+                if (!images.isEmpty()) {
+                    saveSheet(player, id, sheet);
+                }
+                String kindNote = switch (kind) {
+                    case "indoor" -> " 지도가 건물 평면도로 보여요: 마을 배치에는 길과 위치만 참고했어요.";
+                    case "outdoor" -> " 야외 지도로 읽었어요.";
+                    default -> "";
+                };
                 finish(player, id, layout, (images.isEmpty() ? "AI가 마을을 배치했어요" : "AI가 지도를 따라 배치했어요") + " (토큰 입력 "
                     + tokens[0] + " / 출력 " + tokens[1] + ")." + (fixed.isEmpty() ? "" : " 바로잡은 것: " + String.join(", ", fixed) + ".")
-                    + (unnamed > 0 ? " 지도에 이름 없는 건물이 " + unnamed + "채 더 있어요. 필요하면 시트에 장소로 넣어 주세요." : ""));
+                    + (fillers > 0 ? " 지도의 이름 없는 건물 " + fillers + "채를 민가로 넣었어요." : "") + kindNote);
                 return;
             }
             if (tries < max) {
@@ -192,9 +223,64 @@ public final class LayoutService {
                 ScenarioNet.status(player, "배치에 문제가 있어 다시 요청해요 (" + (tries + 1) + "/" + max + ")...", id);
                 attempt(player, id, sheet, fallback, base, LayoutPrompt.fix(base, answer.text(), problems), images, tries + 1, tokens);
             } else {
+                if (sheet.places.removeIf(p -> p.mapFiller)) {
+                    saveSheet(player, id, sheet);
+                }
                 finish(player, id, fallback, "AI 배치가 검사를 통과하지 못해 기본 배치를 썼어요: " + problems.lines().findFirst().orElse(""));
             }
         });
+    }
+
+    /** Most ordinary houses made from the map's unnamed buildings. */
+    static final int MAX_FILLERS = 12;
+
+    /**
+     * The map's buildings that no place took become ordinary houses of the period, where the map
+     * draws them; houses of a size share two designs (one AI design each, placed again).
+     */
+    static int addFillers(ScenarioSheet sheet, TownLayout layout, List<int[]> extras) {
+        layout.sites.removeIf(s -> s.id.startsWith("map_house_"));
+        java.util.Map<Integer, List<String>> designs = new java.util.HashMap<>();
+        int n = 0;
+        for (int[] e : extras) {
+            if (n >= MAX_FILLERS) {
+                break;
+            }
+            n++;
+            ScenarioSheet.Place p = new ScenarioSheet.Place();
+            p.id = "map_house_" + n;
+            p.name = "민가 " + n;
+            p.kind = "house";
+            p.size = e[2] <= ScenarioSheet.footprint("S") ? "S" : "M";
+            p.filler = true;
+            p.mapFiller = true;
+            p.notes = "지도에 그려진 이름 없는 집: 이 시대와 지역의 평범한 민가";
+            List<String> made = designs.computeIfAbsent(e[2], k -> new ArrayList<>());
+            if (made.size() < 2) {
+                made.add(p.id);
+            } else {
+                p.sameAs = made.get(n % 2);
+            }
+            sheet.places.add(p);
+            TownLayout.Site s = new TownLayout.Site();
+            s.id = p.id;
+            s.x = e[0];
+            s.z = e[1];
+            s.w = s.d = ScenarioSheet.footprint(p.size);
+            s.front = TownLayout.FRONTS.get(e[3]);
+            s.fromMap = true;
+            layout.sites.add(s);
+        }
+        return n;
+    }
+
+    private static void saveSheet(ServerPlayerEntity player, String id, ScenarioSheet sheet) {
+        try {
+            SheetService.save(id, sheet);
+            ScenarioNet.sheet(player, id, sheet);
+        } catch (IOException e) {
+            ScenarioBuilderMod.LOG.warn("Sheet of {} could not be saved: {}", id, e.toString());
+        }
     }
 
     private static void finish(ServerPlayerEntity player, String id, TownLayout layout, String message) {

@@ -35,9 +35,9 @@ class MapImagesTest {
         String with = LayoutPrompt.layout(sheet, draft, true).user();
         String without = LayoutPrompt.layout(sheet, draft, false).user();
         assertTrue(with.contains("A MAP of the town is attached"), with);
-        assertTrue(with.contains("x=160") && with.contains("\"unnamed\""), with);
+        assertTrue(with.contains("x=160") && with.contains("\"extra\"") && with.contains("\"map_kind\""), with);
         assertFalse(without.contains("MAP of the town"), without);
-        assertEquals(3, LayoutPrompt.unnamed("{\"places\":[], \"unnamed\": 3}"));
-        assertEquals(-1, LayoutPrompt.unnamed("{\"places\":[]}"));
+        assertEquals("indoor", LayoutPrompt.mapKind("{\"map_kind\": \"indoor\", \"places\":[]}"));
+        assertTrue(LayoutPrompt.extras("{\"places\":[]}").isEmpty());
     }
 }

@@ -40,6 +40,8 @@ public final class TownLayout {
         public int d;
         public String front = "south";
         public boolean outdoor;
+        /** Put where the keeper's map shows it (false: the AI chose the spot). */
+        public boolean fromMap;
     }
 
     public static final class Road {
@@ -96,6 +98,7 @@ public final class TownLayout {
                 s.x = o.get("x").getAsInt();
                 s.z = o.get("z").getAsInt();
                 s.front = o.has("front") ? o.get("front").getAsString().toLowerCase(Locale.ROOT) : "south";
+                s.fromMap = o.has("from_map") && o.get("from_map").getAsBoolean();
                 s.w = s.d = ScenarioSheet.footprint(p.size);
                 s.outdoor = p.outdoor;
                 l.sites.add(s);

@@ -41,6 +41,10 @@ public final class ScenarioSheet {
     public String styleGuide = "";
     /** The keeper's map of the town ("file:<name>" kept with the scenario, or ""): the AI lays the town out after it. */
     public String mapImage = "";
+    /** What the map shows: auto (the AI tells), town, outdoor or indoor (a floor plan). */
+    public String mapKind = "auto";
+    /** Buildings drawn on the map that no place takes become ordinary houses of the period. */
+    public boolean mapFillers = true;
     public List<Place> places = new ArrayList<>();
     public List<Npc> npcs = new ArrayList<>();
     public List<Clue> clues = new ArrayList<>();
@@ -72,6 +76,21 @@ public final class ScenarioSheet {
         public String refDescription = "";
         /** Built from the same design as this other place (rows of identical houses): one AI design, placed again. */
         public String sameAs = "";
+        /** An ordinary house for a building drawn on the keeper's map that no place took (made again on each AI layout). */
+        public boolean mapFiller;
+    }
+
+    public static final List<String> MAP_KINDS = List.of("auto", "town", "outdoor", "indoor");
+
+    /** Places that count toward MAX_PLACES (the map's ordinary houses do not: they share one or two designs). */
+    public int counted() {
+        int n = 0;
+        for (Place p : places) {
+            if (!p.mapFiller) {
+                n++;
+            }
+        }
+        return n;
     }
 
     public static final class Room {
@@ -209,8 +228,11 @@ public final class ScenarioSheet {
         if (places.isEmpty()) {
             problems.add("places is empty: list the places to build");
         }
-        if (places.size() > MAX_PLACES) {
-            problems.add("there are " + places.size() + " places; keep at most " + MAX_PLACES + " (merge small ones, drop fillers)");
+        if (!MAP_KINDS.contains(mapKind)) {
+            mapKind = "auto";
+        }
+        if (counted() > MAX_PLACES) {
+            problems.add("there are " + counted() + " places; keep at most " + MAX_PLACES + " (merge small ones, drop fillers)");
         }
         Set<String> ids = new HashSet<>();
         int n = 1;

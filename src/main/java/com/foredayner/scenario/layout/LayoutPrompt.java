@@ -17,7 +17,7 @@ public final class LayoutPrompt {
         with ONLY one JSON object (no markdown, no talk):
 
         {
-          "places": [ { "id": "place id", "x": west edge, "z": north edge, "front": "north|east|south|west" } ],
+          "places": [ { "id": "place id", "x": west edge, "z": north edge, "front": "north|east|south|west", "from_map": true|false } ],
           "roads": [ { "points": [[x,z],[x,z],...], "width": 3-5, "kind": "road|path" } ],
           "zones": [ { "kind": "water|woods|field|cemetery|square|garden|beach", "x": .., "z": .., "w": .., "d": .. } ]
         }
@@ -67,17 +67,27 @@ public final class LayoutPrompt {
     /** What to do with the keeper's map picture, sent with the request. */
     static final String MAP = """
         A MAP of the town is attached (a picture drawn by the keeper). Follow the map, not the draft:
+        - First say what it shows, as "map_kind": "town" (buildings seen from above), "outdoor" (paths, woods, water,
+          landmarks; few or no buildings) or "indoor" (the rooms of one building: a floor plan).
         - Stretch the picture over the whole ground: its left edge is x=0, its right edge x=160, its top z=0 and its
           bottom z=160 (the top of the picture is north).
         - Every place whose name (or a clearly matching name) is written on the map goes where the map shows it: put
-          the middle of its square on that spot, then shift it as little as needed to pass the checks. Its front
-          faces the nearest road.
+          the middle of its square on that spot and mark it "from_map": true. Its front faces the nearest road.
+          Do not move a map place away from its spot to reach a road: code lays a footpath from its front to the
+          nearest road, and moves anything standing on a road or another place by the least amount.
+        - Buildings drawn on the map whose name is not in the place list (or that have no name): give them first to
+          ordinary places that are not on the map (a house, a shop, a farm...), one fitting place each ("from_map":
+          true).
+        - Places still without a spot ("from_map": false): kinds that belong outside the village (a shrine, a cave,
+          a grave, ruins, a mountain or forest spot) go near the matching edge or feature of the map (the mountain,
+          the woods, the water); the others near the places their notes tie them to. Never on the map's roads,
+          water, fields or buildings.
         - Roads: trace the map's roads and paths as centre lines through points along them. Diagonal and curved
           roads are fine: use several points close together. Keep widths 3-5, all connected; roads that leave the
           map run on to the edge of the ground.
         - Water, woods and fields drawn on the map become zones in the same places.
-        - Places that are not on the map go to free spots that suit the story.
-        - Also add "unnamed": the number of buildings drawn on the map whose name is not in the place list.
+        - Also add "extra": the buildings drawn on the map that still have no place, each as
+          {"x": west edge, "z": north edge, "size": "S" (up to 11 blocks) or "M" (up to 15), "front": "north|east|south|west"}.
         """;
 
     /** Lay out the town, starting from the code's draft (or after the keeper's map). */
@@ -101,10 +111,32 @@ public final class LayoutPrompt {
             + "\n\nTHE KEEPER ASKS: " + instruction + "\n\nAnswer with the whole changed JSON object now.");
     }
 
-    /** The "unnamed" count from an answer made with a map, or -1. */
-    public static int unnamed(String answer) {
-        var m = java.util.regex.Pattern.compile("\"unnamed\"\\s*:\\s*(\\d+)").matcher(answer == null ? "" : answer);
-        return m.find() ? Integer.parseInt(m.group(1)) : -1;
+    /** What the map shows, from an answer made with a map: town, outdoor, indoor, or "" when not said. */
+    public static String mapKind(String answer) {
+        var m = java.util.regex.Pattern.compile("\"map_kind\"\\s*:\\s*\"(town|outdoor|indoor)\"").matcher(answer == null ? "" : answer);
+        return m.find() ? m.group(1) : "";
+    }
+
+    /** The map's buildings that no place took: {x, z, footprint, front index}. */
+    public static java.util.List<int[]> extras(String answer) {
+        java.util.List<int[]> out = new java.util.ArrayList<>();
+        try {
+            int start = answer.indexOf('{'), end = answer.lastIndexOf('}');
+            var root = com.google.gson.JsonParser.parseString(answer.substring(start, end + 1)).getAsJsonObject();
+            if (!root.has("extra") || !root.get("extra").isJsonArray()) {
+                return out;
+            }
+            for (var e : root.getAsJsonArray("extra")) {
+                var o = e.getAsJsonObject();
+                String size = o.has("size") ? o.get("size").getAsString() : "S";
+                String front = o.has("front") ? o.get("front").getAsString().toLowerCase(java.util.Locale.ROOT) : "south";
+                out.add(new int[] { o.get("x").getAsInt(), o.get("z").getAsInt(), ScenarioSheet.footprint("M".equals(size) ? "M" : "S"),
+                    Math.max(0, TownLayout.FRONTS.indexOf(front)) });
+            }
+        } catch (RuntimeException e) {
+            return out;
+        }
+        return out;
     }
 
     public static AiPrompt fix(AiPrompt base, String answer, String problems) {

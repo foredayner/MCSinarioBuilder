@@ -185,8 +185,9 @@ public class ScenarioScreen extends Screen {
     private int[] scroll = new int[3];
     private TextFieldWidget askField;
 
+    /** Two columns: places and clues (NPCs are kept in the sheet but not shown). */
     private int colWidth() {
-        return (right() - left() - 24) / 3;
+        return (right() - left() - 24) / 2;
     }
 
     private int colX(int i) {
@@ -259,23 +260,8 @@ public class ScenarioScreen extends Screen {
                     ScenarioClientState.saveSheet();
                 }, true));
             }
-            // NPCs.
-            cx = colX(1);
-            i = 0;
-            for (int k = scroll[1]; k < sheet.npcs.size() && i < maxRows; k++, i++) {
-                var n = sheet.npcs.get(k);
-                int ry = listTop() + i * ROW;
-                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 24, 18, fit(n.name + " · " + n.role, w - 24), b -> { }, false);
-                name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(n.name + " (" + n.role + ")\n장소: "
-                    + placeName(sheet, n.place) + (n.room.isBlank() ? "" : " / " + n.room) + (n.notes.isBlank() ? "" : "\n" + n.notes))));
-                addDrawableChild(name);
-                addDrawableChild(new WoodUi.WoodButton(cx + w - 22, ry, 20, 18, Text.literal("X"), b -> {
-                    sheet.npcs.remove(n);
-                    ScenarioClientState.saveSheet();
-                }, true));
-            }
             // Clues: name, hidden or not, remove.
-            cx = colX(2);
+            cx = colX(1);
             i = 0;
             for (int k = scroll[2]; k < sheet.clues.size() && i < maxRows; k++, i++) {
                 var c = sheet.clues.get(k);
@@ -303,7 +289,7 @@ public class ScenarioScreen extends Screen {
                 askField.setText("");
             }, false));
             boolean hasLayout = ScenarioClientState.layout() != null;
-            boolean tooMany = sheet.places.size() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
+            boolean tooMany = sheet.counted() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
             WoodUi.WoodButton next = new WoodUi.WoodButton(right() - 148, bottom() - 44, 136, 18,
                 fit(tooMany ? "장소를 " + com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES + "곳 이하로" : hasLayout ? "배치도 보기 →" : "AI로 배치도 만들기 →", 136), b -> {
                     if (!hasLayout) {
@@ -430,7 +416,7 @@ public class ScenarioScreen extends Screen {
         int bw = (pw - 12) / 4;
         var layout = ScenarioClientState.layout();
         var sheet = ScenarioClientState.sheet();
-        boolean tooMany = sheet != null && sheet.places.size() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
+        boolean tooMany = sheet != null && sheet.counted() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
         boolean hasMap = sheet != null && sheet.mapImage != null && !sheet.mapImage.isBlank();
         WoodUi.WoodButton ai = new WoodUi.WoodButton(px, y, bw, 18, fit("AI로 배치", bw), b -> ScenarioClientState.makeLayout(true), false);
         ai.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(hasMap
@@ -438,7 +424,7 @@ public class ScenarioScreen extends Screen {
         WoodUi.WoodButton plain = new WoodUi.WoodButton(px + bw + 4, y, bw, 18, fit("기본 배치", bw), b -> ScenarioClientState.makeLayout(false), false);
         ai.active = plain.active = !tooMany;
         if (tooMany) {
-            var tip = net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소가 " + sheet.places.size() + "곳이에요. 시트에서 "
+            var tip = net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소가 " + sheet.counted() + "곳이에요. 시트에서 "
                 + com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES + "곳 이하로 줄여 주세요."));
             ai.setTooltip(tip);
             plain.setTooltip(tip);
@@ -741,12 +727,19 @@ public class ScenarioScreen extends Screen {
             MapOverlay.draw(ctx, x0, y0, size, 0x80);
         }
         com.foredayner.scenario.layout.TownLayout.Site hover = siteAt(mouseX, mouseY);
+        boolean mapUsed = sheet.mapImage != null && !sheet.mapImage.isBlank() && layout.sites.stream().anyMatch(t -> t.fromMap);
+        boolean anyChosen = false;
         for (int n = 0; n < layout.sites.size(); n++) {
             var s = layout.sites.get(n);
             int sx = toScreenX(s.x), sz = toScreenZ(s.z), ex = toScreenX(s.x + s.w), ez = toScreenZ(s.z + s.d);
             boolean sel = s.id.equals(picked);
-            ctx.fill(sx, sz, ex, ez, sel ? 0xFF2B1D10 : 0xFF4A3420);
-            ctx.fill(sx + 1, sz + 1, ex - 1, ez - 1, s.outdoor ? 0xFF9D8C69 : sel ? 0xFFE0B25A : 0xFFC28A4E);
+            var sitePlace = sheet.place(s.id);
+            boolean mapHouse = sitePlace != null && sitePlace.mapFiller;
+            // With a map: places the AI had to find a spot for (not on the map) get a blue border.
+            boolean chosen = mapUsed && !s.fromMap;
+            anyChosen |= chosen;
+            ctx.fill(sx, sz, ex, ez, sel ? 0xFF2B1D10 : chosen ? 0xFF2E6DA4 : 0xFF4A3420);
+            ctx.fill(sx + 1, sz + 1, ex - 1, ez - 1, s.outdoor ? 0xFF9D8C69 : sel ? 0xFFE0B25A : mapHouse ? 0xFFB9A88C : 0xFFC28A4E);
             int edge = 0xFFFFF4D6;
             switch (s.front) {
                 case "north" -> ctx.fill(sx + 1, sz, ex - 1, sz + 2, edge);
@@ -767,6 +760,12 @@ public class ScenarioScreen extends Screen {
                 ctx.drawText(this.textRenderer, num, 0, 0, 0xFF1E140A, false);
                 m.pop();
             }
+        }
+        if (anyChosen) {
+            String legend = "파란 테두리: 지도에 없어 AI가 자리를 정한 곳";
+            int lw = this.textRenderer.getWidth(legend);
+            ctx.fill(x0 + 2, y0 + size - 13, x0 + 6 + lw, y0 + size - 2, 0xC0F4E4C1);
+            ctx.drawText(this.textRenderer, legend, x0 + 4, y0 + size - 11, 0xFF2E6DA4, false);
         }
         ctx.disableScissor();
         // Side panel: the numbered place list (scrolls when long), the picked place and the check.
@@ -1068,11 +1067,13 @@ public class ScenarioScreen extends Screen {
         }
         if (tab == Tab.SHEET && ScenarioClientState.sheet() != null && mouseY >= listTop() && mouseY <= listBottom()) {
             var sheet = ScenarioClientState.sheet();
-            int[] sizes = { sheet.places.size(), sheet.npcs.size(), sheet.clues.size() };
-            for (int c = 0; c < 3; c++) {
+            int[] sizes = { sheet.places.size(), sheet.clues.size() };
+            int[] which = { 0, 2 }; // scroll[0] places, scroll[2] clues
+            for (int c = 0; c < 2; c++) {
                 if (mouseX >= colX(c) && mouseX < colX(c) + colWidth()) {
                     int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
-                    scroll[c] = Math.max(0, Math.min(Math.max(0, sizes[c] - maxRows), scroll[c] - (int) Math.signum(vertical)));
+                    int k = which[c];
+                    scroll[k] = Math.max(0, Math.min(Math.max(0, sizes[c] - maxRows), scroll[k] - (int) Math.signum(vertical)));
                     clearAndInit();
                     return true;
                 }
@@ -1096,8 +1097,8 @@ public class ScenarioScreen extends Screen {
             String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
                 + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(line, right() - l - 20), l, bodyTop() + 23, WoodUi.INK_SOFT, false);
-            String[] heads = { "장소 " + sheet.places.size(), "NPC " + sheet.npcs.size(), "단서 " + sheet.clues.size() };
-            for (int c = 0; c < 3; c++) {
+            String[] heads = { "장소 " + sheet.places.size(), "단서 " + sheet.clues.size() };
+            for (int c = 0; c < 2; c++) {
                 ctx.drawText(this.textRenderer, heads[c], colX(c) + 2, listTop() - 12, WoodUi.INK, false);
             }
         }
