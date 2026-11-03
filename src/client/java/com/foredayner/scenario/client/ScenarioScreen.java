@@ -1053,7 +1053,7 @@ public class ScenarioScreen extends Screen {
         }
         ctx.disableScissor();
         // Under the map, beside the switches: what the colours mean.
-        int lx = x0 + (MapOverlay.available() ? 148 : 74), ly = belowMapY() + 3, lend = x0 + size;
+        int lx = x0 + (MapOverlay.available() ? 148 : 74), legendY = belowMapY() + 3, lend = x0 + size;
         List<Object[]> legend = new java.util.ArrayList<>();
         if (anyChosen) {
             legend.add(new Object[] { "■ 파란 테두리: AI가 정한 곳", 0xFF2E6DA4 });
@@ -1072,7 +1072,7 @@ public class ScenarioScreen extends Screen {
             if (w <= 0) {
                 break;
             }
-            ctx.drawText(this.textRenderer, text, lx, ly, (int) part[1], false);
+            ctx.drawText(this.textRenderer, text, lx, legendY, (int) part[1], false);
             lx += w + 8;
         }
         // Side panel: the numbered place list (scrolls when long), the picked place and the check.
@@ -1279,8 +1279,8 @@ public class ScenarioScreen extends Screen {
         String progress = "완료 " + c[0] + "/" + c[2] + (c[1] > 0 ? " · 실패 " + c[1] : "") + " · 토큰 " + build.tokensIn + "/" + build.tokensOut;
         ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(progress, r - l - 258), l + 258, y + 31, WoodUi.INK_SOFT, false);
         // How far the whole build is: the ground (as it goes) and every place, done or failed.
-        double ground = "done".equals(build.ground) ? 1 : "working".equals(build.ground) ? build.groundPercent / 100.0 : 0;
-        double part = (ground + c[0] + c[1]) / Math.max(1, c[2] + 1);
+        double groundDone = "done".equals(build.ground) ? 1 : "working".equals(build.ground) ? build.groundPercent / 100.0 : 0;
+        double part = (groundDone + c[0] + c[1]) / Math.max(1, c[2] + 1);
         int bx0 = l + 258, bx1 = r, by = y + 42;
         ctx.fill(bx0, by, bx1, by + 4, 0x40000000);
         ctx.fill(bx0, by, bx0 + (int) Math.round((bx1 - bx0) * Math.min(1, part)), by + 4, c[1] > 0 ? 0xFFC06A10 : 0xFF2E6B2E);
