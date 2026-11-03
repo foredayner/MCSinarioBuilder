@@ -121,7 +121,8 @@ public class ScenarioGameTests implements FabricGameTest {
         com.foredayner.scenario.town.BuildService.placeAt(state, world, context.getAbsolutePos(net.minecraft.util.math.BlockPos.ORIGIN).add(4000, 0, 0));
         com.foredayner.scenario.town.BuildService.save(id, state);
         var origin = new net.minecraft.util.math.BlockPos(state.originX, state.originY, state.originZ);
-        net.minecraft.util.math.BlockPos[] samples = { origin.add(80, -1, 80), origin.add(3, 2, 3), origin.add(150, -1, 150), origin.add(40, 0, 100) };
+        net.minecraft.util.math.BlockPos[] samples = { origin.add(80, -1, 80), origin.add(3, 2, 3), origin.add(150, -1, 150), origin.add(40, 0, 100),
+            origin.add(-10, 2, 80), origin.add(-20, -1, 40) }; // the last two in the ring around the town
         net.minecraft.block.BlockState[] before = new net.minecraft.block.BlockState[samples.length];
         for (int i = 0; i < samples.length; i++) {
             before[i] = world.getBlockState(samples[i]);
@@ -171,6 +172,18 @@ public class ScenarioGameTests implements FabricGameTest {
                 check(roadTop.isOf(net.minecraft.block.Blocks.GRAVEL) || roadTop.isOf(net.minecraft.block.Blocks.COBBLESTONE), "streets are gravel: " + roadTop);
                 check(world.getBlockState(origin.add(sea[0], -1, sea[1])).isOf(net.minecraft.block.Blocks.WATER), "the sea is water");
                 check(world.getBlockState(origin.add(road[0], 3, road[1])).isAir(), "above the street is clear");
+                // The ring of land around the town is laid too: ground near the town's level at its edge.
+                int found = Integer.MIN_VALUE;
+                for (int y = origin.getY() + 20; y >= origin.getY() - 20; y--) {
+                    var s = world.getBlockState(origin.add(-2, y - origin.getY(), 80));
+                    if (s.isOf(net.minecraft.block.Blocks.GRASS_BLOCK) || s.isOf(net.minecraft.block.Blocks.PODZOL)
+                        || s.isOf(net.minecraft.block.Blocks.COARSE_DIRT) || s.isOf(net.minecraft.block.Blocks.WATER)
+                        || s.isOf(net.minecraft.block.Blocks.DIRT_PATH) || s.isOf(net.minecraft.block.Blocks.GRAVEL)) {
+                        found = y;
+                        break;
+                    }
+                }
+                check(Math.abs(found - (origin.getY() - 1)) <= 2, "the ring starts at the town's level: " + found + " vs " + (origin.getY() - 1));
                 // Clear the inn again.
                 var inn = layout.site("inn");
                 var roof = world.getBlockState(origin.add(inn.x + inn.w / 2, 6, inn.z + inn.d / 2));

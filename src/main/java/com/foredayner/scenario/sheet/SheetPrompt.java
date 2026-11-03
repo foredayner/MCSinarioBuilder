@@ -28,10 +28,13 @@ public final class SheetPrompt {
           "clues": [ { "id": "short_ascii_id", "name": "...", "text": "what it says or shows, 1-3 sentences",
                        "form": "book|note|map|item", "place": "place id", "room": "room name", "hidden": true|false } ],
           "links": [ { "from": "place id", "to": "place id", "kind": "road|path|secret" } ],
-          "terrain": { "coast": "none|north|east|south|west", "woods": "none|north|east|south|west", "notes": "..." }
+          "terrain": { "coast": "none|north|east|south|west", "woods": "none|north|east|south|west", "notes": "..." },
+          "outer": "open|closed"
         }
 
         Rules:
+        - outer: "closed" when the story keeps the investigators from leaving the area (cut off by a storm, a curse,
+          a blocked road, a quarantine, woods that will not let them out); otherwise "open".
         - Places: every place the investigators visit or that matters to the story; merge tiny ones into a bigger one.
           Only buildings are built as buildings. The town or village itself is NOT a place (it is the whole map: put
           its look in style, mood and terrain). Woods, hills, fields and valleys are kind "woods" (or "square" for an

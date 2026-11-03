@@ -45,6 +45,12 @@ public final class ScenarioSheet {
     public String mapKind = "auto";
     /** Buildings drawn on the map that no place takes become ordinary houses of the period. */
     public boolean mapFillers = true;
+    /**
+     * Around the town's ground: "open" (default: a ring of land that carries on the town's edge and
+     * blends into the land), "closed" (that ring ends in wooded hills and the roads out are blocked:
+     * the investigators cannot just leave) or "none" (the ground ends where it ends).
+     */
+    public String outer = "open";
     public List<Place> places = new ArrayList<>();
     public List<Npc> npcs = new ArrayList<>();
     public List<Clue> clues = new ArrayList<>();
@@ -81,6 +87,7 @@ public final class ScenarioSheet {
     }
 
     public static final List<String> MAP_KINDS = List.of("auto", "town", "outdoor", "indoor");
+    public static final List<String> OUTERS = List.of("open", "closed", "none");
 
     /** Places that count toward MAX_PLACES (the map's ordinary houses do not: they share one or two designs). */
     public int counted() {
@@ -230,6 +237,9 @@ public final class ScenarioSheet {
         }
         if (!MAP_KINDS.contains(mapKind)) {
             mapKind = "auto";
+        }
+        if (!OUTERS.contains(outer)) {
+            outer = "open";
         }
         if (counted() > MAX_PLACES) {
             problems.add("there are " + counted() + " places; keep at most " + MAX_PLACES + " (merge small ones, drop fillers)");

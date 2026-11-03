@@ -196,6 +196,8 @@ public final class BuildService {
         final BlockPos origin;
         final UUID owner;
         GroundWork ground;
+        /** The ring of land around the town (after the town's ground), or null. */
+        BandWork band;
         TownSnapshot capture;
         TownSnapshot restore;
         final Deque<Clear> clears = new ArrayDeque<>();
@@ -224,7 +226,8 @@ public final class BuildService {
         }
 
         boolean finished() {
-            return capture == null && restore == null && clears.isEmpty() && (ground == null || ground.done()) && waiting.isEmpty()
+            return capture == null && restore == null && clears.isEmpty() && (ground == null || ground.done())
+                && (band == null || band.done()) && waiting.isEmpty()
                 && later.isEmpty() && designing == 0 && placing.isEmpty() && (ready.isEmpty() || cancelled);
         }
     }
@@ -299,13 +302,22 @@ public final class BuildService {
             BuildState state = job.state;
             state.status = "running";
             state.message = "";
+            int ring = 0;
             if (!"done".equals(state.ground)) {
+                boolean outer = !"none".equals(job.sheet.outer);
+                ring = outer ? OuterBand.WIDTH : 0;
                 if (!SNAPSHOTS.containsKey(id)) {
-                    int low = Math.max(job.world.getBottomY(), job.origin.getY() - GroundWork.FILL);
-                    job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX(), low, job.origin.getZ()),
-                        job.origin.add(TownLayout.SIZE - 1, GroundWork.CLEAR - 1, TownLayout.SIZE - 1));
+                    // The ring around the town is kept too (its hills and slopes reach higher and lower).
+                    int low = Math.max(job.world.getBottomY(), job.origin.getY() - GroundWork.FILL - (outer ? 16 : 0));
+                    int high = Math.min(job.world.getTopYInclusive() - job.origin.getY(), GroundWork.CLEAR - 1 + (outer ? 24 : 0));
+                    job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX() - ring, low, job.origin.getZ() - ring),
+                        job.origin.add(TownLayout.SIZE - 1 + ring, high, TownLayout.SIZE - 1 + ring));
                 }
                 job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1, job.sheet.period());
+                if (outer) {
+                    job.band = new BandWork(job.world, job.origin, job.plan, new OuterBand(job.plan, "closed".equals(job.sheet.outer)),
+                        job.sheet.period());
+                }
                 state.ground = "working";
                 state.groundPercent = 0;
             }
@@ -321,7 +333,7 @@ public final class BuildService {
                 }
             }
             state.places.keySet().removeIf(k -> job.sheet.place(k) == null);
-            begin(job, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1);
+            begin(job, -ring, -ring, TownLayout.SIZE - 1 + ring, TownLayout.SIZE - 1 + ring);
             say(player, "짓기 시작했어요: 장소 " + job.waiting.size() + "곳.", id);
         } catch (IOException e) {
             say(player, "시작하지 못했어요: " + e.getMessage(), id);
@@ -430,6 +442,7 @@ public final class BuildService {
             job.state.place(p).state = "stopped";
         }
         job.ready.clear();
+        job.band = null; // the land around stays as far as it got
         if (job.ground != null && !job.ground.done()) {
             job.ground = null;
             job.state.ground = "stopped";
@@ -572,6 +585,7 @@ public final class BuildService {
                 job.capture = null;
                 job.restore = null;
                 job.ground = null;
+                job.band = null;
                 job.clears.clear();
             }
             if (job.finished()) {
@@ -619,6 +633,12 @@ public final class BuildService {
             job.state.groundPercent = job.ground.percent();
             if (job.ground.done()) {
                 job.state.ground = "done";
+                job.dirty = true;
+            }
+        } else if (job.band != null && !job.band.done() && !job.cancelled) {
+            // The land around the town, while the buildings go up.
+            job.band.step(columnsPerTick);
+            if (job.band.done()) {
                 job.dirty = true;
             }
         }

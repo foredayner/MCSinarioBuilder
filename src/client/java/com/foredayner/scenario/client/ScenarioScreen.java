@@ -238,6 +238,21 @@ public class ScenarioScreen extends Screen {
             periodButton.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("시대·문화권: "
                 + com.foredayner.scenario.sheet.Period.description(period) + "\n눌러서 바꾸기. 건물 체크리스트, 참고 설명, 길과 가로등이 따라 바뀌어요.")));
             addDrawableChild(periodButton);
+            // Around the town: a ring of land (open), the same ending in hills with the roads blocked (closed), or nothing.
+            String outer = sheet.outer == null ? "open" : sheet.outer;
+            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(right() - 436, y, 80, 18,
+                fit("바깥: " + ("closed".equals(outer) ? "닫힘" : "none".equals(outer) ? "없음" : "열림"), 80), b -> {
+                    var all = com.foredayner.scenario.sheet.ScenarioSheet.OUTERS;
+                    sheet.outer = all.get((Math.max(0, all.indexOf(outer)) + 1) % all.size());
+                    ScenarioClientState.saveSheet();
+                    clearAndInit();
+                }, false);
+            outerButton.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+                "마을 땅 바깥 (폭 " + com.foredayner.scenario.town.OuterBand.WIDTH + "칸):\n"
+                    + "열림: 마을 가장자리를 이어 들판, 숲, 언덕, 길을 만들고 주변 땅에 부드럽게 이어요.\n"
+                    + "닫힘: 바깥이 가파른 숲 언덕으로 막히고, 나가는 길은 낙석으로 막혀요 (고립되는 시나리오).\n"
+                    + "없음: 마을 땅만 지어요.\n짓기 전에 정해 주세요.")));
+            addDrawableChild(outerButton);
         }
         if (sheet != null) {
             int maxRows = Math.max(1, (listBottom() - listTop()) / ROW);
@@ -1092,7 +1107,7 @@ public class ScenarioScreen extends Screen {
             ctx.drawText(this.textRenderer, "아직 시트가 없어요. \"AI로 다시 읽기\"를 누르면 AI가 시나리오를 읽고 만들어요.", l, bodyTop() + 40,
                 WoodUi.INK_SOFT, false);
         } else {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 370),
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 454),
                 l, bodyTop() + 11, WoodUi.INK, false);
             String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
                 + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;
