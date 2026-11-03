@@ -58,7 +58,15 @@ public final class ScenarioConfig {
 
     /** null = use the AI Build Assistant's model. */
     public static String model(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+        if (value == null) {
+            return null;
+        }
+        String v = value.trim();
+        // "기본", "default" or anything that is not a model id (Korean, spaces...) means the AI 공방 model.
+        if (v.isEmpty() || !v.matches("[A-Za-z0-9._:/@-]+") || v.equalsIgnoreCase("default") || v.equalsIgnoreCase("auto")) {
+            return null;
+        }
+        return v;
     }
 
     /** Buildings and props: Haiku by default on a Claude connection (cheap and quick enough for them). */

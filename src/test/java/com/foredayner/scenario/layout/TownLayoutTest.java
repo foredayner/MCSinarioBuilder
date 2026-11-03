@@ -140,4 +140,62 @@ class TownLayoutTest {
         assertEquals(again.site("inn").x, layout.site("inn").x);
         assertEquals(again.site("inn").front, layout.site("inn").front);
     }
+
+    private static ScenarioSheet village() {
+        ScenarioSheet sheet = new ScenarioSheet();
+        for (String id : new String[] { "shrine", "far_house", "house_a", "house_b", "store" }) {
+            ScenarioSheet.Place p = new ScenarioSheet.Place();
+            p.id = id;
+            p.size = "S";
+            sheet.places.add(p);
+        }
+        sheet.normalize();
+        return sheet;
+    }
+
+    private static TownLayout.Site site(String id, int x, int z, String front) {
+        TownLayout.Site s = new TownLayout.Site();
+        s.id = id;
+        s.x = x;
+        s.z = z;
+        s.front = front;
+        return s;
+    }
+
+    private static TownLayout.Road road(int width, int... xz) {
+        TownLayout.Road r = new TownLayout.Road();
+        r.width = width;
+        for (int i = 0; i + 1 < xz.length; i += 2) {
+            r.points.add(new int[] { xz[i], xz[i + 1] });
+        }
+        return r;
+    }
+
+    @Test
+    void repairKeepsAMapLayoutAndFixesWhatCodeCan() {
+        ScenarioSheet sheet = village();
+        TownLayout l = new TownLayout();
+        // One road from the entrance (south edge) up through the mountain to the north edge, as traced from a map.
+        l.roads.add(road(5, 80, 158, 80, 1));
+        // A separate lane the AI drew, not joined to the road.
+        l.roads.add(road(3, 110, 120, 150, 120));
+        l.sites.add(site("shrine", 75, 8, "south"));        // on the road's far end, on the mountain
+        l.sites.add(site("far_house", 12, 60, "east"));     // among fields, far from the road
+        l.sites.add(site("house_a", 86, 70, "west"));       // fine
+        l.sites.add(site("house_b", 88, 72, "west"));       // on top of house_a
+        l.sites.add(site("store", 120, 108, "south"));      // by the lane
+        assertFalse(l.check(sheet).isEmpty(), "the raw layout has problems");
+        List<String> notes = l.repair(sheet);
+        assertEquals(List.of(), l.check(sheet), "repaired: " + notes);
+        assertEquals(5, l.sites.size(), "nothing dropped");
+        TownLayout.Site a = l.site("house_a");
+        assertEquals(86, a.x, "a place that was fine stays put");
+        TownLayout.Site far = l.site("far_house");
+        assertEquals(12, far.x, "a house far from the road keeps its spot and gets a footpath");
+        assertEquals(60, far.z);
+        TownLayout.Site shrine = l.site("shrine");
+        assertTrue(Math.abs(shrine.x - 75) + Math.abs(shrine.z - 8) <= 4, "the shrine stays where it was: " + shrine.x + "," + shrine.z);
+        assertTrue(notes.stream().anyMatch(n -> n.contains("길을 끊었어요")), notes.toString());
+        assertTrue(notes.stream().anyMatch(n -> n.contains("오솔길")), notes.toString());
+    }
 }

@@ -380,6 +380,456 @@ public final class TownLayout {
         return count;
     }
 
+    // ------------------------------------------------------------------ repair
+
+    /** A site on its own, among {@code others}: inside, apart, off streets, out of water and woods; with needFront also by a street. */
+    private boolean fitsAmong(Site s, ScenarioSheet.Place place, int[][] roadSum, List<Site> others, boolean needFront) {
+        if (s.x < MARGIN || s.z < MARGIN || s.x + s.w > size - MARGIN || s.z + s.d > size - MARGIN) {
+            return false;
+        }
+        for (Site o : others) {
+            if (o != s && overlaps(s.x, s.z, s.w, s.d, o.x, o.z, o.w, o.d, GAP)) {
+                return false;
+            }
+        }
+        if (roadsIn(roadSum, s.x, s.z, s.w, s.d) > 0) {
+            return false;
+        }
+        boolean dock = place != null && "dock".equals(place.kind);
+        for (Zone z : zones) {
+            if (("water".equals(z.kind) && !dock || "woods".equals(z.kind)) && overlaps(s.x, s.z, s.w, s.d, z.x, z.z, z.w, z.d, 0)) {
+                return false;
+            }
+        }
+        if (!needFront || s.outdoor) {
+            return true;
+        }
+        int[] f = frontPoint(s);
+        return roadsIn(roadSum, f[0] - 4, f[1] - 4, 9, 9) > 0;
+    }
+
+    /**
+     * Fix what code can fix in a layout (the AI's, made from a map, or the keeper's) without moving
+     * anything more than needed, and say what was done (Korean, for the keeper):
+     * <ul>
+     *   <li>a road that runs on past a building standing on it is cut short before it;</li>
+     *   <li>a site off the ground, on a street, in water or woods, or too close to another moves to
+     *       the nearest free spot (not to the middle of town);</li>
+     *   <li>a place with no site gets the free spot nearest the middle;</li>
+     *   <li>a building whose front is not by a street turns to one, or gets a footpath to it;</li>
+     *   <li>separate pieces of street are joined by footpaths.</li>
+     * </ul>
+     */
+    public List<String> repair(ScenarioSheet sheet) {
+        List<String> notes = new ArrayList<>();
+        sites.removeIf(s -> sheet.place(s.id) == null);
+        for (Site s : sites) {
+            if (!FRONTS.contains(s.front)) {
+                s.front = "south";
+            }
+            ScenarioSheet.Place p = sheet.place(s.id);
+            s.w = s.d = ScenarioSheet.footprint(p.size);
+            s.outdoor = p.outdoor;
+        }
+        for (Zone z : zones) {
+            if (!ZONES.contains(z.kind)) {
+                z.kind = "field";
+            }
+        }
+        // Roads that only run on past a building (to the edge of the ground) stop before it.
+        for (Site s : sites) {
+            if (trimRoadEndsAt(s)) {
+                notes.add(name(sheet, s) + " 앞에서 길을 끊었어요");
+            }
+        }
+        // Sites that cannot stand where they are move as little as possible.
+        int[][] roadSum = roadSums();
+        List<Site> placed = new ArrayList<>();
+        for (Site s : new ArrayList<>(sites)) {
+            ScenarioSheet.Place p = sheet.place(s.id);
+            if (!fitsAmong(s, p, roadSum, placed, false)) {
+                int ox = s.x, oz = s.z;
+                if (placeNear(s, p, roadSum, placed)) {
+                    notes.add(name(sheet, s) + "을(를) " + (Math.abs(s.x - ox) + Math.abs(s.z - oz)) + "칸 옮겼어요");
+                } else {
+                    sites.remove(s);
+                    continue;
+                }
+            }
+            placed.add(s);
+        }
+        for (ScenarioSheet.Place p : sheet.places) {
+            if (site(p.id) == null) {
+                Site s = new Site();
+                s.id = p.id;
+                s.w = s.d = ScenarioSheet.footprint(p.size);
+                s.outdoor = p.outdoor;
+                s.x = (size - s.w) / 2;
+                s.z = (size - s.d) / 2;
+                if (placeNear(s, p, roadSum, sites)) {
+                    sites.add(s);
+                    notes.add(name(sheet, s) + "을(를) 빈자리에 놓았어요");
+                }
+            }
+        }
+        // Fronts: face a street within reach, or get a footpath to the nearest one.
+        int lanes = 0;
+        for (Site s : sites) {
+            if (s.outdoor || nearRoad(roadGrid(), frontPoint(s), 4)) {
+                continue;
+            }
+            String keep = s.front;
+            boolean turned = false;
+            for (String f : FRONTS) {
+                s.front = f;
+                if (nearRoad(roadGrid(), frontPoint(s), 4)) {
+                    turned = true;
+                    break;
+                }
+            }
+            if (turned) {
+                continue;
+            }
+            s.front = towardRoad(s, keep);
+            if (laneFrom(s)) {
+                lanes++;
+            }
+        }
+        if (lanes > 0) {
+            notes.add("길에서 떨어진 건물 " + lanes + "곳에 오솔길을 이었어요");
+        }
+        int joined = joinRoadPieces();
+        if (joined > 0) {
+            notes.add("떨어진 길 " + joined + "곳을 오솔길로 이었어요");
+        }
+        return notes;
+    }
+
+    private static String name(ScenarioSheet sheet, Site s) {
+        ScenarioSheet.Place p = sheet.place(s.id);
+        return p == null || p.name == null || p.name.isBlank() ? s.id : p.name;
+    }
+
+    /**
+     * A road whose first or last piece runs through the site and on to the edge of the ground (a
+     * road traced "to the edge" past a building at its end) is cut back so it stops in front of it.
+     */
+    boolean trimRoadEndsAt(Site s) {
+        boolean cut = false;
+        for (Road r : roads) {
+            for (int end = 0; end < 2 && r.points.size() >= 2; end++) {
+                List<int[]> pts = r.points;
+                int last = end == 0 ? pts.size() - 1 : 0;
+                int prev = end == 0 ? pts.size() - 2 : 1;
+                int[] tip = pts.get(last), from = pts.get(prev);
+                boolean atEdge = tip[0] <= MARGIN + 4 || tip[1] <= MARGIN + 4 || tip[0] >= size - MARGIN - 5 || tip[1] >= size - MARGIN - 5;
+                if (!atEdge) {
+                    continue;
+                }
+                int half = Math.max(1, r.width) / 2;
+                int steps = Math.max(Math.abs(tip[0] - from[0]), Math.abs(tip[1] - from[1]));
+                // Walk from the inner point toward the tip; stop just before the road would touch the site.
+                int keepX = -1, keepZ = -1;
+                boolean hits = false;
+                for (int k = 0; k <= steps; k++) {
+                    int cx = from[0] + (steps == 0 ? 0 : (tip[0] - from[0]) * k / steps);
+                    int cz = from[1] + (steps == 0 ? 0 : (tip[1] - from[1]) * k / steps);
+                    if (overlaps(cx - half, cz - half, 2 * half + 1, 2 * half + 1, s.x, s.z, s.w, s.d, 1)) {
+                        hits = true;
+                        break;
+                    }
+                    keepX = cx;
+                    keepZ = cz;
+                }
+                if (!hits) {
+                    continue;
+                }
+                if (keepX < 0 || (keepX == from[0] && keepZ == from[1] && pts.size() == 2)) {
+                    continue; // nothing of the road would be left: the site moves instead
+                }
+                pts.set(last, new int[] { keepX, keepZ });
+                cut = true;
+                // The site now faces the road's end.
+                int cx = s.x + s.w / 2, cz = s.z + s.d / 2;
+                int dx = keepX - cx, dz = keepZ - cz;
+                s.front = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? "east" : "west") : (dz > 0 ? "south" : "north");
+            }
+        }
+        return cut;
+    }
+
+    /** Move a site to the free spot nearest where it is (fronts by a street preferred); false when there is none. */
+    boolean placeNear(Site s, ScenarioSheet.Place place, int[][] roadSum, List<Site> others) {
+        int ox = s.x, oz = s.z;
+        String keep = s.front;
+        int bestX = 0, bestZ = 0, best = Integer.MAX_VALUE;
+        String bestFront = keep;
+        for (int x = MARGIN; x + s.w <= size - MARGIN; x++) {
+            for (int z = MARGIN; z + s.d <= size - MARGIN; z++) {
+                int dist = Math.abs(x - ox) + Math.abs(z - oz);
+                if (dist * 2 >= best) {
+                    continue;
+                }
+                s.x = x;
+                s.z = z;
+                s.front = keep;
+                if (!fitsAmong(s, place, roadSum, others, false)) {
+                    continue;
+                }
+                // A spot whose front can reach a street costs less than one that needs a footpath.
+                int score = dist * 2 + 40;
+                String front = keep;
+                if (s.outdoor) {
+                    score = dist * 2;
+                } else {
+                    for (String f : FRONTS) {
+                        s.front = f;
+                        if (fitsAmong(s, place, roadSum, others, true)) {
+                            score = dist * 2;
+                            front = f;
+                            break;
+                        }
+                    }
+                }
+                if (score < best) {
+                    best = score;
+                    bestX = x;
+                    bestZ = z;
+                    bestFront = front;
+                }
+            }
+        }
+        if (best == Integer.MAX_VALUE) {
+            s.x = ox;
+            s.z = oz;
+            s.front = keep;
+            return false;
+        }
+        s.x = bestX;
+        s.z = bestZ;
+        s.front = bestFront;
+        return true;
+    }
+
+    /** The side of the site that looks toward the nearest street (or keep, when there is none). */
+    private String towardRoad(Site s, String keep) {
+        boolean[][] road = roadGrid();
+        int cx = s.x + s.w / 2, cz = s.z + s.d / 2;
+        int best = Integer.MAX_VALUE, bx = cx, bz = cz;
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                if (road[x][z]) {
+                    int d = Math.abs(x - cx) + Math.abs(z - cz);
+                    if (d < best) {
+                        best = d;
+                        bx = x;
+                        bz = z;
+                    }
+                }
+            }
+        }
+        if (best == Integer.MAX_VALUE) {
+            return keep;
+        }
+        int dx = bx - cx, dz = bz - cz;
+        return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? "east" : "west") : (dz > 0 ? "south" : "north");
+    }
+
+    /**
+     * Cells a footpath centre line may use: on the ground, out of water, and (for a 3-wide path)
+     * at least 2 blocks from every site, so the path never covers a building.
+     */
+    private boolean[][] laneFree(int clearance) {
+        boolean[][] free = new boolean[size][size];
+        for (int x = MARGIN; x < size - MARGIN; x++) {
+            for (int z = MARGIN; z < size - MARGIN; z++) {
+                free[x][z] = true;
+            }
+        }
+        for (Site o : sites) {
+            for (int x = o.x - clearance; x < o.x + o.w + clearance; x++) {
+                for (int z = o.z - clearance; z < o.z + o.d + clearance; z++) {
+                    if (x >= 0 && z >= 0 && x < size && z < size) {
+                        free[x][z] = false;
+                    }
+                }
+            }
+        }
+        for (Zone zn : zones) {
+            if ("water".equals(zn.kind)) {
+                for (int x = zn.x; x < zn.x + zn.w; x++) {
+                    for (int z = zn.z; z < zn.z + zn.d; z++) {
+                        if (x >= 0 && z >= 0 && x < size && z < size) {
+                            free[x][z] = false;
+                        }
+                    }
+                }
+            }
+        }
+        return free;
+    }
+
+    /** A footpath from in front of the site to the nearest street; false when none can be laid. */
+    boolean laneFrom(Site s) {
+        int[] f = frontPoint(s);
+        int[] out = switch (s.front) {
+            case "north" -> new int[] { 0, -1 };
+            case "east" -> new int[] { 1, 0 };
+            case "west" -> new int[] { -1, 0 };
+            default -> new int[] { 0, 1 };
+        };
+        boolean[][] road = roadGrid();
+        // A 3-wide path where there is room, else a 1-wide one.
+        for (int width : new int[] { 3, 1 }) {
+            int clearance = width == 3 ? 2 : 0;
+            int[] start = width == 3 ? new int[] { f[0] + out[0], f[1] + out[1] } : f;
+            List<int[]> path = bfs(List.of(start), road, laneFree(clearance));
+            if (path != null) {
+                Road lane = new Road();
+                lane.kind = "path";
+                lane.width = width;
+                lane.points = corners(path);
+                if (lane.points.size() == 1) {
+                    lane.points.add(lane.points.get(0));
+                }
+                roads.add(lane);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Join every separate piece of street to the biggest one with footpaths; how many were joined. */
+    int joinRoadPieces() {
+        int joined = 0;
+        for (int guard = 0; guard < 12; guard++) {
+            boolean[][] road = roadGrid();
+            List<List<int[]>> pieces = pieceCells(road);
+            if (pieces.size() <= 1) {
+                break;
+            }
+            pieces.sort(Comparator.comparingInt((List<int[]> p) -> -p.size()));
+            boolean[][] main = new boolean[size][size];
+            for (int[] c : pieces.get(0)) {
+                main[c[0]][c[1]] = true;
+            }
+            boolean done = false;
+            for (int width : new int[] { 3, 1 }) {
+                boolean[][] free = laneFree(width == 3 ? 2 : 0);
+                List<int[]> path = bfs(pieces.get(1), main, free);
+                if (path != null) {
+                    Road lane = new Road();
+                    lane.kind = "path";
+                    lane.width = width;
+                    lane.points = corners(path);
+                    if (lane.points.size() == 1) {
+                        lane.points.add(lane.points.get(0));
+                    }
+                    roads.add(lane);
+                    joined++;
+                    done = true;
+                    break;
+                }
+            }
+            if (!done) {
+                break;
+            }
+        }
+        return joined;
+    }
+
+    private List<List<int[]>> pieceCells(boolean[][] road) {
+        boolean[][] seen = new boolean[size][size];
+        List<List<int[]>> out = new ArrayList<>();
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                if (road[x][z] && !seen[x][z]) {
+                    List<int[]> cells = new ArrayList<>();
+                    ArrayDeque<int[]> q = new ArrayDeque<>();
+                    q.add(new int[] { x, z });
+                    seen[x][z] = true;
+                    while (!q.isEmpty()) {
+                        int[] c = q.poll();
+                        cells.add(c);
+                        for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                            int nx = c[0] + d[0], nz = c[1] + d[1];
+                            if (nx >= 0 && nz >= 0 && nx < size && nz < size && road[nx][nz] && !seen[nx][nz]) {
+                                seen[nx][nz] = true;
+                                q.add(new int[] { nx, nz });
+                            }
+                        }
+                    }
+                    out.add(cells);
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Shortest 4-way path from any start to a target cell, through free cells (starts and targets
+     * may be anywhere); the cells from start to target, or null.
+     */
+    private List<int[]> bfs(List<int[]> starts, boolean[][] target, boolean[][] free) {
+        int[][] from = new int[size][size];
+        for (int[] row : from) {
+            java.util.Arrays.fill(row, -2);
+        }
+        ArrayDeque<int[]> q = new ArrayDeque<>();
+        for (int[] s : starts) {
+            if (s[0] < 0 || s[1] < 0 || s[0] >= size || s[1] >= size || from[s[0]][s[1]] != -2) {
+                continue;
+            }
+            if (target[s[0]][s[1]] && starts.size() == 1) {
+                return List.of(s);
+            }
+            from[s[0]][s[1]] = -1;
+            q.add(s);
+        }
+        while (!q.isEmpty()) {
+            int[] c = q.poll();
+            for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                int nx = c[0] + d[0], nz = c[1] + d[1];
+                if (nx < 0 || nz < 0 || nx >= size || nz >= size || from[nx][nz] != -2) {
+                    continue;
+                }
+                if (target[nx][nz]) {
+                    from[nx][nz] = c[0] * size + c[1];
+                    List<int[]> path = new ArrayList<>();
+                    int cur = nx * size + nz;
+                    while (cur >= 0) {
+                        int px = cur / size, pz = cur % size;
+                        path.add(0, new int[] { px, pz });
+                        cur = from[px][pz];
+                    }
+                    return path;
+                }
+                if (!free[nx][nz]) {
+                    continue;
+                }
+                from[nx][nz] = c[0] * size + c[1];
+                q.add(new int[] { nx, nz });
+            }
+        }
+        return null;
+    }
+
+    /** A cell path as the points where it turns. */
+    private static List<int[]> corners(List<int[]> path) {
+        List<int[]> out = new ArrayList<>();
+        for (int i = 0; i < path.size(); i++) {
+            if (i == 0 || i == path.size() - 1) {
+                out.add(path.get(i));
+                continue;
+            }
+            int[] a = path.get(i - 1), b = path.get(i), c = path.get(i + 1);
+            if ((b[0] - a[0]) != (c[0] - b[0]) || (b[1] - a[1]) != (c[1] - b[1])) {
+                out.add(b);
+            }
+        }
+        return out;
+    }
+
     // ------------------------------------------------------------------ automatic layout
 
     /**

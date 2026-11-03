@@ -15,6 +15,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -149,25 +150,43 @@ public final class LayoutService {
             tokens[1] += answer.outputTokens();
             if (!answer.ok()) {
                 BUSY.remove(id);
-                ScenarioNet.status(player, "AI 오류: " + answer.error(), id);
+                String error = answer.error() == null ? "" : answer.error();
+                boolean badModel = model != null && error.toLowerCase(java.util.Locale.ROOT).contains("not");
+                ScenarioNet.status(player, "AI 오류: " + error + (badModel ? " (모델 설정의 배치도 칸에 적힌 모델 \"" + model
+                    + "\"을 확인하세요. 비워 두면 AI 공방 모델을 써요.)" : ""), id);
                 return;
             }
             TownLayout layout = null;
             String problems;
+            List<String> fixed = List.of();
             try {
                 layout = TownLayout.fromAnswer(answer.text(), sheet);
+                // What code can fix (a building on a road, a front far from any street...) is fixed here,
+                // keeping the AI's (and the map's) layout; only the rest goes back to the AI.
+                fixed = layout.repair(sheet);
                 problems = problems(layout, sheet);
             } catch (RuntimeException e) {
                 problems = "- the answer is not valid JSON of the required shape: " + e.getMessage();
             }
+            int max = AiBuilderConfig.get().autoRetries;
+            if (problems != null && tries >= max && layout != null) {
+                // Out of tries: drop just the places that still have problems and set them again by code.
+                fixed = new ArrayList<>(fixed);
+                for (TownLayout.Site s : new ArrayList<>(layout.sites)) {
+                    if (problems.contains(s.id + " ") || problems.contains(s.id + "'")) {
+                        layout.sites.remove(s);
+                    }
+                }
+                fixed.addAll(layout.repair(sheet));
+                problems = problems(layout, sheet);
+            }
             if (problems == null) {
                 int unnamed = images.isEmpty() ? -1 : LayoutPrompt.unnamed(answer.text());
                 finish(player, id, layout, (images.isEmpty() ? "AI가 마을을 배치했어요" : "AI가 지도를 따라 배치했어요") + " (토큰 입력 "
-                    + tokens[0] + " / 출력 " + tokens[1] + ")." + (unnamed > 0 ? " 지도에 이름 없는 건물이 " + unnamed
-                    + "채 더 있어요. 필요하면 시트에 장소로 넣어 주세요." : ""));
+                    + tokens[0] + " / 출력 " + tokens[1] + ")." + (fixed.isEmpty() ? "" : " 바로잡은 것: " + String.join(", ", fixed) + ".")
+                    + (unnamed > 0 ? " 지도에 이름 없는 건물이 " + unnamed + "채 더 있어요. 필요하면 시트에 장소로 넣어 주세요." : ""));
                 return;
             }
-            int max = AiBuilderConfig.get().autoRetries;
             if (tries < max) {
                 ScenarioBuilderMod.LOG.info("Layout for {} had problems, asking again ({}/{}): {}", id, tries + 1, max, problems);
                 ScenarioNet.status(player, "배치에 문제가 있어 다시 요청해요 (" + (tries + 1) + "/" + max + ")...", id);
