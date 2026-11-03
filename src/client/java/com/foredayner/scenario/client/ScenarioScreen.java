@@ -240,7 +240,8 @@ public class ScenarioScreen extends Screen {
             addDrawableChild(periodButton);
             // Around the town: a ring of land (open), the same ending in hills with the roads blocked (closed), or nothing.
             String outer = sheet.outer == null ? "open" : sheet.outer;
-            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(right() - 436, y, 80, 18,
+            // On the places column's header row (the top row is full on small windows).
+            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(colX(0) + colWidth() - 84, listTop() - 16, 80, 14,
                 fit("바깥: " + ("closed".equals(outer) ? "닫힘" : "none".equals(outer) ? "없음" : "열림"), 80), b -> {
                     var all = com.foredayner.scenario.sheet.ScenarioSheet.OUTERS;
                     sheet.outer = all.get((Math.max(0, all.indexOf(outer)) + 1) % all.size());
@@ -1107,7 +1108,7 @@ public class ScenarioScreen extends Screen {
             ctx.drawText(this.textRenderer, "아직 시트가 없어요. \"AI로 다시 읽기\"를 누르면 AI가 시나리오를 읽고 만들어요.", l, bodyTop() + 40,
                 WoodUi.INK_SOFT, false);
         } else {
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 454),
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(sheet.title.isBlank() ? name : sheet.title, right() - l - 370),
                 l, bodyTop() + 11, WoodUi.INK, false);
             String line = sheet.era + " · " + sheet.mood + " · " + timeKo(sheet.timeOfDay) + " · " + weatherKo(sheet.weather)
                 + " · 바다 " + sideKo(sheet.terrain.coast) + " · 숲 " + sideKo(sheet.terrain.woods) + " · " + sheet.setting;
