@@ -117,7 +117,7 @@ public final class RefService {
                 return;
             }
             AiImage image = image(id, place.refImage);
-            int size = ScenarioSheet.footprint(place.size);
+            int size = ScenarioSheet.footprint(place);
             String user = String.format(Locale.ROOT, "The site is %d x %d blocks, up to %d storeys. It will be: %s \"%s\" (%s).\n"
                 + "Describe the building in the photo now.", size, size, Math.max(place.floors, 1), place.kind, place.name, sheet.era);
             say(player, place.name + ": AI가 참고 사진을 보는 중이에요...", id);

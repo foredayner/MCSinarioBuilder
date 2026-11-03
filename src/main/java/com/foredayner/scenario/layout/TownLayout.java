@@ -114,6 +114,7 @@ public final class TownLayout {
         }
         var root = JsonParser.parseString(answer.substring(start, end + 1)).getAsJsonObject();
         TownLayout l = new TownLayout();
+        l.size = ScenarioSheet.groundSize(sheet);
         if (root.has("places")) {
             for (var e : root.getAsJsonArray("places")) {
                 var o = e.getAsJsonObject();
@@ -128,7 +129,7 @@ public final class TownLayout {
                 s.z = o.get("z").getAsInt();
                 s.front = o.has("front") ? o.get("front").getAsString().toLowerCase(Locale.ROOT) : "south";
                 s.fromMap = o.has("from_map") && o.get("from_map").getAsBoolean();
-                s.w = s.d = ScenarioSheet.footprint(p.size);
+                s.w = s.d = ScenarioSheet.footprint(p);
                 s.outdoor = p.outdoor;
                 l.sites.add(s);
             }
@@ -221,7 +222,7 @@ public final class TownLayout {
                 s.front = "south";
             }
             ScenarioSheet.Place p = sheet.place(s.id);
-            s.w = s.d = ScenarioSheet.footprint(p.size);
+            s.w = s.d = ScenarioSheet.footprint(p);
             s.outdoor = p.outdoor;
             if (s.x < MARGIN || s.z < MARGIN || s.x + s.w > size - MARGIN || s.z + s.d > size - MARGIN) {
                 problems.add(String.format(Locale.ROOT, "%s (%d,%d size %dx%d) leaves the ground; keep it inside %d..%d",
@@ -368,7 +369,7 @@ public final class TownLayout {
     public boolean addFree(ScenarioSheet.Place place) {
         Site s = new Site();
         s.id = place.id;
-        s.w = s.d = ScenarioSheet.footprint(place.size);
+        s.w = s.d = ScenarioSheet.footprint(place);
         s.outdoor = place.outdoor;
         if (placeFree(s, place, roadSums())) {
             sites.add(s);
@@ -466,7 +467,7 @@ public final class TownLayout {
                 s.front = "south";
             }
             ScenarioSheet.Place p = sheet.place(s.id);
-            s.w = s.d = ScenarioSheet.footprint(p.size);
+            s.w = s.d = ScenarioSheet.footprint(p);
             s.outdoor = p.outdoor;
         }
         for (Zone z : zones) {
@@ -500,7 +501,7 @@ public final class TownLayout {
             if (site(p.id) == null) {
                 Site s = new Site();
                 s.id = p.id;
-                s.w = s.d = ScenarioSheet.footprint(p.size);
+                s.w = s.d = ScenarioSheet.footprint(p);
                 s.outdoor = p.outdoor;
                 s.x = (size - s.w) / 2;
                 s.z = (size - s.d) / 2;
@@ -878,6 +879,9 @@ public final class TownLayout {
      */
     public static TownLayout auto(ScenarioSheet sheet) {
         TownLayout l = new TownLayout();
+        // The ground grows when the lots need it.
+        final int n = ScenarioSheet.groundSize(sheet);
+        l.size = n;
         String coast = sheet.terrain.coast;
         String woods = sheet.terrain.woods;
         // Work in a frame where the coast (if any) is south; turn the result at the end.
@@ -887,23 +891,23 @@ public final class TownLayout {
             case "west" -> 3;
             default -> 0;
         };
-        int south = SIZE;
+        int south = n;
         if (!"none".equals(coast)) {
             Zone sea = new Zone();
             sea.kind = "water";
             sea.x = 0;
-            sea.z = SIZE - 18;
-            sea.w = SIZE;
+            sea.z = n - 18;
+            sea.w = n;
             sea.d = 18;
             l.zones.add(sea);
             Zone beach = new Zone();
             beach.kind = "beach";
             beach.x = 0;
-            beach.z = SIZE - 22;
-            beach.w = SIZE;
+            beach.z = n - 22;
+            beach.w = n;
             beach.d = 4;
             l.zones.add(beach);
-            south = SIZE - 22;
+            south = n - 22;
         }
         int north = 0;
         String woodsLocal = rotateSide(woods, -turns);
@@ -914,12 +918,12 @@ public final class TownLayout {
                 case "north" -> {
                     forest.x = 0;
                     forest.z = 0;
-                    forest.w = SIZE;
+                    forest.w = n;
                     forest.d = 16;
                     north = 16;
                 }
                 case "east" -> {
-                    forest.x = SIZE - 14;
+                    forest.x = n - 14;
                     forest.z = north;
                     forest.w = 14;
                     forest.d = south - north;
@@ -942,10 +946,10 @@ public final class TownLayout {
         for (ScenarioSheet.Place p : sheet.places) {
             (p.outdoor ? outdoor : buildings).add(p);
         }
-        buildings.sort(Comparator.comparingInt((ScenarioSheet.Place p) -> -ScenarioSheet.footprint(p.size)));
+        buildings.sort(Comparator.comparingInt((ScenarioSheet.Place p) -> -ScenarioSheet.footprint(p)));
         // Streets: rows of buildings on both sides, from the coast side inward.
         int west = "west".equals(woodsLocal) ? 16 : MARGIN + 2;
-        int east = "east".equals(woodsLocal) ? SIZE - 16 : SIZE - MARGIN - 2;
+        int east = "east".equals(woodsLocal) ? n - 16 : n - MARGIN - 2;
         int streetZ = Math.min(south - 36, (north + south) / 2 + 12);
         // Modern towns get wider main streets: curb, two lanes, a middle line, two lanes, curb.
         boolean modern = com.foredayner.scenario.sheet.Period.contemporary(sheet.period());
@@ -956,7 +960,7 @@ public final class TownLayout {
         int depthA = 0, depthB = 0;
         java.util.Map<Integer, List<Site>> rows = new java.util.TreeMap<>(); // street * 2 + side -> sites
         for (ScenarioSheet.Place p : buildings) {
-            int f = ScenarioSheet.footprint(p.size);
+            int f = ScenarioSheet.footprint(p);
             boolean toA = cursorA <= cursorB;
             if ((toA ? cursorA : cursorB) + f > east) {
                 toA = !toA;
@@ -1004,7 +1008,7 @@ public final class TownLayout {
                 x = s.x + s.w + gap;
             }
         }
-        int minZ = SIZE;
+        int minZ = n;
         for (Site s : l.sites) {
             minZ = Math.min(minZ, s.z);
         }
@@ -1015,8 +1019,8 @@ public final class TownLayout {
         List<Road> paths = new ArrayList<>();
         List<Site> buildingSites = new ArrayList<>(l.sites);
         for (ScenarioSheet.Place p : outdoor) {
-            int f = ScenarioSheet.footprint(p.size);
-            boolean water = ("dock".equals(p.kind) || "beach".equals(p.kind)) && south < SIZE;
+            int f = ScenarioSheet.footprint(p);
+            boolean water = ("dock".equals(p.kind) || "beach".equals(p.kind)) && south < n;
             Site s = new Site();
             s.id = p.id;
             s.w = s.d = f;
@@ -1065,7 +1069,7 @@ public final class TownLayout {
             Road r = new Road();
             r.width = roadWidth;
             r.points.add(new int[] { Math.max(MARGIN + 1, west - 2), st[0] });
-            r.points.add(new int[] { Math.min(SIZE - MARGIN - 2, east + 1), st[0] });
+            r.points.add(new int[] { Math.min(n - MARGIN - 2, east + 1), st[0] });
             l.roads.add(r);
         }
         if (streets.size() > 1) {

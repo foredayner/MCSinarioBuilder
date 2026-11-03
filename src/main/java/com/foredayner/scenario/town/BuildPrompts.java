@@ -146,6 +146,11 @@ public final class BuildPrompts {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.ROOT, "The building takes most of the %dx%d site (leave 2-3 blocks around it for the yard); it may be"
             + " up to %d blocks high.", size, size, maxHeight(p)));
+        if (ScenarioSheet.named(p)) {
+            sb.append("\nThis is one of the scenario's own buildings, where the investigators play: its site is twice the usual size so that"
+                + " its ROOMS ARE BIG. Every room at least 6 x 6 inside; halls, living rooms and the rooms where scenes happen 8 x 8 or"
+                + " more. Build only the rooms listed (no extra small rooms), give them the space, and use most of the site.");
+        }
         if (p.refDescription != null && !p.refDescription.isBlank()) {
             // The keeper's own picture beats the general card.
             sb.append("\nPHOTO REFERENCE (the keeper's picture of a real building; follow it closely, scaled to the site):\n")

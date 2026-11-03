@@ -368,7 +368,7 @@ public class ScenarioScreen extends Screen {
     /** What the plan shows: {x, z, span}: the whole ground, or a building stage's building with a margin. */
     private static int[] view() {
         var layout = ScenarioClientState.layout();
-        int size = com.foredayner.scenario.layout.TownLayout.SIZE;
+        int size = layout == null ? com.foredayner.scenario.layout.TownLayout.SIZE : layout.size;
         if (layout == null || !layout.building() || layout.sites.isEmpty()) {
             return new int[] { 0, 0, size };
         }
@@ -393,6 +393,9 @@ public class ScenarioScreen extends Screen {
     private String removeAsk = "";
     /** The map toggle sits on the preview, which is drawn after the widgets: drawn again on top. */
     private WoodUi.WoodButton overlayButton;
+    /** The layout on/off toggle, also on the preview. */
+    private WoodUi.WoodButton planButton;
+    private static boolean showPlan = true;
     private int listScroll;
 
     private int entriesTop() {
@@ -502,6 +505,18 @@ public class ScenarioScreen extends Screen {
             overlay.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("참고 지도를 배치도 위에 흐리게 겹쳐 보기")));
             addDrawableChild(overlay);
             overlayButton = overlay;
+        }
+        planButton = null;
+        if (layout != null) {
+            // The layout itself on or off (to look at the map alone).
+            WoodUi.WoodButton plan = new WoodUi.WoodButton(mapX() + (overlayButton == null ? 2 : 48), mapY() + 2, 52, 14,
+                Text.literal(showPlan ? "배치도 ✓" : "배치도"), b -> {
+                    showPlan = !showPlan;
+                    clearAndInit();
+                }, false);
+            plan.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소, 길, 구역을 보이거나 숨기기")));
+            addDrawableChild(plan);
+            planButton = plan;
         }
         if (layout == null || sheet == null) {
             askField = null;
@@ -685,7 +700,7 @@ public class ScenarioScreen extends Screen {
             clearAndInit();
             return true;
         }
-        if (tab == Tab.LAYOUT && overlayButton != null && overlayButton.isMouseOver(mx, my)) {
+        if (tab == Tab.LAYOUT && (overlayButton != null && overlayButton.isMouseOver(mx, my) || planButton != null && planButton.isMouseOver(mx, my))) {
             return super.mouseClicked(mx, my, button);
         }
         if (tab == Tab.LAYOUT && button == 0 && mx >= mapX() && my >= mapY() && mx < mapX() + mapSize() && my < mapY() + mapSize()) {
@@ -711,7 +726,7 @@ public class ScenarioScreen extends Screen {
             var layout = ScenarioClientState.layout();
             var s = layout == null ? null : layout.site(picked);
             if (s != null) {
-                int size = com.foredayner.scenario.layout.TownLayout.SIZE;
+                int size = layout.size;
                 int nx = Math.max(0, Math.min(size - s.w, (int) Math.floor((mx - mapX()) / scale()) - dragDx));
                 int nz = Math.max(0, Math.min(size - s.d, (int) Math.floor((my - mapY()) / scale()) - dragDz));
                 if (nx != s.x || nz != s.z) {
@@ -781,10 +796,10 @@ public class ScenarioScreen extends Screen {
         float k = scale();
         ctx.fill(x0, y0, x0 + size, y0 + size, GROUND);
         ctx.enableScissor(x0, y0, x0 + size, y0 + size);
-        for (var z : layout.zones) {
+        for (var z : showPlan ? layout.zones : List.<com.foredayner.scenario.layout.TownLayout.Zone>of()) {
             ctx.fill(toScreenX(z.x), toScreenZ(z.z), toScreenX(z.x + z.w), toScreenZ(z.z + z.d), zoneColor(z.kind));
         }
-        for (var r : layout.roads) {
+        for (var r : showPlan ? layout.roads : List.<com.foredayner.scenario.layout.TownLayout.Road>of()) {
             int color = "path".equals(r.kind) ? 0xFFA3845A : 0xFF7E776C;
             int half = Math.max(1, r.width) / 2;
             for (int i = 0; i + 1 < r.points.size(); i++) {
@@ -809,7 +824,7 @@ public class ScenarioScreen extends Screen {
         com.foredayner.scenario.layout.TownLayout.Site hover = siteAt(mouseX, mouseY);
         boolean mapUsed = sheet.mapImage != null && !sheet.mapImage.isBlank() && layout.sites.stream().anyMatch(t -> t.fromMap);
         boolean anyChosen = false;
-        for (int n = 0; n < layout.sites.size(); n++) {
+        for (int n = 0; showPlan && n < layout.sites.size(); n++) {
             var s = layout.sites.get(n);
             if (layout.building() && s.level != floorShown) {
                 continue;
@@ -846,7 +861,7 @@ public class ScenarioScreen extends Screen {
                 m.pop();
             }
         }
-        if (layout.building()) {
+        if (layout.building() && showPlan) {
             // Doors (light) and stairs (an arrow of dark steps) on the floor shown.
             for (var d : layout.doors) {
                 if (d.level == floorShown) {
@@ -918,8 +933,8 @@ public class ScenarioScreen extends Screen {
             boolean world = build != null && build.placed;
             int cx = site == null ? 0 : site.x + (world ? build.originX : 0);
             int cz = site == null ? 0 : site.z + site.d - 1 + (world ? build.originZ : 0);
-            String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size) + "x"
-                + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace.size)
+            String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace) + "x"
+                + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace)
                 : (world ? "좌하단 월드 (" : "좌하단 (") + cx + ", " + cz + ") · " + site.w + "x" + site.d;
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 44, WoodUi.INK_SOFT, false);
             ty += 55;
@@ -1075,11 +1090,12 @@ public class ScenarioScreen extends Screen {
                 WoodUi.INK_SOFT, false);
             return;
         }
-        int half = com.foredayner.scenario.layout.TownLayout.SIZE / 2;
+        int ground = ScenarioClientState.layout() == null ? com.foredayner.scenario.layout.TownLayout.SIZE : ScenarioClientState.layout().size;
+        int half = ground / 2;
         ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("한가운데 (" + (build.originX + half) + ", " + (build.originY - 1) + ", "
             + (build.originZ + half) + ")", r - l - 124), l, y + 1, WoodUi.INK, false);
         ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("범위 (" + build.originX + ", " + build.originZ + ") ~ ("
-            + (build.originX + com.foredayner.scenario.layout.TownLayout.SIZE - 1) + ", " + (build.originZ + com.foredayner.scenario.layout.TownLayout.SIZE - 1) + ")", r - l - 124), l, y + 12, WoodUi.INK_SOFT, false);
+            + (build.originX + ground - 1) + ", " + (build.originZ + ground - 1) + ")", r - l - 124), l, y + 12, WoodUi.INK_SOFT, false);
         int[] c = build.counts();
         String progress = "완료 " + c[0] + "/" + c[2] + (c[1] > 0 ? " · 실패 " + c[1] : "") + " · 토큰 " + build.tokensIn + "/" + build.tokensOut;
         ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(progress, r - l - 258), l + 258, y + 31, WoodUi.INK_SOFT, false);
@@ -1150,7 +1166,7 @@ public class ScenarioScreen extends Screen {
     }
 
     private static String placeDetail(com.foredayner.scenario.sheet.ScenarioSheet.Place p) {
-        StringBuilder s = new StringBuilder(p.name + " (" + p.kind + ", " + p.size + " " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(p.size)
+        StringBuilder s = new StringBuilder(p.name + " (" + p.kind + ", " + p.size + " " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(p)
             + "칸, " + p.floors + "층" + (p.basement ? " + 지하" : "") + (p.outdoor ? ", 야외" : ", " + conditionKo(p.condition)) + ")");
         if (!p.rooms.isEmpty()) {
             s.append("\n방: ");
@@ -1273,6 +1289,9 @@ public class ScenarioScreen extends Screen {
             renderLayout(ctx, mouseX, mouseY);
             if (overlayButton != null) {
                 overlayButton.render(ctx, mouseX, mouseY, delta);
+            }
+            if (planButton != null) {
+                planButton.render(ctx, mouseX, mouseY, delta);
             }
             return;
         }

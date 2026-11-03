@@ -134,7 +134,8 @@ public final class BuildService {
                 return;
             }
             try {
-                placeAt(state, player.getServerWorld(), player.getBlockPos());
+                TownLayout layout = LayoutService.load(id);
+                placeAt(state, player.getServerWorld(), player.getBlockPos(), layout == null ? TownLayout.SIZE : layout.size);
             } catch (IllegalStateException e) {
                 say(player, "여기에는 지을 땅이 없어요 (너무 낮거나 높아요).", id);
                 return;
@@ -149,14 +150,19 @@ public final class BuildService {
 
     /** The town's middle at {@code at}, its ground at the surface there. */
     public static void placeAt(BuildState state, ServerWorld world, BlockPos at) {
+        placeAt(state, world, at, TownLayout.SIZE);
+    }
+
+    /** size: the side of the town's ground (it grows when the lots need it). */
+    public static void placeAt(BuildState state, ServerWorld world, BlockPos at, int size) {
         world.getChunk(at.getX() >> 4, at.getZ() >> 4); // the height is only known for a loaded chunk
         int y = world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
         if (y < world.getBottomY() + 2 || y + GroundWork.CLEAR > world.getTopYInclusive()) {
             throw new IllegalStateException("no ground to build on here (y " + y + ")");
         }
         state.placed = true;
-        state.originX = at.getX() - TownLayout.SIZE / 2;
-        state.originZ = at.getZ() - TownLayout.SIZE / 2;
+        state.originX = at.getX() - size / 2;
+        state.originZ = at.getZ() - size / 2;
         state.originY = y;
         state.dimension = world.getRegistryKey().getValue().toString();
         state.message = "";
@@ -208,6 +214,10 @@ public final class BuildService {
         final Map<String, AiBuildApi.Design> ready = new LinkedHashMap<>();
         /** Designs that came back well, by place (identical houses reuse them). */
         final Map<String, AiBuildApi.Design> designs = new HashMap<>();
+        /** A note for a place's next design (its last one was too small for its lot). */
+        final Map<String, String> notes = new HashMap<>();
+        /** Places designed again once already because their design was too small. */
+        final Set<String> redone = new HashSet<>();
         /** Places waiting for the design of the place they are the same as. */
         final Deque<String> later = new ArrayDeque<>();
         final Map<String, UUID> placing = new HashMap<>();
@@ -313,9 +323,9 @@ public final class BuildService {
                     int low = Math.max(job.world.getBottomY(), job.origin.getY() - GroundWork.FILL - (outer ? 16 : 0));
                     int high = Math.min(job.world.getTopYInclusive() - job.origin.getY(), GroundWork.CLEAR - 1 + (outer ? 24 : 0));
                     job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX() - ring, low, job.origin.getZ() - ring),
-                        job.origin.add(TownLayout.SIZE - 1 + ring, high, TownLayout.SIZE - 1 + ring));
+                        job.origin.add(job.layout.size - 1 + ring, high, job.layout.size - 1 + ring));
                 }
-                job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1, job.sheet.period());
+                job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, job.layout.size - 1, job.layout.size - 1, job.sheet.period());
                 if (job.layout.building()) {
                     job.shell = new ShellWork(job.world, job.origin, job.layout, job.sheet.period());
                 }
@@ -338,7 +348,7 @@ public final class BuildService {
                 }
             }
             state.places.keySet().removeIf(k -> job.sheet.place(k) == null);
-            begin(job, -ring, -ring, TownLayout.SIZE - 1 + ring, TownLayout.SIZE - 1 + ring);
+            begin(job, -ring, -ring, job.layout.size - 1 + ring, job.layout.size - 1 + ring);
             say(player, "짓기 시작했어요: 장소 " + job.waiting.size() + "곳.", id);
         } catch (IOException e) {
             say(player, "시작하지 못했어요: " + e.getMessage(), id);
@@ -443,7 +453,7 @@ public final class BuildService {
     }
 
     private static int[] bounds(List<int[]> rects) {
-        int[] b = { TownLayout.SIZE, TownLayout.SIZE, -1, -1 };
+        int[] b = { Integer.MAX_VALUE, Integer.MAX_VALUE, -1, -1 };
         for (int[] r : rects) {
             b[0] = Math.min(b[0], r[0]);
             b[1] = Math.min(b[1], r[1]);
@@ -513,7 +523,7 @@ public final class BuildService {
             }
             job.restore = snapshot;
             state.status = "undoing";
-            begin(job, 0, 0, TownLayout.SIZE - 1, TownLayout.SIZE - 1);
+            begin(job, 0, 0, job.layout.size - 1, job.layout.size - 1);
             say(player, "원래 땅으로 되돌리는 중이에요.", id);
         } catch (IOException e) {
             say(player, "되돌리지 못했어요: " + e.getMessage(), id);
@@ -810,7 +820,8 @@ public final class BuildService {
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
-                BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p), BuildPrompts.extra(job.sheet, p, s.w), model);
+                BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p),
+                BuildPrompts.extra(job.sheet, p, s.w) + job.notes.getOrDefault(placeId, ""), model);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }
         future.whenComplete((design, error) -> job.world.getServer().execute(() -> {
@@ -838,10 +849,37 @@ public final class BuildService {
                 }
                 return;
             }
+            if (!job.layout.building() && !s.outdoor && ScenarioSheet.named(p) && !job.redone.contains(placeId)) {
+                // A scenario building whose design leaves most of its big lot empty: once more, bigger.
+                int[] used = usedSize(design.plan());
+                if (used[0] < s.w * 0.6 || used[1] < s.d * 0.6) {
+                    job.redone.add(placeId);
+                    job.notes.put(placeId, String.format(java.util.Locale.ROOT, "\nYOUR LAST DESIGN WAS ONLY %d x %d ON THIS %d x %d SITE:"
+                        + " make the building and its rooms bigger and use most of the site.", used[0], used[1], s.w, s.d));
+                    bp.state = "waiting";
+                    job.waiting.addFirst(placeId);
+                    return;
+                }
+            }
             bp.state = "placing";
             job.designs.put(placeId, design);
             job.ready.put(placeId, design);
         }));
+    }
+
+    /** Width and depth of the blocks a design places (x and z extent). */
+    static int[] usedSize(com.example.ai.build.BuildPlan plan) {
+        int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+        for (com.example.ai.build.BuildPlan.Op op : plan.ops) {
+            if (op.isAir()) {
+                continue;
+            }
+            minX = Math.min(minX, Math.min(op.x1, op.x2));
+            maxX = Math.max(maxX, Math.max(op.x1, op.x2));
+            minZ = Math.min(minZ, Math.min(op.z1, op.z2));
+            maxZ = Math.max(maxZ, Math.max(op.z1, op.z2));
+        }
+        return minX > maxX ? new int[] { 0, 0 } : new int[] { maxX - minX + 1, maxZ - minZ + 1 };
     }
 
     private static String short80(String s) {

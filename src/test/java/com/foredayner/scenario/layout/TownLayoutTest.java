@@ -95,7 +95,11 @@ class TownLayoutTest {
         String answer = "Here: ```json\n" + LayoutPrompt.answerJson(TownLayout.auto(sheet)) + "\n```";
         TownLayout layout = TownLayout.fromAnswer(answer, sheet);
         assertTrue(layout.check(sheet).isEmpty(), "the draft read back is still fine");
-        assertEquals(ScenarioSheet.footprint(sheet.place("mansion").size), layout.site("mansion").w);
+        assertEquals(ScenarioSheet.footprint(sheet.place("mansion")), layout.site("mansion").w);
+        assertEquals(Math.min(60, 2 * ScenarioSheet.footprint(sheet.place("mansion").size)), layout.site("mansion").w,
+            "the scenario's own buildings get lots twice as wide");
+        assertEquals(ScenarioSheet.groundSize(sheet), layout.size, "the ground grows with the lots");
+        assertTrue(layout.size >= 160 && layout.size <= 320);
         assertThrows(IllegalArgumentException.class, () -> TownLayout.fromAnswer("{\"places\":[{\"id\":\"castle\",\"x\":1,\"z\":1}]}", sheet));
     }
 

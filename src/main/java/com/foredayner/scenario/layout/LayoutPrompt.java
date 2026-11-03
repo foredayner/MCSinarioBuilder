@@ -10,7 +10,7 @@ public final class LayoutPrompt {
     }
 
     static final String SYSTEM = """
-        You lay out a Call of Cthulhu town on a Minecraft ground of 160 x 160 blocks (1 block = 1 metre).
+        You lay out a Call of Cthulhu town on a square Minecraft ground (its size is given below; 1 block = 1 metre).
         x grows to the east, z grows to the south, (0,0) is the north-west corner.
         You get the places (with their square footprint), how they are linked, the terrain, and a DRAFT layout
         made by code that already passes every check. Improve the draft so the town fits the story, then answer
@@ -23,7 +23,7 @@ public final class LayoutPrompt {
         }
 
         Rules (checked by code; a layout that breaks one is sent back):
-        - Every place gets exactly one entry. A place covers x..x+size-1 and z..z+size-1, inside 2..158.
+        - Every place gets exactly one entry. A place covers x..x+size-1 and z..z+size-1, inside the ground with a 2-block margin.
         - Places stay at least 2 blocks apart and never stand on a road, in water or in woods (a dock may
           reach into the water).
         - "front" is the side with the entrance. The block just outside the middle of the front side must be
@@ -44,7 +44,7 @@ public final class LayoutPrompt {
     static String places(ScenarioSheet sheet) {
         StringBuilder sb = new StringBuilder();
         for (ScenarioSheet.Place p : sheet.places) {
-            int f = ScenarioSheet.footprint(p.size);
+            int f = ScenarioSheet.footprint(p);
             sb.append("- ").append(p.id).append(" \"").append(p.name).append("\" ").append(p.kind).append(", ")
                 .append(f).append('x').append(f).append(p.outdoor ? ", outdoor" : "").append(p.filler ? ", filler house" : "");
             if (!p.notes.isBlank()) {
@@ -69,8 +69,8 @@ public final class LayoutPrompt {
         A MAP of the town is attached (a picture drawn by the keeper). Follow the map, not the draft:
         - First say what it shows, as "map_kind": "town" (buildings seen from above), "outdoor" (paths, woods, water,
           landmarks; few or no buildings) or "indoor" (the rooms of one building: a floor plan).
-        - Stretch the picture over the whole ground: its left edge is x=0, its right edge x=160, its top z=0 and its
-          bottom z=160 (the top of the picture is north).
+        - Stretch the picture over the whole ground: its left edge is x=0, its right edge x=GROUND, its top z=0 and its
+          bottom z=GROUND (the top of the picture is north).
         - Every place whose name (or a clearly matching name) is written on the map goes where the map shows it: put
           the middle of its square on that spot and mark it "from_map": true. Its front faces the nearest road.
           Do not move a map place away from its spot to reach a road: code lays a footpath from its front to the
@@ -96,8 +96,9 @@ public final class LayoutPrompt {
     }
 
     public static AiPrompt layout(ScenarioSheet sheet, TownLayout draft, boolean map) {
-        return new AiPrompt(SYSTEM, "PLACES:\n" + places(sheet) + "\n\nDRAFT LAYOUT:\n" + answerJson(draft)
-            + (map ? "\n\n" + MAP : "") + "\n\nAnswer with the JSON object now.");
+        int n = ScenarioSheet.groundSize(sheet);
+        return new AiPrompt(SYSTEM, "GROUND: " + n + " x " + n + " blocks.\n\nPLACES:\n" + places(sheet) + "\n\nDRAFT LAYOUT:\n" + answerJson(draft)
+            + (map ? "\n\n" + MAP.replace("GROUND", String.valueOf(n)) : "") + "\n\nAnswer with the JSON object now.");
     }
 
     /** Change a layout as the keeper asks. */
@@ -106,7 +107,8 @@ public final class LayoutPrompt {
     }
 
     public static AiPrompt revise(ScenarioSheet sheet, TownLayout current, String instruction, boolean map) {
-        return new AiPrompt(SYSTEM, "PLACES:\n" + places(sheet) + "\n\nCURRENT LAYOUT:\n" + answerJson(current)
+        int n = ScenarioSheet.groundSize(sheet);
+        return new AiPrompt(SYSTEM, "GROUND: " + n + " x " + n + " blocks.\n\nPLACES:\n" + places(sheet) + "\n\nCURRENT LAYOUT:\n" + answerJson(current)
             + (map ? "\n\nThe keeper's MAP of the town is attached: keep the layout true to it." : "")
             + "\n\nTHE KEEPER ASKS: " + instruction + "\n\nAnswer with the whole changed JSON object now.");
     }

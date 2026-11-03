@@ -494,6 +494,35 @@ public final class ScenarioSheet {
     }
 
     /** Block footprint of a size code. */
+    /**
+     * A place's square lot. The scenario's own buildings (not the filler houses, the map's houses,
+     * outdoor places or ruins) get lots twice as wide, so their rooms are big enough to play in.
+     */
+    public static int footprint(Place p) {
+        int base = footprint(p.size);
+        return named(p) ? Math.min(60, base * 2) : base;
+    }
+
+    /** One of the scenario's own buildings (its lot and rooms are doubled). */
+    public static boolean named(Place p) {
+        return !p.filler && !p.mapFiller && !p.outdoor && !"ruins".equals(p.kind);
+    }
+
+    /** The side of the town's ground: 160, or bigger when the lots need it (up to 320). */
+    public static int groundSize(ScenarioSheet sheet) {
+        long area = 0;
+        for (Place p : sheet.places) {
+            int f = footprint(p) + 8; // with the space around it and its share of the streets
+            area += (long) f * f;
+        }
+        int side = (int) Math.ceil(Math.sqrt(area * 1.6));
+        int size = 160;
+        while (size < side && size < 320) {
+            size += 40;
+        }
+        return size;
+    }
+
     public static int footprint(String size) {
         return switch (size) {
             case "S" -> 11;
