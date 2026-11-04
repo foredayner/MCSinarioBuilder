@@ -67,6 +67,38 @@ class TownLayoutTest {
     }
 
     @Test
+    void tidyingFixesStreetsAroundBuildingsWithoutMovingThem() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        TownLayout layout = TownLayout.auto(sheet);
+        assertTrue(layout.tidy(sheet).isEmpty(), "a good layout has nothing to tidy");
+        assertTrue(layout.check(sheet).isEmpty());
+        // The keeper drags a building into the middle of a street.
+        TownLayout.Road main = layout.roads.get(0);
+        int[] a = main.points.get(0), b = main.points.get(main.points.size() - 1);
+        TownLayout.Site s = null;
+        for (TownLayout.Site o : layout.sites) {
+            if (!o.outdoor) {
+                s = o;
+                break;
+            }
+        }
+        s.x = (a[0] + b[0]) / 2 - s.w / 2;
+        s.z = (a[1] + b[1]) / 2 - s.d / 2;
+        int x = s.x, z = s.z;
+        String front = s.front;
+        TownLayout.Site moved = s;
+        assertTrue(layout.check(sheet).stream().anyMatch(p -> p.contains(moved.id) && p.contains("street")));
+        List<String> notes = layout.tidy(sheet);
+        assertFalse(notes.isEmpty());
+        assertEquals(x, s.x);
+        assertEquals(z, s.z);
+        assertEquals(front, s.front, "the building is not turned either");
+        List<String> problems = layout.check(sheet);
+        assertTrue(problems.stream().noneMatch(p -> p.contains("over a street") || p.contains("separate pieces")
+            || p.contains("stands in the")), notes + " -> " + problems);
+    }
+
+    @Test
     void theAutomaticLayoutPassesTheChecksForEveryCoastAndWoods() throws Exception {
         for (ScenarioSheet sheet : List.of(greymouth(), crowded())) {
             for (String coast : ScenarioSheet.SIDES) {

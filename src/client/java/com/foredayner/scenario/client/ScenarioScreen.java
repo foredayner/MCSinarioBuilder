@@ -841,16 +841,22 @@ public class ScenarioScreen extends Screen {
                 clearAndInit();
             }, false));
         }
-        askField = new TextFieldWidget(this.textRenderer, px + 1, bottom() - 42, pw - 52, 14, Text.literal("요청"));
-        askField.setMaxLength(300);
-        askField.setPlaceholder(Text.literal("AI에게 배치 고쳐 달라고 하기"));
-        addDrawableChild(askField);
-        WoodUi.WoodButton ask = new WoodUi.WoodButton(right() - 60, bottom() - 44, 48, 18, Text.literal("요청"), b -> {
-            ScenarioClientState.reviseLayout(askField.getText());
-            askField.setText("");
+        askField = null;
+        // Tidy: streets, footpaths, water and woods round the buildings, by code; the buildings stay where they are.
+        WoodUi.WoodButton tidy = new WoodUi.WoodButton(px + 1, bottom() - 44, pw - 1, 18, Text.literal("정리"), b -> {
+            java.util.List<String> notes = layout.tidy(sheet);
+            ScenarioClientState.saveLayout();
+            if (notes.isEmpty()) {
+                ScenarioClientState.log("정리: 고칠 것이 없어요");
+            }
+            for (String note : notes) {
+                ScenarioClientState.log("정리: " + note);
+            }
+            clearAndInit();
         }, false);
-        ask.active = !tooMany;
-        addDrawableChild(ask);
+        tidy.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+            "건물은 그대로 두고 나머지를 정리해요: 건물 밑을 지나는 길을 끊고, 길에서 먼 건물에 오솔길을 내고, 떨어진 길을 잇고, 건물 자리의 물·숲을 비워요. 겹친 건물은 로그로 알려 줘요.")));
+        addDrawableChild(tidy);
     }
 
     private int toScreenX(int x) {
