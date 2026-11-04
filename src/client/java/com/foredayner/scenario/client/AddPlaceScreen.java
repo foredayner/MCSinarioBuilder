@@ -26,6 +26,7 @@ public class AddPlaceScreen extends Screen {
     private String size = "M";
     private String kind = "named";
     private int level = 0;
+    private int cellars = 0;
     private String problem = "";
 
     public AddPlaceScreen(Screen parent) {
@@ -80,6 +81,13 @@ public class AddPlaceScreen extends Screen {
                 kind = KINDS.get((KINDS.indexOf(kind) + 1) % KINDS.size());
                 clearAndInit();
             }, false));
+            if (!"outdoor".equals(kind)) {
+                addDrawableChild(new WoodUi.WoodButton(x + 202, y, 62, 18, Text.literal(cellars == 0 ? "지하 없음" : "지하 " + cellars + "층"),
+                    b -> {
+                        cellars = (cellars + 1) % (ScenarioSheet.MAX_CELLARS + 1);
+                        clearAndInit();
+                    }, false));
+            }
         }
         y += 24;
         notesField = new TextFieldWidget(this.textRenderer, x + 44, y, w - 44, 16, Text.literal("메모"));
@@ -101,6 +109,10 @@ public class AddPlaceScreen extends Screen {
         if (p == null) {
             problem = "이름을 적어 주세요.";
             return;
+        }
+        if (!p.outdoor && !sheet.building()) {
+            p.cellars = cellars;
+            p.basement = cellars > 0;
         }
         sheet.places.add(p);
         ScenarioClientState.saveSheet();

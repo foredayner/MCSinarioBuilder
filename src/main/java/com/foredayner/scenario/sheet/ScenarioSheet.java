@@ -20,7 +20,10 @@ public final class ScenarioSheet {
     public static final List<String> SIZES = List.of("S", "M", "L", "XL");
     public static final List<String> CLUE_FORMS = List.of("book", "note", "map", "item");
     public static final List<String> SIDES = List.of("none", "north", "east", "south", "west");
-    public static final List<String> LINKS = List.of("road", "path", "secret");
+    /** tunnel: a passage under the ground; secret: one hidden behind a false wall. */
+    public static final List<String> LINKS = List.of("road", "path", "tunnel", "secret");
+    /** The most cellar floors under a building. */
+    public static final int MAX_CELLARS = 2;
     /** How a place looks after: kept, worn, abandoned, sinister. */
     public static final List<String> CONDITIONS = List.of("kept", "worn", "abandoned", "sinister");
     /** At most this many places fit a 160x160 town with room for streets. */
@@ -73,6 +76,8 @@ public final class ScenarioSheet {
         public String size = "M";
         public int floors = 1;
         public boolean basement;
+        /** Cellar floors dug under the building (0-2); basement = cellars > 0. */
+        public int cellars;
         public List<Room> rooms = new ArrayList<>();
         /** Which scenes happen here (short). */
         public List<String> scenes = new ArrayList<>();
@@ -279,6 +284,12 @@ public final class ScenarioSheet {
                 p.size = "M";
             }
             p.floors = Math.max(1, Math.min(4, p.floors));
+            // A basement is one cellar floor unless more are asked; none under open ground or on a building stage.
+            p.cellars = Math.max(p.basement ? 1 : 0, Math.min(MAX_CELLARS, p.cellars));
+            if (p.outdoor || building()) {
+                p.cellars = 0;
+            }
+            p.basement = p.cellars > 0;
             p.condition = CONDITIONS.contains(lower(p.condition)) ? lower(p.condition) : "kept";
             // Places under the ground cannot be built as buildings: the town shows their entrance.
             String look = (p.kind + " " + p.name + " " + p.id).toLowerCase(Locale.ROOT);
@@ -538,6 +549,18 @@ public final class ScenarioSheet {
             p.filler = "house".equals(kind);
         }
         return p;
+    }
+
+    /** The passages under the ground (tunnel or secret) between two different places that are in the sheet. */
+    public List<Link> underground() {
+        List<Link> out = new ArrayList<>();
+        for (Link l : links == null ? List.<Link>of() : links) {
+            if (("tunnel".equals(l.kind) || "secret".equals(l.kind)) && place(l.from) != null && place(l.to) != null
+                && !l.from.equals(l.to)) {
+                out.add(l);
+            }
+        }
+        return out;
     }
 
     public static boolean named(Place p) {

@@ -54,7 +54,8 @@ public final class LayoutPrompt {
         }
         sb.append("\nLINKS:\n");
         for (ScenarioSheet.Link l : sheet.links) {
-            sb.append("- ").append(l.from).append(" -> ").append(l.to).append(" (").append(l.kind).append(")\n");
+            sb.append("- ").append(l.from).append(" -> ").append(l.to).append(" (").append(l.kind)
+                .append("tunnel".equals(l.kind) || "secret".equals(l.kind) ? ", under the ground: no road for it" : "").append(")\n");
         }
         sb.append("\nTERRAIN: coast ").append(sheet.terrain.coast).append(", woods ").append(sheet.terrain.woods);
         if (!sheet.terrain.notes.isBlank()) {

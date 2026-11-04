@@ -47,6 +47,71 @@ public class ScenarioGameTests implements FabricGameTest {
         }
     }
 
+    /** A cellar under a tower and a secret tunnel to a shed's landing: dug, lit, with a false wall and a way down. */
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void cellarsAndTunnelsAreDug(TestContext context) {
+        var sheet = new com.foredayner.scenario.sheet.ScenarioSheet();
+        var tower = sheet.newPlace("탑", "S", "named", 0, "");
+        tower.cellars = 1;
+        sheet.places.add(tower);
+        sheet.places.add(sheet.newPlace("헛간", "S", "named", 0, ""));
+        var link = new com.foredayner.scenario.sheet.ScenarioSheet.Link();
+        link.from = "탑";
+        link.to = "헛간";
+        link.kind = "secret";
+        sheet.links.add(link);
+        sheet.normalize();
+        var layout = new com.foredayner.scenario.layout.TownLayout();
+        layout.size = 160;
+        int x = 0;
+        for (var p : sheet.places) {
+            var s = new com.foredayner.scenario.layout.TownLayout.Site();
+            s.id = p.id;
+            s.w = s.d = com.foredayner.scenario.sheet.ScenarioSheet.footprint(p);
+            s.x = x;
+            s.z = 0;
+            x += s.w + 8;
+            layout.sites.add(s);
+        }
+        var world = context.getWorld();
+        // High in the air, so it is deep enough whatever the test world's ground is.
+        var origin = context.getAbsolutePos(new net.minecraft.util.math.BlockPos(0, 40, 0));
+        var work = new com.foredayner.scenario.town.UndergroundWork(world, origin, layout, sheet);
+        for (int i = 0; i < 10000 && !work.done(); i++) {
+            work.step(5000);
+        }
+        check(work.done() && work.notes().isEmpty(), "dug without trouble: " + work.notes());
+        work.hatches();
+        int y0 = origin.getY();
+        var cellars = com.foredayner.scenario.layout.Underground.cellars(layout, sheet);
+        var c = cellars.get(0);
+        java.util.function.BiFunction<int[], Integer, net.minecraft.block.BlockState> at = (xz, y) ->
+            world.getBlockState(new net.minecraft.util.math.BlockPos(origin.getX() + xz[0], y, origin.getZ() + xz[1]));
+        int[] mid = c.middle();
+        check(at.apply(mid, y0 - 3).isAir(), "the cellar is hollow");
+        check(!at.apply(new int[] { c.x1(), mid[1] }, y0 - 3).isAir(), "with walls");
+        check(at.apply(mid, y0 - 2).isOf(net.minecraft.block.Blocks.LANTERN) || at.apply(mid, y0 - 2).isOf(net.minecraft.block.Blocks.SOUL_LANTERN),
+            "and a light");
+        var t = com.foredayner.scenario.layout.Underground.tunnels(layout, sheet).get(0);
+        long door = t.doorways().iterator().next();
+        var fake = at.apply(new int[] { com.foredayner.scenario.layout.Underground.keyX(door), com.foredayner.scenario.layout.Underground.keyZ(door) },
+            y0 - 4);
+        check(fake.isOf(net.minecraft.block.Blocks.CRACKED_STONE_BRICKS) || fake.isOf(net.minecraft.block.Blocks.MOSSY_COBBLESTONE)
+            || fake.isOf(net.minecraft.block.Blocks.ANDESITE), "a secret tunnel ends in a false wall, got " + fake);
+        long inside = t.inside().iterator().next();
+        check(at.apply(new int[] { com.foredayner.scenario.layout.Underground.keyX(inside), com.foredayner.scenario.layout.Underground.keyZ(inside) },
+            y0 - 4).isAir(), "the tunnel is open inside");
+        boolean ladder = false, trapdoor = false;
+        for (int lx = c.x1() + 1; lx < c.x2(); lx++) {
+            for (int lz = c.z1() + 1; lz < c.z2(); lz++) {
+                ladder |= at.apply(new int[] { lx, lz }, y0 - 3).isOf(net.minecraft.block.Blocks.LADDER);
+                trapdoor |= at.apply(new int[] { lx, lz }, y0 - 1).isOf(net.minecraft.block.Blocks.SPRUCE_TRAPDOOR);
+            }
+        }
+        check(ladder && trapdoor, "a trapdoor and a ladder lead down");
+        context.complete();
+    }
+
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void sheetsAreCheckedAndSaved(TestContext context) throws Exception {
         Path root = Files.createTempDirectory("scenario_sheet_test");

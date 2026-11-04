@@ -218,6 +218,9 @@ public final class BuildService {
         BandWork band;
         /** Building stage: the building's walls, floors, doors, stairs and roof (after the ground), or null. */
         ShellWork shell;
+        /** Cellars and tunnels under the town (after the ground), or null; their ways down once the buildings stand. */
+        UndergroundWork under;
+        boolean hatched;
         TownSnapshot capture;
         TownSnapshot restore;
         final Deque<Clear> clears = new ArrayDeque<>();
@@ -252,6 +255,7 @@ public final class BuildService {
         boolean finished() {
             return capture == null && restore == null && clears.isEmpty() && (ground == null || ground.done())
                 && (band == null || band.done()) && (shell == null || shell.done()) && waiting.isEmpty()
+                && (under == null || under.done() && (hatched || cancelled))
                 && later.isEmpty() && designing == 0 && placing.isEmpty() && (ready.isEmpty() || cancelled);
         }
     }
@@ -351,6 +355,9 @@ public final class BuildService {
                     }
                     job.band = new BandWork(job.world, job.origin, job.plan, new OuterBand(job.plan, "closed".equals(job.sheet.outer)),
                         job.sheet.period(), keep);
+                }
+                if (!job.layout.building() && com.foredayner.scenario.layout.Underground.any(job.layout, job.sheet)) {
+                    job.under = new UndergroundWork(job.world, job.origin, job.layout, job.sheet);
                 }
                 state.ground = "working";
                 state.groundPercent = 0;
@@ -508,6 +515,7 @@ public final class BuildService {
         }
         job.ready.clear();
         job.band = null; // the land around stays as far as it got
+        job.under = null;
         if (job.ground != null && !job.ground.done() || job.shell != null && !job.shell.done()) {
             job.ground = null;
             job.shell = null;
@@ -653,6 +661,7 @@ public final class BuildService {
                 job.ground = null;
                 job.band = null;
                 job.shell = null;
+                job.under = null;
                 job.clears.clear();
             }
             if (job.finished()) {
@@ -711,6 +720,16 @@ public final class BuildService {
                     job.dirty = true;
                 }
             }
+            if (job.under != null && !job.under.done() && !job.cancelled) {
+                // Cellars and tunnels, while the buildings go up (they are all below the ground).
+                job.under.step(columnsPerTick * 16);
+                if (job.under.done()) {
+                    for (String note : job.under.notes()) {
+                        message(job, note);
+                    }
+                    job.dirty = true;
+                }
+            }
             if (job.band != null && !job.band.done() && !job.cancelled) {
                 // The land around the town, while the buildings go up.
                 job.band.step(columnsPerTick);
@@ -731,6 +750,13 @@ public final class BuildService {
                 job.ready.remove(e.getKey());
                 place(job, e.getKey(), e.getValue());
             }
+        }
+        if (job.under != null && job.under.done() && !job.hatched && !job.cancelled && job.waiting.isEmpty() && job.later.isEmpty()
+            && job.designing == 0 && job.placing.isEmpty() && job.ready.isEmpty()) {
+            // The buildings stand: each cellar's trapdoor and ladder where there is room to stand.
+            job.under.hatches();
+            job.hatched = true;
+            message(job, "지하실과 통로를 지었어요.");
         }
     }
 

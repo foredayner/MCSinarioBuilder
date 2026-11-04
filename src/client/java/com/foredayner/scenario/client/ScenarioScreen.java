@@ -508,7 +508,9 @@ public class ScenarioScreen extends Screen {
 
     private static final int ENTRY = 11;
     /** Room under the list: the picked place's buttons, its corner line and the check. */
-    private static final int CONTROLS = 66;
+    private static final int CONTROLS = 88;
+    /** "통로 잇기": the place a new tunnel starts from, until the next place is clicked on the map ("" = not linking). */
+    private static String linkFrom = "";
     /** Whether the keeper's map lies over the layout preview. */
     private static boolean showMap = true;
     /** The reset button was pressed once (press again to clear). */
@@ -781,6 +783,55 @@ public class ScenarioScreen extends Screen {
                     addDrawableChild(remove);
                 }
             }
+            if (!layout.building()) {
+                // Third row: what is under it - cellar floors, and tunnels to other places.
+                int by3 = by + 44;
+                var sheetLinks = sheet.links;
+                List<com.foredayner.scenario.sheet.ScenarioSheet.Link> mine = new java.util.ArrayList<>();
+                for (var l : sheet.underground()) {
+                    if (l.from.equals(place.id) || l.to.equals(place.id)) {
+                        mine.add(l);
+                    }
+                }
+                if (!place.outdoor) {
+                    WoodUi.WoodButton cellar = new WoodUi.WoodButton(px, by3, 56, 18,
+                        Text.literal(place.cellars == 0 ? "지하 없음" : "지하 " + place.cellars + "층"), b -> {
+                            place.cellars = (place.cellars + 1) % (com.foredayner.scenario.sheet.ScenarioSheet.MAX_CELLARS + 1);
+                            place.basement = place.cellars > 0;
+                            ScenarioClientState.saveSheet();
+                            clearAndInit();
+                        }, false).selected(place.cellars > 0);
+                    cellar.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+                        "건물 아래에 지하실을 파요 (한 층 5칸). 1층 바닥의 뚜껑문과 사다리로 내려가요. 땅이 깊은 월드가 필요해요.")));
+                    addDrawableChild(cellar);
+                }
+                boolean linking = linkFrom.equals(place.id);
+                WoodUi.WoodButton link = new WoodUi.WoodButton(px + 60, by3, 56, 18, Text.literal(linking ? "이을 곳?" : "통로 잇기"), b -> {
+                    linkFrom = linking ? "" : place.id;
+                    clearAndInit();
+                }, false).selected(linking);
+                link.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+                    "누른 다음 지도에서 다른 장소를 누르면 둘을 지하 통로로 이어요. 건물에 지하실이 없으면 작은 지하 방과 사다리를 만들어요.")));
+                addDrawableChild(link);
+                if (!mine.isEmpty()) {
+                    boolean secret = mine.stream().allMatch(l -> "secret".equals(l.kind));
+                    WoodUi.WoodButton hide = new WoodUi.WoodButton(px + 120, by3, 46, 18, Text.literal(secret ? "비밀 ✓" : "비밀"), b -> {
+                        for (var l : mine) {
+                            l.kind = secret ? "tunnel" : "secret";
+                        }
+                        ScenarioClientState.saveSheet();
+                        clearAndInit();
+                    }, false).selected(secret);
+                    hide.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+                        "비밀 통로: 어둡고, 지하실 쪽 입구가 부숴야 열리는 가짜 벽(금 간 돌)이에요.")));
+                    addDrawableChild(hide);
+                    addDrawableChild(new WoodUi.WoodButton(px + 170, by3, 52, 18, Text.literal("통로 " + mine.size() + " X"), b -> {
+                        sheetLinks.removeAll(mine);
+                        ScenarioClientState.saveSheet();
+                        clearAndInit();
+                    }, true));
+                }
+            }
             addDrawableChild(new WoodUi.WoodButton(px + 70, by, 52, 18, Text.literal("크기 " + place.size), b -> {
                 int s = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.indexOf(place.size);
                 place.size = com.foredayner.scenario.sheet.ScenarioSheet.SIZES.get((s + 1) % 4);
@@ -850,6 +901,27 @@ public class ScenarioScreen extends Screen {
         }
         if (tab == Tab.LAYOUT && button == 0 && onMap) {
             var s = siteAt(mx, my);
+            var linkSheet = ScenarioClientState.sheet();
+            if (!linkFrom.isEmpty() && s != null && !s.id.equals(linkFrom) && linkSheet != null) {
+                // "통로 잇기": a tunnel from the place picked before to this one.
+                boolean known = linkSheet.underground().stream().anyMatch(l -> l.from.equals(linkFrom) && l.to.equals(s.id)
+                    || l.from.equals(s.id) && l.to.equals(linkFrom));
+                if (!known) {
+                    var l = new com.foredayner.scenario.sheet.ScenarioSheet.Link();
+                    l.from = linkFrom;
+                    l.to = s.id;
+                    l.kind = "tunnel";
+                    linkSheet.links.add(l);
+                    ScenarioClientState.saveSheet();
+                    ScenarioClientState.log("지하 통로를 이었어요: " + linkSheet.place(linkFrom).name + " ↔ " + linkSheet.place(s.id).name);
+                }
+                linkFrom = "";
+                picked = s.id;
+                showPicked();
+                clearAndInit();
+                return true;
+            }
+            linkFrom = "";
             picked = s == null ? "" : s.id;
             showPicked();
             var plan = ScenarioClientState.layout();
@@ -1029,6 +1101,33 @@ public class ScenarioScreen extends Screen {
                 m.pop();
             }
         }
+        boolean anyTunnel = false, anySecret = false;
+        if (town && showPlan) {
+            // What is under the ground: tunnels (brown; secret ones purple) and cellar floors (B1, B2) on their places.
+            for (var t : com.foredayner.scenario.layout.Underground.tunnels(layout, sheet)) {
+                int col = t.secret() ? 0xB07A3AA0 : 0xB05A3A1A;
+                anyTunnel |= !t.secret();
+                anySecret |= t.secret();
+                for (java.util.Set<Long> cells : List.of(t.inside(), t.doorways())) {
+                    for (long key : cells) {
+                        int cx = com.foredayner.scenario.layout.Underground.keyX(key), cz = com.foredayner.scenario.layout.Underground.keyZ(key);
+                        ctx.fill(toScreenX(cx), toScreenZ(cz), Math.max(toScreenX(cx) + 1, toScreenX(cx + 1)),
+                            Math.max(toScreenZ(cz) + 1, toScreenZ(cz + 1)), col);
+                    }
+                }
+            }
+            for (var s : layout.sites) {
+                var sp = sheet.place(s.id);
+                if (sp != null && sp.cellars > 0) {
+                    var m = ctx.getMatrices();
+                    m.push();
+                    m.translate(toScreenX(s.x) + 2, toScreenZ(s.z) + 2, 0);
+                    m.scale(0.5F, 0.5F, 1);
+                    ctx.drawText(this.textRenderer, "B" + sp.cellars, 0, 0, 0xFF3A2A18, false);
+                    m.pop();
+                }
+            }
+        }
         if (layout.building() && showPlan) {
             // Doors (light) and stairs (an arrow of dark steps) on the floor shown.
             for (var d : layout.doors) {
@@ -1059,6 +1158,15 @@ public class ScenarioScreen extends Screen {
         List<Object[]> legend = new java.util.ArrayList<>();
         if (anyChosen) {
             legend.add(new Object[] { "■ 파란 테두리: AI가 정한 곳", 0xFF2E6DA4 });
+        }
+        if (!linkFrom.isEmpty()) {
+            legend.add(new Object[] { "통로로 이을 장소를 누르세요", 0xFFC06A10 });
+        }
+        if (anyTunnel) {
+            legend.add(new Object[] { "■ 지하 통로", 0xFF5A3A1A });
+        }
+        if (anySecret) {
+            legend.add(new Object[] { "■ 비밀 통로", 0xFF7A3AA0 });
         }
         if (town) {
             legend.add(new Object[] { "■ 지도 밖(건물만)", 0xFF55633F });
@@ -1121,8 +1229,9 @@ public class ScenarioScreen extends Screen {
             String corner = site == null ? "자리 없음 · " + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace) + "x"
                 + com.foredayner.scenario.sheet.ScenarioSheet.footprint(pickedPlace)
                 : (world ? "좌하단 월드 (" : "좌하단 (") + cx + ", " + cz + ") · " + site.w + "x" + site.d;
-            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + 44, WoodUi.INK_SOFT, false);
-            ty += 55;
+            int below = layout.building() ? 44 : 66;
+            ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth(corner, right() - 12 - px), px, ty + below, WoodUi.INK_SOFT, false);
+            ty += below + 11;
         } else if (layout.building()) {
             // Under the floor buttons.
             ctx.drawText(this.textRenderer, this.textRenderer.trimToWidth("흰 칸 = 문 · 초록 = 입구 · 짙은 칸 = 계단", right() - 12 - px),
@@ -1144,7 +1253,7 @@ public class ScenarioScreen extends Screen {
                 }
                 ctx.drawOrderedTooltip(this.textRenderer, tip, mouseX, mouseY);
             }
-            int ly = controlsY() + 66;
+            int ly = controlsY() + CONTROLS;
             for (String problem : layoutProblems) {
                 for (OrderedText line : this.textRenderer.wrapLines(StringVisitable.plain("· " + problem), right() - 12 - px)) {
                     if (ly > bottom() - 58) {

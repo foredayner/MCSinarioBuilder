@@ -20,14 +20,14 @@ public final class SheetPrompt {
           "style": "building style rules for the whole town, 3-6 short lines, naming Minecraft blocks",
           "places": [ { "id": "short_ascii_id", "name": "name as in the scenario", "kind": "house|inn|shop|church|library|
                         police|newspaper|school|hospital|mansion|farm|mill|factory|warehouse|dock|lighthouse|cemetery|woods|
-                        square|cave|scene|landmark|ruins|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false,
+                        square|cave|scene|landmark|ruins|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false, "cellars": 0-2,
                         "rooms": [ { "name": "...", "purpose": "..." } ], "scenes": [ "short scene names here" ],
                         "notes": "what matters for building it", "filler": false, "outdoor": false,
                         "condition": "kept|worn|abandoned|sinister" } ],
           "npcs": [ { "name": "...", "role": "...", "place": "place id", "room": "room name or ''", "notes": "..." } ],
           "clues": [ { "id": "short_ascii_id", "name": "...", "text": "what it says or shows, 1-3 sentences",
                        "form": "book|note|map|item", "place": "place id", "room": "room name", "hidden": true|false } ],
-          "links": [ { "from": "place id", "to": "place id", "kind": "road|path|secret" } ],
+          "links": [ { "from": "place id", "to": "place id", "kind": "road|path|tunnel|secret" } ],
           "terrain": { "coast": "none|north|east|south|west", "woods": "none|north|east|south|west", "notes": "..." },
           "outer": "open|closed",
           "stage": "town|building"
@@ -58,7 +58,11 @@ public final class SheetPrompt {
           stand and clues lie. A basement room only if "basement": true. Secret rooms and passages are rooms too.
         - Clues: the physical things the investigators can find. form: book (journal, ledger, letters), note (one
           page), map (chart, plan), item (object). Give the text the clue reveals. hidden = behind or inside something.
-        - Links: roads between places, paths to outdoor places, and secret passages (kind "secret") the scenario names.
+        - Links: roads between places, paths to outdoor places, and passages UNDER THE GROUND the scenario names: kind
+          "tunnel" for an open one (a sewer, an old mine passage, a cellar link everyone knows), "secret" for a hidden
+          one (behind a false wall). Both ends must be places (buildings get a cellar for it).
+        - cellars: how many floors of cellar are dug under a building, 0-2 (a wine cellar 1, deep vaults 2); with
+          "basement": true at least 1.
         - Period: the period and culture of the buildings. west_medieval = Europe before 1800; west_modern = the West
           1800-1959 (the classic 1920s town); west_contemporary = the West from 1960; east_medieval = East Asia before 1900
           (Joseon, Edo); east_modern = East Asia 1900-1945 (Korea under Japanese rule); east_postwar = East Asia 1945 to
