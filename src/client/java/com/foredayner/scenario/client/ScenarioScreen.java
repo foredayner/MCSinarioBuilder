@@ -598,7 +598,7 @@ public class ScenarioScreen extends Screen {
 
     private void initLayoutTab() {
         int px = panelX(), y = bodyTop() + 6, pw = right() - 12 - px;
-        int bw = (pw - 16) / 5;
+        int bw = (pw - 12) / 4;
         var layout = ScenarioClientState.layout();
         var sheet = ScenarioClientState.sheet();
         boolean tooMany = sheet != null && sheet.counted() > com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES;
@@ -621,24 +621,7 @@ public class ScenarioScreen extends Screen {
         mapButton.active = sheet != null;
         mapButton.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("마을 지도 그림을 올리면 AI가 지도를 따라 배치해요.")));
         addDrawableChild(mapButton);
-        // Tidy: streets, footpaths, water and woods round the buildings, by code; the buildings stay where they are.
-        WoodUi.WoodButton tidy = new WoodUi.WoodButton(px + 3 * (bw + 4), y, bw, 18, fit("정리", bw), b -> {
-            java.util.List<String> notes = layout.tidy(sheet);
-            resetArmed = false;
-            ScenarioClientState.saveLayout();
-            if (notes.isEmpty()) {
-                ScenarioClientState.log("정리: 고칠 것이 없어요");
-            }
-            for (String note : notes) {
-                ScenarioClientState.log("정리: " + note);
-            }
-            clearAndInit();
-        }, false);
-        tidy.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
-            "건물은 그대로 두고 나머지를 정리해요: 건물 밑을 지나는 길을 끊고, 길에서 먼 건물에 오솔길을 내고, 떨어진 길을 잇고, 건물 자리의 물·숲을 비워요. 겹친 건물은 로그로 알려 줘요.")));
-        addDrawableChild(tidy);
-        tidy.active = layout != null && sheet != null;
-        WoodUi.WoodButton reset = new WoodUi.WoodButton(px + 4 * (bw + 4), y, bw, 18, fit(resetArmed ? "정말 지울까요?" : "배치 초기화", bw), b -> {
+        WoodUi.WoodButton reset = new WoodUi.WoodButton(px + 3 * (bw + 4), y, bw, 18, fit(resetArmed ? "정말 지울까요?" : "배치 초기화", bw), b -> {
             if (resetArmed) {
                 resetArmed = false;
                 picked = "";
@@ -859,6 +842,22 @@ public class ScenarioScreen extends Screen {
             }, false));
         }
         askField = null;
+        // Tidy: streets, footpaths, water and woods round the buildings, by code; the buildings stay where they are.
+        WoodUi.WoodButton tidy = new WoodUi.WoodButton(right() - 12 - 46, bottom() - 44, 46, 18, Text.literal("정리"), b -> {
+            java.util.List<String> notes = layout.tidy(sheet);
+            resetArmed = false;
+            ScenarioClientState.saveLayout();
+            if (notes.isEmpty()) {
+                ScenarioClientState.log("정리: 고칠 것이 없어요");
+            }
+            for (String note : notes) {
+                ScenarioClientState.log("정리: " + note);
+            }
+            clearAndInit();
+        }, false);
+        tidy.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+            "건물은 그대로 두고 나머지를 정리해요: 건물 밑을 지나는 길을 끊고, 길에서 먼 건물에 오솔길을 내고, 떨어진 길을 잇고, 건물 자리의 물·숲을 비워요. 겹친 건물은 로그로 알려 줘요.")));
+        addDrawableChild(tidy);
     }
 
     private int toScreenX(int x) {
