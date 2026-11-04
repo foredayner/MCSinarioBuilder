@@ -88,6 +88,8 @@ public final class BuildPrompts {
         - The door is in the middle of the FRONT edge (z = -1 side): keep a clear path 1 block wide from there into
           the room, and the middle of the room walkable.
         - Light it: a lantern, candles or lamps (one or two light sources).
+        - In a modern or contemporary setting, use the ready-made furniture (ai.prop) for what blocks cannot show
+          well (sofa, armchair, TV, fridge, lamps, clock, phone, computer, curtains, partitions); never in older periods.
         - Doors to other rooms may be in the other walls too: keep the middle block of each wall free on the floor.
         """;
 
