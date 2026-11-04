@@ -638,25 +638,26 @@ public class ScenarioScreen extends Screen {
         // Under the map (not on it, where they would hide what is under them): the map and the layout on or off.
         overlayButton = null;
         planButton = null;
-        int sx = mapX();
-        if (sheet != null && MapOverlay.available()) {
-            WoodUi.WoodButton overlay = new WoodUi.WoodButton(sx, belowMapY(), 70, 14, Text.literal(showMap ? "참고 지도 ✓" : "참고 지도"), b -> {
+        // Under the map, its width exactly: the layout on or off, then the map on or off (there but idle with no map).
+        int half = (mapSize() - 4) / 2;
+        WoodUi.WoodButton plan = new WoodUi.WoodButton(mapX(), belowMapY(), half, 14,
+            fit(showPlan ? "건물 배치 ✓" : "건물 배치", half), b -> {
+                showPlan = !showPlan;
+                clearAndInit();
+            }, false).selected(showPlan);
+        plan.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소, 길, 구역을 보이거나 숨기기")));
+        plan.active = layout != null;
+        addDrawableChild(plan);
+        boolean mapShown = sheet != null && MapOverlay.available();
+        WoodUi.WoodButton overlay = new WoodUi.WoodButton(mapX() + half + 4, belowMapY(), mapSize() - half - 4, 14,
+            fit(showMap && mapShown ? "참고 지도 ✓" : "참고 지도", mapSize() - half - 4), b -> {
                 showMap = !showMap;
                 clearAndInit();
-            }, false).selected(showMap);
-            overlay.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("참고 지도를 배치도 위에 흐리게 겹쳐 보기")));
-            addDrawableChild(overlay);
-            sx += 74;
-        }
-        if (layout != null) {
-            WoodUi.WoodButton plan = new WoodUi.WoodButton(sx, belowMapY(), 70, 14,
-                Text.literal(showPlan ? "건물 배치 ✓" : "건물 배치"), b -> {
-                    showPlan = !showPlan;
-                    clearAndInit();
-                }, false).selected(showPlan);
-            plan.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("장소, 길, 구역을 보이거나 숨기기")));
-            addDrawableChild(plan);
-        }
+            }, false).selected(showMap && mapShown);
+        overlay.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(mapShown
+            ? "참고 지도를 배치도 위에 흐리게 겹쳐 보기" : "참고 지도를 올리면 배치도 위에 겹쳐 볼 수 있어요")));
+        overlay.active = mapShown;
+        addDrawableChild(overlay);
         if (layout == null || sheet == null) {
             askField = null;
             layoutProblems = List.of();
@@ -1161,7 +1162,7 @@ public class ScenarioScreen extends Screen {
         }
         ctx.disableScissor();
         // Under the map, beside the switches: what the colours mean.
-        int lx = x0 + (MapOverlay.available() ? 148 : 74), legendY = belowMapY() + 3, lend = right() - 12; // the panel is free at this height
+        int lx = mapX() + mapSize() + 6, legendY = belowMapY() + 3, lend = right() - 12; // the panel is free at this height
         List<Object[]> legend = new java.util.ArrayList<>();
         if (anyChosen) {
             legend.add(new Object[] { "■ 파란 테두리: AI가 정한 곳", 0xFF2E6DA4 });

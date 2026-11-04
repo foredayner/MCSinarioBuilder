@@ -118,6 +118,17 @@ public final class MapService {
     public static byte[] thumbnail(String id) {
         try {
             Path f = dir(id).resolve(THUMB);
+            if (!Files.exists(f)) {
+                // A map kept before its kind could be read (webp): make the small copy now.
+                for (String name : new String[] { "map.png", "map.jpg", "map.gif", "map.webp" }) {
+                    Path map = dir(id).resolve(name);
+                    byte[] thumb = Files.exists(map) ? MapImages.thumbnail(Files.readAllBytes(map)) : null;
+                    if (thumb != null) {
+                        Files.write(f, thumb);
+                        break;
+                    }
+                }
+            }
             return Files.exists(f) ? Files.readAllBytes(f) : new byte[0];
         } catch (IOException e) {
             return new byte[0];

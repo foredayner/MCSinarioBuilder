@@ -1,6 +1,10 @@
 package com.foredayner.scenario.layout;
 
+import com.twelvemonkeys.imageio.plugins.webp.WebPImageReaderSpi;
+
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -18,12 +22,12 @@ public final class MapImages {
     }
 
     /**
-     * The map squeezed to a {@link #THUMB} square PNG, the way it lies on the ground; null when Java
-     * cannot read the picture (a webp map is still shown to the AI, just not under the layout).
+     * The map squeezed to a {@link #THUMB} square PNG, the way it lies on the ground (png, jpeg, gif
+     * or webp); null when it is not a picture.
      */
     public static byte[] thumbnail(byte[] data) {
         try {
-            BufferedImage in = ImageIO.read(new ByteArrayInputStream(data));
+            BufferedImage in = read(data);
             if (in == null) {
                 return null;
             }
@@ -39,5 +43,25 @@ public final class MapImages {
         } catch (IOException | RuntimeException e) {
             return null;
         }
+    }
+
+    /** Any picture the keeper may give: what ImageIO reads, and webp by the bundled reader (asked by name, not found by ImageIO's lookup). */
+    static BufferedImage read(byte[] data) throws IOException {
+        BufferedImage in = ImageIO.read(new ByteArrayInputStream(data));
+        if (in != null || !webp(data)) {
+            return in;
+        }
+        ImageReader reader = new WebPImageReaderSpi().createReaderInstance(null);
+        try (ImageInputStream stream = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            reader.setInput(stream);
+            return reader.read(0);
+        } finally {
+            reader.dispose();
+        }
+    }
+
+    static boolean webp(byte[] d) {
+        return d != null && d.length > 12 && d[0] == 'R' && d[1] == 'I' && d[2] == 'F' && d[3] == 'F'
+            && d[8] == 'W' && d[9] == 'E' && d[10] == 'B' && d[11] == 'P';
     }
 }

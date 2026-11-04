@@ -28,6 +28,22 @@ class MapImagesTest {
     }
 
     @Test
+    void webpMapsGetAThumbnailToo() throws Exception {
+        for (String b64 : new String[] {
+            "UklGRkAAAABXRUJQVlA4IDQAAACQAQCdASoQAAwAAMASJaACdLoAA5gA/vwhH/+c3//90Cf+NI/90Cfha/8B/90CY5/9zaAA", // lossy
+            "UklGRigAAABXRUJQVlA4TBwAAAAvD8ACAA8wHvdQvRXy/EcLxILJ/KV7Q4jof+gC" }) { // lossless
+            byte[] thumb = MapImages.thumbnail(java.util.Base64.getDecoder().decode(b64));
+            assertNotNull(thumb, b64);
+            BufferedImage back = ImageIO.read(new ByteArrayInputStream(thumb));
+            assertEquals(MapImages.THUMB, back.getWidth());
+            // Left half blue, right half red, as drawn.
+            int left = back.getRGB(40, 128), right = back.getRGB(216, 128);
+            assertTrue((left & 0xFF) > 150 && ((left >> 16) & 0xFF) < 100, Integer.toHexString(left));
+            assertTrue(((right >> 16) & 0xFF) > 150 && (right & 0xFF) < 100, Integer.toHexString(right));
+        }
+    }
+
+    @Test
     void theAiIsToldToFollowTheMap() throws Exception {
         ScenarioSheet sheet = ScenarioSheet.fromJson(Files.readString(Path.of("src/gametest/resources/scenarios/greymouth.sheet.json")));
         sheet.normalize();
