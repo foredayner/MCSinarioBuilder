@@ -854,7 +854,8 @@ public final class BuildService {
         if (job.layout.building()) {
             // A room of the building stage: its furnishing, inside walls built by code.
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.roomDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA + blocksOnly(job.sheet), model);
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA + blocksOnly(job.sheet), model,
+                AiBuildApi.propEraFor(job.sheet.period()), true);
             future = designer.building(job.world, roomMin(job, s), roomSite(s), req);
         } else if (s.outdoor) {
             // Blocks, like a building, on a small square in the middle of the lot (never display entities).
@@ -866,7 +867,8 @@ public final class BuildService {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
                 BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p),
-                BuildPrompts.extra(job.sheet, p, s.w) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model);
+                BuildPrompts.extra(job.sheet, p, s.w) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model,
+                AiBuildApi.propEraFor(job.sheet.period()), false);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }
         future.whenComplete((design, error) -> job.world.getServer().execute(() -> {
