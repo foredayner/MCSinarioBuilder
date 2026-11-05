@@ -854,19 +854,19 @@ public final class BuildService {
         if (job.layout.building()) {
             // A room of the building stage: its furnishing, inside walls built by code.
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.roomDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA, model);
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA + blocksOnly(job.sheet), model);
             future = designer.building(job.world, roomMin(job, s), roomSite(s), req);
         } else if (s.outdoor) {
             // Blocks, like a building, on a small square in the middle of the lot (never display entities).
             AiBuildApi.Site small = new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT);
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(), model);
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra() + blocksOnly(job.sheet), model);
             future = designer.building(job.world, propMin(job, s), small, req);
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
                 BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p),
-                BuildPrompts.extra(job.sheet, p, s.w) + job.notes.getOrDefault(placeId, ""), model);
+                BuildPrompts.extra(job.sheet, p, s.w) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }
         future.whenComplete((design, error) -> job.world.getServer().execute(() -> {
@@ -1016,4 +1016,10 @@ public final class BuildService {
         JOBS.clear();
         SNAPSHOTS.clear();
     }
+
+    /** 소품: 안함 — the AI Build Assistant keeps the design to blocks (it checks and asks again). */
+    static String blocksOnly(ScenarioSheet sheet) {
+        return sheet != null && !sheet.useProps ? "\n" + AiBuildApi.BLOCKS_ONLY : "";
+    }
+
 }

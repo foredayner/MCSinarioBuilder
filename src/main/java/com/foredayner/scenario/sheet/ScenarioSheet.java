@@ -42,6 +42,11 @@ public final class ScenarioSheet {
     public String style = "";
     /** The town's architecture guide (written by the AI from the era and place, edited by the keeper). */
     public String styleGuide = "";
+    /**
+     * 소품: 사용 — buildings may use the AI Build Assistant's colours, smooth pieces and furniture presets;
+     * off (안함): blocks only, so the town stays whole in a world without the mods.
+     */
+    public boolean useProps = true;
     /** The keeper's map of the town ("file:<name>" kept with the scenario, or ""): the AI lays the town out after it. */
     public String mapImage = "";
     /** What the map shows: auto (the AI tells), town, outdoor or indoor (a floor plan). */
