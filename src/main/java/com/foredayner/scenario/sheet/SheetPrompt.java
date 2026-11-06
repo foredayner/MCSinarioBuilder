@@ -9,7 +9,7 @@ public final class SheetPrompt {
     }
 
     static final String SYSTEM = """
-        You help a Call of Cthulhu keeper turn a scenario into a Minecraft town map of 160 x 160 blocks
+        You help a Call of Cthulhu keeper turn a scenario into a Minecraft town map of 240 x 240 blocks
         (1 block = 1 metre). Read the scenario and answer with ONLY one JSON object (no markdown, no talk).
 
         JSON shape (all keys required; use [] for none):

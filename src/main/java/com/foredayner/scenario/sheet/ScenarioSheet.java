@@ -572,7 +572,7 @@ public final class ScenarioSheet {
         return !p.filler && !p.mapFiller && !p.outdoor && !"ruins".equals(p.kind);
     }
 
-    /** The side of the town's ground: 160, or bigger when the lots need it (up to 320). */
+    /** The side of the town's ground: 240, or bigger when the lots need it (up to 400). */
     public static int groundSize(ScenarioSheet sheet) {
         long area = 0;
         for (Place p : sheet.places) {
@@ -580,8 +580,8 @@ public final class ScenarioSheet {
             area += (long) f * f;
         }
         int side = (int) Math.ceil(Math.sqrt(area * 1.6));
-        int size = 160;
-        while (size < side && size < 320) {
+        int size = 240;
+        while (size < side && size < 400) {
             size += 40;
         }
         return size;

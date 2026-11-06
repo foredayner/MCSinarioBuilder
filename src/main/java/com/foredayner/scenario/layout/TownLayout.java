@@ -19,7 +19,7 @@ import java.util.Locale;
  */
 public final class TownLayout {
 
-    public static final int SIZE = 160;
+    public static final int SIZE = 240;
     public static final int MARGIN = 2;
     public static final int GAP = 2;
     public static final List<String> FRONTS = List.of("north", "east", "south", "west");
