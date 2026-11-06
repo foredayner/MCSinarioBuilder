@@ -57,8 +57,12 @@ class PlaceSortingTest {
         npc.name = "촌장";
         npc.place = "village";
         sheet.npcs.add(npc);
+        ScenarioSheet.Clue clue = new ScenarioSheet.Clue();
+        clue.id = "notice";
+        clue.place = "village";
+        sheet.clues.add(clue);
         sheet.sortOutPlaces();
-        assertEquals("square", sheet.place("village").kind, "NPCs stand there, so it stays as the village common");
+        assertEquals("square", sheet.place("village").kind, "a clue lies there, so it stays as the village common");
         assertTrue(sheet.place("village").outdoor);
         // The keeper turned a road spot into a building: normalizing never undoes it.
         ScenarioSheet.Place spot = place("pass", "고갯마루 고개", "house");
@@ -66,5 +70,49 @@ class PlaceSortingTest {
         sheet.normalize();
         assertEquals("house", spot.kind);
         assertFalse(spot.outdoor);
+    }
+
+    @Test
+    void theTownByItsOwnNameIsNotAPlace() {
+        ScenarioSheet sheet = new ScenarioSheet();
+        sheet.setting = "1920년대 강원도 산골 마을 메이골";
+        sheet.places.add(place("meigol", "메이골", "square"));
+        sheet.places.get(0).outdoor = true;
+        sheet.places.add(place("inn", "주막", "inn"));
+        ScenarioSheet.Npc npc = new ScenarioSheet.Npc();
+        npc.name = "촌장";
+        npc.place = "meigol";
+        sheet.npcs.add(npc);
+        sheet.sortOutPlaces();
+        assertNull(sheet.place("meigol"), "the town named in the setting is the map, even as a square");
+        assertEquals("", npc.place, "its NPC stands nowhere in particular");
+        assertNotNull(sheet.place("inn"));
+    }
+
+    @Test
+    void aSmallPlaceInsideABigOneIsFoldedIn() {
+        ScenarioSheet sheet = new ScenarioSheet();
+        ScenarioSheet.Place woods = place("hill", "뒷산 숲", "woods");
+        woods.outdoor = true;
+        woods.size = "L";
+        ScenarioSheet.Place tree = place("tree", "뒷산 당산나무", "landmark");
+        tree.outdoor = true;
+        tree.size = "S";
+        tree.notes = "금줄이 걸려 있다";
+        ScenarioSheet.Place well = place("well", "우물", "landmark");
+        well.outdoor = true;
+        well.inside = "hill";
+        sheet.places.add(woods);
+        sheet.places.add(tree);
+        sheet.places.add(well);
+        ScenarioSheet.Clue clue = new ScenarioSheet.Clue();
+        clue.id = "rope";
+        clue.place = "tree";
+        sheet.clues.add(clue);
+        List<String> notes = sheet.sortOutPlaces();
+        assertNull(sheet.place("tree"), "its name holds the woods' name: " + notes);
+        assertNull(sheet.place("well"), "it says it is inside");
+        assertTrue(woods.notes.contains("당산나무") && woods.notes.contains("금줄") && woods.notes.contains("우물"), woods.notes);
+        assertEquals("hill", clue.place, "its clue moves with it");
     }
 }

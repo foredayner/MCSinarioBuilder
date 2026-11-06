@@ -103,6 +103,8 @@ public final class ScenarioSheet {
         public boolean mapFiller;
         /** Building stage: the room's floor (0 = ground floor, 1 = the floor above, -1 = basement). */
         public int level;
+        /** The bigger outdoor place this one lies in (an old tree in the woods): folded into it when sorted. */
+        public String inside = "";
     }
 
     public boolean building() {
@@ -420,19 +422,24 @@ public final class ScenarioSheet {
                 notes.add((p.name == null || p.name.isBlank() ? p.id : p.name) + ": 폐허(무너진 건물터)로 바꿨어요");
                 continue;
             }
-            if (any(BUILDING, name, idWords) || p.outdoor && GROUND_KINDS.contains(p.kind)) {
+            if (any(BUILDING, name, idWords)) {
                 continue;
             }
             String label = p.name == null || p.name.isBlank() ? p.id : p.name;
-            if (TOWN.matcher(name).find()) {
-                if (!referenced(p.id)) {
+            if (TOWN.matcher(name).find() || "town".equals(p.kind) || "village".equals(p.kind) || namesTheTown(name)) {
+                if (!clueAt(p.id)) {
                     it.remove();
+                    forget(p.id);
                     notes.add(label + ": 마을 전체라 장소에서 뺐어요");
                 } else {
                     p.kind = "square";
                     p.outdoor = true;
-                    notes.add(label + ": 마을 전체라 마을 한가운데 공터로 바꿨어요");
+                    p.size = "S";
+                    notes.add(label + ": 마을 전체라 단서가 놓인 마을 공터로 바꿨어요");
                 }
+                continue;
+            }
+            if (p.outdoor && GROUND_KINDS.contains(p.kind)) {
                 continue;
             }
             String kind = any(SCENE, name, idWords) ? "scene" : any(GRAVES, name, idWords) ? "cemetery"
@@ -453,7 +460,122 @@ public final class ScenarioSheet {
                 default -> "작은 야외 소품";
             } + "으로 바꿨어요");
         }
+        foldInside(notes);
         return notes;
+    }
+
+    /** Outdoor places that hold smaller ones (the woods round an old tree, a cemetery with its shrine stone). */
+    private static final Set<String> HOLDERS = Set.of("woods", "square", "cemetery", "beach", "dock");
+    /** Small outdoor things that lie in a bigger outdoor place. */
+    private static final Set<String> SMALL = Set.of("landmark", "scene", "pyeongsang", "pine");
+
+    /**
+     * A small outdoor place inside a bigger one (it says so, or its name holds the bigger one's name:
+     * "뒷산 당산나무" in "뒷산") is not a lot of its own: it goes into the bigger place's notes, which
+     * build it as part of that scene, and its clues, NPCs and paths move there.
+     */
+    private void foldInside(List<String> notes) {
+        for (java.util.Iterator<Place> it = places.iterator(); it.hasNext(); ) {
+            Place c = it.next();
+            if (!c.outdoor || !SMALL.contains(c.kind)) {
+                continue;
+            }
+            Place holder = null;
+            for (Place o : places) {
+                if (o == c || !o.outdoor || !HOLDERS.contains(o.kind) || o.kind.equals(c.kind)) {
+                    continue;
+                }
+                String core = core(o.name);
+                boolean told = c.inside != null && c.inside.equals(o.id);
+                boolean named = core.length() >= 2 && c.name != null && c.name.contains(core) && !c.name.trim().equals(o.name.trim());
+                if (told || named) {
+                    holder = o;
+                    break;
+                }
+            }
+            if (holder == null) {
+                continue;
+            }
+            String what = c.name + (c.notes == null || c.notes.isBlank() ? "" : " (" + c.notes.strip() + ")");
+            holder.notes = (holder.notes == null || holder.notes.isBlank() ? "" : holder.notes.strip() + " ") + "Inside it: " + what + ".";
+            if ("S".equals(holder.size)) {
+                holder.size = "M";
+            }
+            for (String sc : c.scenes) {
+                if (!holder.scenes.contains(sc)) {
+                    holder.scenes.add(sc);
+                }
+            }
+            moveRefs(c.id, holder.id);
+            it.remove();
+            notes.add(c.name + ": " + holder.name + " 안에 있어서 그 장소의 일부로 합쳤어요");
+        }
+    }
+
+    /** A place's name without words like 숲, 마을 at its end ("배산 숲" -> "배산"); the whole name when that leaves too little. */
+    static String core(String name) {
+        String n = name == null ? "" : name.trim();
+        String c = n.replaceAll("\\s*(숲|마을|동네|공동묘지|묘지|언덕|계곡|광장|공터|해변|부두|forest|woods|village|square|cemetery|beach)$", "").trim();
+        return c.length() >= 2 ? c : n;
+    }
+
+    /** Whether this place's name is just the name of the town the scenario is set in (the setting or title names it). */
+    private boolean namesTheTown(String name) {
+        String bare = name.replaceAll("\\s*(마을|동네|부락|읍내|촌락|village|town|hamlet)$", "").trim();
+        if (bare.length() < 2 || any(SCENE, bare, "") || any(WILD, bare, "") || any(GRAVES, bare, "") || any(LANDMARK, bare, "")) {
+            return false;
+        }
+        String where = ((setting == null ? "" : setting) + " " + (title == null ? "" : title)).toLowerCase(Locale.ROOT);
+        return where.contains(bare);
+    }
+
+    private boolean clueAt(String id) {
+        for (Clue c : clues == null ? List.<Clue>of() : clues) {
+            if (id != null && id.equals(c.place)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A place is gone: its NPCs stand nowhere in particular and its roads go. */
+    private void forget(String id) {
+        for (Npc n : npcs == null ? List.<Npc>of() : npcs) {
+            if (id != null && id.equals(n.place)) {
+                n.place = "";
+                n.room = "";
+            }
+        }
+        if (links != null) {
+            links.removeIf(l -> id != null && (id.equals(l.from) || id.equals(l.to)));
+        }
+    }
+
+    /** Clues, NPCs and links of one place now belong to another. */
+    private void moveRefs(String from, String to) {
+        for (Npc n : npcs == null ? List.<Npc>of() : npcs) {
+            if (from.equals(n.place)) {
+                n.place = to;
+                n.room = "";
+            }
+        }
+        for (Clue c : clues == null ? List.<Clue>of() : clues) {
+            if (from.equals(c.place)) {
+                c.place = to;
+                c.room = "";
+            }
+        }
+        if (links != null) {
+            for (Link l : links) {
+                if (from.equals(l.from)) {
+                    l.from = to;
+                }
+                if (from.equals(l.to)) {
+                    l.to = to;
+                }
+            }
+            links.removeIf(l -> l.from != null && l.from.equals(l.to));
+        }
     }
 
     private static boolean any(java.util.regex.Pattern pattern, String name, String idWords) {

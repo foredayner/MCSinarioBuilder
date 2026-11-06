@@ -22,7 +22,7 @@ public final class SheetPrompt {
                         police|newspaper|school|hospital|mansion|farm|mill|factory|warehouse|dock|lighthouse|cemetery|woods|
                         square|cave|scene|landmark|ruins|other", "size": "S|M|L|XL", "floors": 1-3, "basement": true|false, "cellars": 0-2,
                         "rooms": [ { "name": "...", "purpose": "..." } ], "scenes": [ "short scene names here" ],
-                        "notes": "what matters for building it", "filler": false, "outdoor": false,
+                        "notes": "what matters for building it", "filler": false, "outdoor": false, "inside": "",
                         "condition": "kept|worn|abandoned|sinister" } ],
           "npcs": [ { "name": "...", "role": "...", "place": "place id", "room": "room name or ''", "notes": "..." } ],
           "clues": [ { "id": "short_ascii_id", "name": "...", "text": "what it says or shows, 1-3 sentences",
@@ -49,6 +49,11 @@ public final class SheetPrompt {
           stone tablet, a totem pole, an old tree) is kind "landmark", size S, "outdoor": true. Graves are "cemetery".
           What is left of a building (an empty house site, a ruin) is kind "ruins", "outdoor": false, condition
           "abandoned". Never list a character as a place or a thing to build.
+          The town or village (by any of its names, the one in setting or title) is NEVER a place, not even as a square.
+          Something that lies INSIDE a bigger outdoor place (an old tree, a shrine stone or a well in the woods, a grave in
+          the cemetery, a spot on the beach) is not a place of its own: describe it in the bigger place's notes. If it
+          must be its own place (a clue or an NPC is there), give it "inside": the bigger place's id, and it is built as
+          part of that place.
           4-12 places from the scenario, plus up to 3 "filler": true ordinary houses or shops so the town feels lived in.
         - Sizes: S = 11x11 (shed, cottage), M = 15x15 (house, shop, small church), L = 21x21 (inn, church, police
           station, library), XL = 31x31 (mansion, factory). Outdoor places (cemetery, woods, dock) set "outdoor": true.
