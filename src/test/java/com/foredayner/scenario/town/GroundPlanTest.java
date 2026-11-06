@@ -41,7 +41,7 @@ class GroundPlanTest {
         assertEquals(GroundPlan.Cell.OUTDOOR, plan.cells[dx][dz]);
         assertEquals("dock", plan.outdoorKind[dx][dz]);
         assertEquals(GroundPlan.Cell.WATER, plan.under[dx][dz], "the dock's far end stands in the sea");
-        assertEquals(GroundPlan.Cell.WATER, plan.cells[5][158], "the sea along the south edge");
+        assertEquals(GroundPlan.Cell.WATER, plan.cells[5][plan.size - 2], "the sea along the south edge");
         assertEquals(GroundPlan.Cell.WOODS, plan.cells[80][3], "the woods along the north edge");
     }
 

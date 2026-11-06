@@ -168,7 +168,7 @@ class TownLayoutTest {
         TownLayout.Site church = layout.site("church");
         church.x = inn.x + 3;
         church.z = inn.z + 3;
-        layout.site("mansion").x = 150;
+        layout.site("mansion").x = layout.size + layout.reach();
         layout.sites.remove(layout.site("general_store"));
         TownLayout.Road lonely = new TownLayout.Road();
         lonely.points.add(new int[] { 5, 5 });
