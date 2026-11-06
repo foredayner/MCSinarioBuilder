@@ -41,7 +41,6 @@ public final class Doors {
                     Direction facing = door.get(DoorBlock.FACING);
                     boolean front = covered(world, pos.offset(facing), max.getY());
                     boolean back = covered(world, pos.offset(facing.getOpposite()), max.getY());
-                    com.foredayner.scenario.ScenarioBuilderMod.LOG.info("Door at {} facing {}: covered {} / {}", pos.toShortString(), facing, front, back);
                     if (front == back) {
                         continue; // a door between two rooms (or under a porch roof on both sides)
                     }
@@ -67,7 +66,6 @@ public final class Doors {
                         }
                     }
                     done.add(pos);
-                    com.foredayner.scenario.ScenarioBuilderMod.LOG.info("Door at {}: second door {}", pos.toShortString(), other == null ? "-" : other.toShortString());
                     if (other != null) {
                         done.add(other);
                         // The door on the counter-clockwise side hinges on the left, the other on the right.

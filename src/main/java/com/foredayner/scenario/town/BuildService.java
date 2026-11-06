@@ -937,13 +937,16 @@ public final class BuildService {
         UUID lane = UUID.randomUUID();
         bp.tag = tag;
         job.placing.put(placeId, lane);
-        boolean house = !job.layout.building() && !s.outdoor && !"ruins".equals(job.sheet.place(placeId) == null ? "" : job.sheet.place(placeId).kind);
+        ScenarioSheet.Place place0 = job.sheet.place(placeId);
+        boolean house = !job.layout.building() && !s.outdoor && place0 != null && !"ruins".equals(place0.kind);
+        BlockPos lotMin = house ? siteMin(job, s) : null;
+        BlockPos lotMax = house ? lotMin.add(s.w - 1, BuildPrompts.maxHeight(place0), s.d - 1) : null;
         Runnable done = () -> job.world.getServer().execute(() -> {
             if (job.placing.remove(placeId) != null) {
-                ScenarioBuilderMod.LOG.info("Doors of {}: house {} box {}", placeId, house, bp.min == null ? "-" : "set");
-                if (house && bp.min != null && bp.max != null) {
+                if (house) {
                     // Every way in: a double door with free ground in front of and behind it.
-                    Doors.fix(job.world, new BlockPos(bp.min[0], bp.min[1], bp.min[2]), new BlockPos(bp.max[0], bp.max[1], bp.max[2]));
+                    int found = Doors.fix(job.world, lotMin, lotMax);
+                    ScenarioBuilderMod.LOG.info("Doors of {}: {} way(s) in", placeId, found);
                 }
                 bp.state = "done";
                 job.dirty = true;
