@@ -28,22 +28,69 @@ public final class OuterBand {
     public record Column(Kind kind, double t, int rise, boolean tree, boolean spruce) {
     }
 
+    /** How far past a place the keeper put out here the ring reaches, and how far round it the land eases back. */
+    public static final int PAD_MARGIN = 8;
+
     private final GroundPlan inner;
     private final boolean closed;
-    private final int width;
+    /** The ring's width on each side: west (x < 0), east, north (z < 0), south. */
+    private final int west, east, north, south;
+    /** Places the keeper put in the ring or past it: {x, z, w, d} (town coordinates). */
+    private final java.util.List<int[]> pads;
 
     public OuterBand(GroundPlan inner, boolean closed) {
         this(inner, closed, WIDTH);
     }
 
     public OuterBand(GroundPlan inner, boolean closed, int width) {
-        this.inner = inner;
-        this.closed = closed;
-        this.width = width;
+        this(inner, closed, width, java.util.List.of());
     }
 
+    /** A ring at least {@code width} wide that reaches past every place the keeper put out there. */
+    public OuterBand(GroundPlan inner, boolean closed, int width, java.util.List<int[]> pads) {
+        this.inner = inner;
+        this.closed = closed;
+        this.pads = pads == null ? java.util.List.of() : pads;
+        int w = width, e = width, n = width, so = width;
+        for (int[] p : this.pads) {
+            if (p[0] < 0) {
+                w = Math.max(w, -p[0] + PAD_MARGIN);
+            }
+            if (p[0] + p[2] > inner.size) {
+                e = Math.max(e, p[0] + p[2] - inner.size + PAD_MARGIN);
+            }
+            if (p[1] < 0) {
+                n = Math.max(n, -p[1] + PAD_MARGIN);
+            }
+            if (p[1] + p[3] > inner.size) {
+                so = Math.max(so, p[1] + p[3] - inner.size + PAD_MARGIN);
+            }
+        }
+        this.west = w;
+        this.east = e;
+        this.north = n;
+        this.south = so;
+    }
+
+    /** The widest side. */
     public int width() {
-        return width;
+        return Math.max(Math.max(west, east), Math.max(north, south));
+    }
+
+    public int west() {
+        return west;
+    }
+
+    public int east() {
+        return east;
+    }
+
+    public int north() {
+        return north;
+    }
+
+    public int south() {
+        return south;
     }
 
     public boolean closed() {
@@ -53,7 +100,7 @@ public final class OuterBand {
     /** Whether (x, z) (town coordinates) is in the ring, not in the town. */
     public boolean contains(int x, int z) {
         boolean inTown = x >= 0 && z >= 0 && x < inner.size && z < inner.size;
-        return !inTown && x >= -width && z >= -width && x < inner.size + width && z < inner.size + width;
+        return !inTown && x >= -west && z >= -north && x < inner.size + east && z < inner.size + south;
     }
 
     /** Blocks out from the town's edge (1 = just outside). */
@@ -65,13 +112,65 @@ public final class OuterBand {
 
     /** The point just outside the ring, straight out from (x, z): the land there is left as it is. */
     public int[] outside(int x, int z) {
-        int ox = x < 0 ? -width - 1 : x >= inner.size ? inner.size + width : x;
-        int oz = z < 0 ? -width - 1 : z >= inner.size ? inner.size + width : z;
+        int ox = x < 0 ? -west - 1 : x >= inner.size ? inner.size + east : x;
+        int oz = z < 0 ? -north - 1 : z >= inner.size ? inner.size + south : z;
         return new int[] { ox, oz };
     }
 
+    /** How far out (0 at the town's edge, 1 at the ring's outer edge) on this side. */
+    double t(int x, int z) {
+        double tx = x < 0 ? -x / (double) west : x >= inner.size ? (x - inner.size + 1) / (double) east : 0;
+        double tz = z < 0 ? -z / (double) north : z >= inner.size ? (z - inner.size + 1) / (double) south : 0;
+        return Math.min(1, Math.max(tx, tz));
+    }
+
+    /** Blocks from (x, z) to the nearest place put out here (0 on it), or MAX_VALUE with none. */
+    int padDistance(int x, int z) {
+        int best = Integer.MAX_VALUE;
+        for (int[] p : pads) {
+            int dx = x < p[0] ? p[0] - x : x >= p[0] + p[2] ? x - (p[0] + p[2]) + 1 : 0;
+            int dz = z < p[1] ? p[1] - z : z >= p[1] + p[3] ? z - (p[1] + p[3]) + 1 : 0;
+            best = Math.min(best, Math.max(dx, dz));
+        }
+        return best;
+    }
+
+    /** Whether (x, z) is on the footpath from a place out here back to the town's edge (3 wide). */
+    boolean padPath(int x, int z) {
+        for (int[] p : pads) {
+            int cx = p[0] + p[2] / 2, cz = p[1] + p[3] / 2;
+            if (p[0] + p[2] <= 0 && Math.abs(z - cz) <= 1 && x >= p[0] + p[2] && x < 0
+                || p[0] >= inner.size && Math.abs(z - cz) <= 1 && x < p[0] && x >= inner.size
+                || p[1] + p[3] <= 0 && Math.abs(x - cx) <= 1 && z >= p[1] + p[3] && z < 0
+                || p[1] >= inner.size && Math.abs(x - cx) <= 1 && z < p[1] && z >= inner.size) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Column at(int x, int z) {
-        double t = distance(x, z) / (double) width;
+        Column c = column(x, z);
+        if (pads.isEmpty()) {
+            return c;
+        }
+        int d = padDistance(x, z);
+        if (d <= 1) {
+            // The place's own lot (and a block round it): flat at the town's level, open grass.
+            return new Column(Kind.MEADOW, 0, 0, false, false);
+        }
+        boolean path = padPath(x, z) && c.kind() != Kind.WATER;
+        if (d >= PAD_MARGIN && !path) {
+            return c;
+        }
+        // Easing back from the lot to the ring's own slopes; no trees by it or on its path.
+        double f = d >= PAD_MARGIN ? 1 : smooth((d - 1) / (double) (PAD_MARGIN - 1));
+        Kind kind = path ? Kind.PATH : c.kind() == Kind.WATER ? Kind.WATER : c.kind() == Kind.ROAD ? Kind.ROAD : Kind.MEADOW;
+        return new Column(kind, c.t() * f, (int) Math.round(c.rise() * f), false, false);
+    }
+
+    private Column column(int x, int z) {
+        double t = t(x, z);
         int ex = Math.max(0, Math.min(inner.size - 1, x));
         int ez = Math.max(0, Math.min(inner.size - 1, z));
         GroundPlan.Cell edge = inner.at(ex, ez);

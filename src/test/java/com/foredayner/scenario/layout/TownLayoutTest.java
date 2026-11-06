@@ -70,8 +70,8 @@ class TownLayoutTest {
     void tidyingFixesStreetsAroundBuildingsWithoutMovingThem() throws Exception {
         ScenarioSheet sheet = greymouth();
         TownLayout layout = TownLayout.auto(sheet);
-        assertTrue(layout.tidy(sheet).isEmpty(), "a good layout has nothing to tidy");
-        assertTrue(layout.check(sheet).isEmpty());
+        layout.tidy(sheet);
+        assertTrue(layout.check(sheet).isEmpty(), "tidying a good layout makes it again, still good: " + layout.check(sheet));
         // The keeper drags a building into the middle of a street.
         TownLayout.Road main = layout.roads.get(0);
         int[] a = main.points.get(0), b = main.points.get(main.points.size() - 1);
@@ -90,6 +90,7 @@ class TownLayoutTest {
         assertTrue(layout.check(sheet).stream().anyMatch(p -> p.contains(moved.id) && p.contains("street")));
         List<String> notes = layout.tidy(sheet);
         assertFalse(notes.isEmpty());
+        assertTrue(layout.zones.stream().anyMatch(zn -> "garden".equals(zn.kind) || "field".equals(zn.kind)), "the open ground is filled again");
         assertEquals(x, s.x);
         assertEquals(z, s.z);
         assertEquals(front, s.front, "the building is not turned either");
@@ -109,6 +110,9 @@ class TownLayoutTest {
                     List<String> problems = layout.check(sheet);
                     assertTrue(problems.isEmpty(), sheet.places.size() + " places, coast " + coast + ", woods " + woods + ": " + problems);
                     assertEquals(sheet.places.size(), layout.sites.size());
+                    layout.tidy(sheet);
+                    problems = layout.check(sheet);
+                    assertTrue(problems.isEmpty(), "tidied, coast " + coast + ", woods " + woods + ": " + problems);
                 }
             }
         }

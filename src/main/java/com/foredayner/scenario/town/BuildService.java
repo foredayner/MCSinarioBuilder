@@ -333,8 +333,16 @@ public final class BuildService {
             int ring = 0;
             if (!"done".equals(state.ground)) {
                 boolean outer = !"none".equals(job.sheet.outer);
+                // Places the keeper put past the map: the ring reaches out to them and lays them a flat lot and a path.
+                java.util.List<int[]> pads = new java.util.ArrayList<>();
+                for (var s : job.layout.sites) {
+                    if (job.layout.outside(s)) {
+                        pads.add(new int[] { s.x, s.z, s.w, s.d });
+                    }
+                }
+                OuterBand band = outer ? new OuterBand(job.plan, "closed".equals(job.sheet.outer), OuterBand.WIDTH, pads) : null;
                 // Undo keeps the ring and anything past the map the keeper put there.
-                ring = Math.max(outer ? OuterBand.WIDTH : 0, hasOutside(job.layout) ? job.layout.reach() : 0);
+                ring = Math.max(band == null ? 0 : band.width(), hasOutside(job.layout) ? job.layout.reach() + OuterBand.PAD_MARGIN : 0);
                 if (!SNAPSHOTS.containsKey(id)) {
                     // The ring around the town is kept too (its hills and slopes reach higher and lower).
                     int low = Math.max(job.world.getBottomY(), job.origin.getY() - GroundWork.FILL - (outer ? 16 : 0));
@@ -346,15 +354,8 @@ public final class BuildService {
                 if (job.layout.building()) {
                     job.shell = new ShellWork(job.world, job.origin, job.layout, job.sheet.period());
                 }
-                if (outer) {
-                    java.util.List<int[]> keep = new java.util.ArrayList<>();
-                    for (var s : job.layout.sites) {
-                        if (job.layout.outside(s)) {
-                            keep.add(new int[] { s.x, s.z, s.w, s.d });
-                        }
-                    }
-                    job.band = new BandWork(job.world, job.origin, job.plan, new OuterBand(job.plan, "closed".equals(job.sheet.outer)),
-                        job.sheet.period(), keep);
+                if (band != null) {
+                    job.band = new BandWork(job.world, job.origin, job.plan, band, job.sheet.period(), java.util.List.of());
                 }
                 if (!job.layout.building() && com.foredayner.scenario.layout.Underground.any(job.layout, job.sheet)) {
                     job.under = new UndergroundWork(job.world, job.origin, job.layout, job.sheet);

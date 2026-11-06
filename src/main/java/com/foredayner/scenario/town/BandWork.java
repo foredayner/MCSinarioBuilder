@@ -49,11 +49,10 @@ public final class BandWork {
         this.modern = com.foredayner.scenario.sheet.Period.contemporary(period);
         // Earth roads, as in the town (GroundWork).
         this.unpaved = com.foredayner.scenario.sheet.Period.medieval(period) || com.foredayner.scenario.sheet.Period.EAST_POSTWAR.equals(period);
-        int w = band.width();
         int n = 0;
-        int[] list = new int[((size + 2 * w) * (size + 2 * w) - size * size) * 2];
-        for (int x = -w; x < size + w; x++) {
-            for (int z = -w; z < size + w; z++) {
+        int[] list = new int[((size + band.west() + band.east()) * (size + band.north() + band.south()) - size * size) * 2];
+        for (int x = -band.west(); x < size + band.east(); x++) {
+            for (int z = -band.north(); z < size + band.south(); z++) {
                 if (band.contains(x, z) && !kept(keep, x, z)) {
                     list[n++] = x;
                     list[n++] = z;

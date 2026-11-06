@@ -184,4 +184,29 @@ class BuildPromptsTest {
         assertEquals("", sheet.places.get(1).sameAs);
         assertEquals(2L, problems.stream().filter(p -> p.contains("same as")).count(), problems.toString());
     }
+
+    @Test
+    void outdoorPlacesHaveChecklistsAndFlatLandUnlessTold() {
+        ScenarioSheet.Place tree = new ScenarioSheet.Place();
+        tree.name = "당산나무";
+        tree.kind = "landmark";
+        tree.outdoor = true;
+        assertEquals("tree", Outdoors.type(tree));
+        assertTrue(Outdoors.checklist(tree, Period.EAST_MEDIEVAL).contains("금줄"));
+        assertFalse(Outdoors.terrain(tree), "a tree on flat land");
+        assertTrue(BuildPrompts.propExtra(tree).contains("THE LAND STAYS FLAT"));
+        assertTrue(BuildPrompts.propExtra(tree).contains("ai.tree"));
+        ScenarioSheet.Place lookout = new ScenarioSheet.Place();
+        lookout.name = "절벽 전망길";
+        lookout.kind = "scene";
+        lookout.outdoor = true;
+        assertEquals("cliff", Outdoors.type(lookout));
+        assertTrue(Outdoors.terrain(lookout), "a cliff asks for the land to rise");
+        assertTrue(BuildPrompts.propExtra(lookout).contains("shape it"));
+        ScenarioSheet.Place woods = new ScenarioSheet.Place();
+        woods.name = "검은 숲";
+        woods.kind = "woods";
+        assertTrue(Outdoors.checklist(woods, Period.WEST_MODERN).startsWith("MUST HAVE"));
+        assertEquals(22, BuildPrompts.outdoorHeight(woods));
+    }
 }

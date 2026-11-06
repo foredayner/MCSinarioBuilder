@@ -574,10 +574,12 @@ public final class TownLayout {
     }
 
     /**
-     * Tidy everything but the buildings (no AI, nothing moved): streets running under a lot are
-     * cut there, buildings whose front is far from a street get a footpath, separate pieces of
-     * street are joined, and water and woods under a lot are cut away from it. Overlapping
-     * buildings are only reported. Returns what was done, for the keeper.
+     * Tidy everything but the places (no AI, nothing moved): the streets, footpaths and ground
+     * zones are thrown away and made again around the places where they now stand, as the
+     * automatic layout would: the sea and the woods along their edges, a main street across the
+     * town where it crosses the fewest lots, a footpath from every front to it, every piece joined,
+     * and the open ground filled with gardens and fields (parks in a modern town). Overlapping
+     * places are only reported. Returns what was done, for the keeper.
      */
     public List<String> tidy(ScenarioSheet sheet) {
         List<String> notes = new ArrayList<>();
@@ -591,7 +593,147 @@ public final class TownLayout {
                 inside.add(s);
             }
         }
-        // 1. Streets under lots: cut out the part that runs over a lot (and the block around it).
+        roads.clear();
+        zones.clear();
+        boolean modern = com.foredayner.scenario.sheet.Period.contemporary(sheet.period());
+        // 1. The sea and the woods along their edges, taken out from under the lots (a dock keeps its water).
+        terrainZones(sheet.terrain.coast, sheet.terrain.woods);
+        for (Site s : inside) {
+            ScenarioSheet.Place p = sheet.place(s.id);
+            boolean dock = p != null && ("dock".equals(p.kind) || "beach".equals(p.kind));
+            List<Zone> next = new ArrayList<>();
+            for (Zone z : zones) {
+                boolean clear = "woods".equals(z.kind) || !dock;
+                if (!clear || !overlaps(s.x, s.z, s.w, s.d, z.x, z.z, z.w, z.d, 0)) {
+                    next.add(z);
+                    continue;
+                }
+                next.addAll(minus(z, s.x - 1, s.z - 1, s.x + s.w + 1, s.z + s.d + 1));
+            }
+            zones.clear();
+            zones.addAll(next);
+        }
+        // 2. A main street across the town, parallel to the coast, where it crosses the fewest lots.
+        mainStreet(sheet.terrain.coast, inside, modern ? 7 : 5);
+        cutUnderLots(inside);
+        // 3. A footpath from every front far from a street.
+        int lanes = 0;
+        for (Site s : inside) {
+            if (!nearRoad(roadGrid(), frontPoint(s), 4) && laneFrom(s)) {
+                lanes++;
+            }
+        }
+        // 4. One network of streets.
+        int joined = joinRoadPieces();
+        // 5. The open ground.
+        fillOpen(modern);
+        notes.add("길과 땅을 지우고 지금 장소 자리에 맞춰 다시 만들었어요 (오솔길 " + (lanes + joined) + "곳)");
+        // 6. Overlapping places are the keeper's to move.
+        for (int i = 0; i < sites.size(); i++) {
+            for (int j = i + 1; j < sites.size(); j++) {
+                Site a = sites.get(i), b = sites.get(j);
+                if (overlaps(a.x, a.z, a.w, a.d, b.x, b.z, b.w, b.d, 0)) {
+                    notes.add(name(sheet, a) + "와(과) " + name(sheet, b) + "이(가) 겹쳐 있어요 (직접 옮겨 주세요)");
+                }
+            }
+        }
+        return notes;
+    }
+
+    /** The sea (with its beach) along the coast's edge and the woods along theirs, in this ground's own frame. */
+    private void terrainZones(String coast, String woods) {
+        int n = size;
+        if (coast != null && FRONTS.contains(coast)) {
+            zones.add(edgeZone("water", coast, 0, 18));
+            zones.add(edgeZone("beach", coast, 18, 4));
+        }
+        if (woods != null && FRONTS.contains(woods) && !woods.equals(coast)) {
+            boolean coastSide = coast != null && FRONTS.contains(coast);
+            Zone forest = edgeZone("woods", woods, 0, "north".equals(woods) || "south".equals(woods) ? 16 : 14);
+            if (coastSide) {
+                // Woods along a side stop at the beach.
+                Zone shore = edgeZone("beach", coast, 0, 22);
+                if (overlaps(forest.x, forest.z, forest.w, forest.d, shore.x, shore.z, shore.w, shore.d, 0)) {
+                    List<Zone> cut = minus(forest, shore.x, shore.z, shore.x + shore.w, shore.z + shore.d);
+                    zones.addAll(cut);
+                    return;
+                }
+            }
+            zones.add(forest);
+        }
+    }
+
+    /** A strip {@code depth} deep along a side of the ground, {@code in} blocks in from that edge. */
+    private Zone edgeZone(String kind, String side, int in, int depth) {
+        Zone z = new Zone();
+        z.kind = kind;
+        switch (side) {
+            case "north" -> { z.x = 0; z.z = in; z.w = size; z.d = depth; }
+            case "east" -> { z.x = size - in - depth; z.z = 0; z.w = depth; z.d = size; }
+            case "west" -> { z.x = in; z.z = 0; z.w = depth; z.d = size; }
+            default -> { z.x = 0; z.z = size - in - depth; z.w = size; z.d = depth; }
+        }
+        return z;
+    }
+
+    /** A straight main street across the ground (along the coast), on the line that crosses the fewest lots near the middle. */
+    private void mainStreet(String coast, List<Site> inside, int width) {
+        boolean alongX = !"east".equals(coast) && !"west".equals(coast);
+        int half = width / 2;
+        int lo = MARGIN + 4, hi = size - MARGIN - 5;
+        for (Zone z : zones) {
+            if ("water".equals(z.kind) || "beach".equals(z.kind)) {
+                // Stay inland of the shore.
+                if (alongX) {
+                    if (z.z > size / 2) {
+                        hi = Math.min(hi, z.z - half - 3);
+                    } else {
+                        lo = Math.max(lo, z.z + z.d + half + 3);
+                    }
+                } else if (z.x > size / 2) {
+                    hi = Math.min(hi, z.x - half - 3);
+                } else {
+                    lo = Math.max(lo, z.x + z.w + half + 3);
+                }
+            }
+        }
+        // The middle of the fronts, so the street runs where the town is.
+        long sum = 0;
+        for (Site s : inside) {
+            int[] f = frontPoint(s);
+            sum += alongX ? f[1] : f[0];
+        }
+        int centre = inside.isEmpty() ? size / 2 : (int) (sum / inside.size());
+        int best = Math.max(lo, Math.min(hi, centre));
+        long bestScore = Long.MAX_VALUE;
+        for (int p = lo; p <= hi; p++) {
+            int crossed = 0;
+            for (Site s : inside) {
+                boolean hit = alongX ? p + half + 1 >= s.z && p - half - 1 < s.z + s.d : p + half + 1 >= s.x && p - half - 1 < s.x + s.w;
+                if (hit) {
+                    crossed++;
+                }
+            }
+            long score = crossed * 10_000L + Math.abs(p - centre);
+            if (score < bestScore) {
+                bestScore = score;
+                best = p;
+            }
+        }
+        Road r = new Road();
+        r.width = width;
+        if (alongX) {
+            r.points.add(new int[] { MARGIN + 1, best });
+            r.points.add(new int[] { size - MARGIN - 2, best });
+        } else {
+            r.points.add(new int[] { best, MARGIN + 1 });
+            r.points.add(new int[] { best, size - MARGIN - 2 });
+        }
+        roads.add(r);
+    }
+
+    /** Streets that run over a lot are cut there (with the block around it); stubs left by the cut go. */
+    private int cutUnderLots(List<Site> inside) {
         int cut = 0;
         List<Road> kept = new ArrayList<>();
         for (Road r : roads) {
@@ -639,7 +781,7 @@ public final class TownLayout {
             cut++;
             for (List<int[]> piece : runs) {
                 if (piece.size() < 3) {
-                    continue; // a stub left by the cut
+                    continue;
                 }
                 Road part = new Road();
                 part.width = r.width;
@@ -650,55 +792,83 @@ public final class TownLayout {
         }
         roads.clear();
         roads.addAll(kept);
-        if (cut > 0) {
-            notes.add("건물 아래를 지나던 길 " + cut + "곳을 끊었어요");
-        }
-        // 2. Fronts far from a street: a footpath out of the front (the building is not turned).
-        int lanes = 0;
-        for (Site s : inside) {
-            if (!s.outdoor && !nearRoad(roadGrid(), frontPoint(s), 4) && laneFrom(s)) {
-                lanes++;
+        return cut;
+    }
+
+    /**
+     * Fill the open ground (no lot, street or zone near) in cells of 12 blocks: gardens near the
+     * streets and fields further out (a modern town: parking by the street, parks beyond).
+     */
+    private void fillOpen(boolean modern) {
+        final int cell = 12;
+        boolean[][] road = roadGrid();
+        // Distance of every cell to the nearest street (4-way steps).
+        int[][] dist = new int[size][size];
+        ArrayDeque<int[]> q = new ArrayDeque<>();
+        for (int x = 0; x < size; x++) {
+            for (int z = 0; z < size; z++) {
+                dist[x][z] = road[x][z] ? 0 : Integer.MAX_VALUE;
+                if (road[x][z]) {
+                    q.add(new int[] { x, z });
+                }
             }
         }
-        if (lanes > 0) {
-            notes.add("길에서 떨어진 건물 " + lanes + "곳에 오솔길을 이었어요");
+        while (!q.isEmpty()) {
+            int[] c = q.poll();
+            for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                int nx = c[0] + d[0], nz = c[1] + d[1];
+                if (nx >= 0 && nz >= 0 && nx < size && nz < size && dist[nx][nz] == Integer.MAX_VALUE) {
+                    dist[nx][nz] = dist[c[0]][c[1]] + 1;
+                    q.add(new int[] { nx, nz });
+                }
+            }
         }
-        // 3. One network of streets.
-        int joined = joinRoadPieces();
-        if (joined > 0) {
-            notes.add("떨어진 길 " + joined + "곳을 오솔길로 이었어요");
-        }
-        // 4. Water and woods under a lot: the lot (and a block round it) is taken out of them.
-        int cleared = 0;
-        for (Site s : inside) {
-            ScenarioSheet.Place p = sheet.place(s.id);
-            boolean dock = p != null && "dock".equals(p.kind);
-            List<Zone> next = new ArrayList<>();
-            for (Zone z : zones) {
-                boolean clear = "woods".equals(z.kind) || "water".equals(z.kind) && !dock;
-                if (!clear || !overlaps(s.x, s.z, s.w, s.d, z.x, z.z, z.w, z.d, 0)) {
-                    next.add(z);
+        List<Zone> added = new ArrayList<>();
+        for (int z = MARGIN; z + cell <= size - MARGIN; z += cell) {
+            Zone run = null;
+            for (int x = MARGIN; x + cell <= size - MARGIN; x += cell) {
+                boolean free = true;
+                for (Site s : sites) {
+                    if (overlaps(x, z, cell, cell, s.x, s.z, s.w, s.d, 3)) {
+                        free = false;
+                        break;
+                    }
+                }
+                for (Zone o : zones) {
+                    if (free && overlaps(x, z, cell, cell, o.x, o.z, o.w, o.d, 0)) {
+                        free = false;
+                    }
+                }
+                for (int dx = -2; free && dx < cell + 2; dx++) {
+                    for (int dz = -2; dz < cell + 2; dz++) {
+                        int gx = x + dx, gz = z + dz;
+                        if (gx >= 0 && gz >= 0 && gx < size && gz < size && road[gx][gz]) {
+                            free = false;
+                            break;
+                        }
+                    }
+                }
+                if (!free) {
+                    run = null;
                     continue;
                 }
-                cleared++;
-                next.addAll(minus(z, s.x - 1, s.z - 1, s.x + s.w + 1, s.z + s.d + 1));
-            }
-            zones.clear();
-            zones.addAll(next);
-        }
-        if (cleared > 0) {
-            notes.add("건물 자리에 있던 물·숲 " + cleared + "곳을 비웠어요");
-        }
-        // 5. Overlapping buildings are the keeper's to move.
-        for (int i = 0; i < sites.size(); i++) {
-            for (int j = i + 1; j < sites.size(); j++) {
-                Site a = sites.get(i), b = sites.get(j);
-                if (overlaps(a.x, a.z, a.w, a.d, b.x, b.z, b.w, b.d, 0)) {
-                    notes.add(name(sheet, a) + "와(과) " + name(sheet, b) + "이(가) 겹쳐 있어요 (직접 옮겨 주세요)");
+                int near = dist[x + cell / 2][z + cell / 2];
+                String kind = modern ? (near < 22 && Math.floorMod(x / cell + z / cell, 2) == 0 ? "parking" : "park")
+                    : near < 34 ? "garden" : "field";
+                if (run != null && run.kind.equals(kind)) {
+                    run.w += cell;
+                } else {
+                    run = new Zone();
+                    run.kind = kind;
+                    run.x = x;
+                    run.z = z;
+                    run.w = cell;
+                    run.d = cell;
+                    added.add(run);
                 }
             }
         }
-        return notes;
+        zones.addAll(added);
     }
 
     /** What is left of a zone after taking out the box x1..x2, z1..z2 (end exclusive): up to four strips. */

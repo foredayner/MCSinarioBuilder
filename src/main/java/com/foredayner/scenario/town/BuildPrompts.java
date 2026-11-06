@@ -23,26 +23,14 @@ public final class BuildPrompts {
 
     /** How high an outdoor place may go. */
     public static int outdoorHeight(ScenarioSheet.Place p) {
-        String what = (p.name + " " + p.notes).toLowerCase(Locale.ROOT);
-        if (tree(what)) {
-            return 22;
-        }
-        return switch (p.kind) {
-            case "woods" -> 18;
-            case "cave", "landmark", "scene" -> 14;
+        return switch (Outdoors.type(p)) {
+            case "tree" -> 24;
+            case "cliff" -> Outdoors.terrain(p) ? 16 : 12;
+            case "woods" -> 22;
+            case "cave" -> 14;
             case "beach" -> 8;
-            default -> 12;
+            default -> Outdoors.terrain(p) ? 14 : 12;
         };
-    }
-
-    static boolean tree(String what) {
-        return what.contains("tree") || what.contains("나무") || what.contains("고목") || what.contains("당산") || what.contains("느티")
-            || what.contains("willow") || what.contains("버드");
-    }
-
-    static boolean cliff(String what) {
-        return what.contains("cliff") || what.contains("절벽") || what.contains("전망") || what.contains("overlook") || what.contains("벼랑")
-            || what.contains("lookout") || what.contains("viewpoint");
     }
 
     /** What an outdoor place is: a whole scene on its lot. */
@@ -57,19 +45,23 @@ public final class BuildPrompts {
 
     public static String propExtra(ScenarioSheet.Place p) {
         int h = p == null ? 12 : outdoorHeight(p);
+        boolean land = p != null && Outdoors.terrain(p);
         return "THIS IS AN OUTDOOR PLACE, NOT A BUILDING: no house, no walls around the site, no roof over it, no floor slab"
             + " under it. Make it a WHOLE SCENE that fills the site (up to " + h + " blocks high), as carefully made as a"
             + " building:\n"
-            + "- The ground is part of the work: the site's ground surface is y = -1 (replace it, dig down to y = -2 for a"
-            + " pond, a ditch or a hollow, and raise it with full blocks for mounds, banks, rocks and slopes). Lay paths"
-            + " (dirt_path, gravel, coarse_dirt, stone slabs or steps) where people walk and mixed patches (moss_block,"
-            + " podzol, rooted_dirt, mud, gravel), not one flat colour.\n"
-            + "- Height and shape: rocks of mixed stone (stone, andesite, cobblestone, mossy_cobblestone, tuff) in natural"
-            + " lumps, slopes with stairs and slabs, nothing a plain box.\n"
-            + "- Plants in layers: trees built by hand where they fit (a trunk of logs, branches of logs, a full crown of"
-            + " leaves in several overlapping blobs), bushes of leaves, tall grass, ferns, flowers, vines, moss carpets.\n"
-            + "- The things that make it THIS place (below), big enough to read from afar, plus small details around them"
-            + " (lanterns, signs, fences, benches, stones, scattered items).\n"
+            + (land
+                ? "- THE LAND: the scenario asks for it to rise or fall here, so shape it: raise it with overlapping ai.mound and"
+                    + " ai.rock (a hill, a bank, a crag, a cliff), dig down to y = -2 for water or a pit; the site's ground"
+                    + " surface is y = -1.\n"
+                : "- THE LAND STAYS FLAT: the site's ground surface is y = -1; do not raise or dig the land itself (single rocks,"
+                    + " bushes and burial mounds standing on it are fine).\n")
+            + "- The ground's surface is part of the work: paths (dirt_path, gravel, coarse_dirt, stone slabs) where people walk"
+            + " and mixed patches (moss_block, podzol, rooted_dirt, mud, coarse_dirt) at y = -1, not one flat colour.\n"
+            + "- Use the outdoor helpers, never trees or rocks block by block: ai.tree for EVERY tree (kind, height and"
+            + " trunk as fits), ai.rock for rocks and boulders, ai.bush for bushes, ai.mound for heaps of earth.\n"
+            + "- Plants in layers: trees, bushes, tall grass, ferns, flowers, vines, moss carpets.\n"
+            + "- Everything under MUST HAVE (below) is required; add MAY ALSO HAVE things to make it rich. Small details round"
+            + " them (lanterns, signs, fences, benches, stones, scattered things).\n"
             + "- Keep a walkable way in from the front edge (z = -1 side) to the middle, 2 wide, and room for the"
             + " investigators to stand.\n"
             + "- Use most of the site: spread the scene over it, not one lump in the middle.\n" + NO_FIGURES;
@@ -258,68 +250,18 @@ public final class BuildPrompts {
         return sb.toString();
     }
 
-    /** What an outdoor place holds: the scene for its kind, then the keeper's own notes (which win). */
+    /** What an outdoor place holds: the keeper's notes first, then the checklist for its kind and period. */
     public static String prop(ScenarioSheet sheet, ScenarioSheet.Place p) {
         String period = sheet.period();
-        boolean east = com.foredayner.scenario.sheet.Period.east(period);
-        boolean other = com.foredayner.scenario.sheet.Period.OTHER.equals(period);
-        String told = (p.name + " " + p.notes).toLowerCase(Locale.ROOT);
-        String what;
-        if (tree(told) && !"woods".equals(p.kind)) {
-            what = "a great old tree that the place is about, the centre of the site: a thick trunk (2x2 or 3x3 of logs, wider"
-                + " at the foot), roots of logs and rooted_dirt spreading over the ground, big branches of logs reaching out"
-                + " and up, a wide uneven crown of leaves (several overlapping blobs, 9-15 blocks across, some hanging vines),"
-                + " and around it what makes it special"
-                + (east ? " (a straw rope with white paper strips tied round the trunk, a stone altar or a small shrine at"
-                    + " its foot, stones piled in little towers, ribbons of coloured wool on the branches)"
-                    : " (carvings or a hollow in the trunk, a bench or low wall round it, lanterns hung by chains)");
-        } else if (cliff(told) || "scene".equals(p.kind) && told.contains("view")) {
-            what = "a cliff-top lookout path: the ground rises toward the back of the site to a high rocky edge (stone,"
-                + " andesite, mossy cobblestone in uneven layers 4-8 blocks high) that drops away at the back; a winding path"
-                + " of dirt_path and stone steps climbs to a flat lookout at the top with a wooden railing (fences) along the"
-                + " edge, a bench, a lamp or lantern post, a small sign; wind-bent trees and bushes, tall grass and flowers on"
-                + " the slopes, loose rocks by the path";
-        } else {
-            what = switch (p.kind) {
-                case "dock" -> "a harbour dock: a wooden pier of planks on log posts reaching out over the water edge of the"
-                    + " site, mooring posts with rope (chains), a small rowing boat tied up, piles of crates, barrels and fishing"
-                    + " nets, a lantern post, a shed or a fish-drying rack, a crane beam";
-                case "cemetery" -> east ? "a burial ground on a gentle slope: several low round grassy mounds (grass and moss"
-                    + " blocks), each with a small stone tablet and a stone offering table in front, stone lanterns and posts, pine"
-                    + " trees around, a path between the mounds"
-                    : other ? "a fitting burial place for " + p.name + ", with several graves along paths"
-                    : "an old cemetery: rows of weathered gravestones (stone, cobblestone walls, mossy stone) and a few tall"
-                    + " grave monuments and crosses, a low stone wall with an iron gate at the front, a gravel path between"
-                    + " the rows, a crypt or mausoleum with a small door, a big dead or old tree, iron lanterns, overgrown"
-                    + " grass and moss";
-                case "woods" -> "a dense patch of forest around a small clearing: many tall trees built by hand (different"
-                    + " heights, trunks of logs, full crowns of leaves), fallen logs, mossy boulders, ferns and bushes, a"
-                    + " winding path into the clearing, and in the clearing "
-                    + (east ? "a small cairn of piled stones and a straw rope on a tree" : other ? "a fitting landmark"
-                        : "an old moss-covered standing stone with strange carvings");
-                case "square" -> east ? "a village common: a big old tree with a stone bench ring, a village well with a stone"
-                    + " rim, a wooden frame and a bucket, a 평상 platform, paths of packed earth"
-                    : other ? "a fitting square for " + p.name
-                    : "a town square: paving of stone bricks and gravel in a pattern, a stone fountain or statue-free"
-                    + " monument in the middle, benches, lamp posts, flower beds and a few trees";
-                case "beach" -> "a strip of beach: sand and gravel down to the water, rocks and pools, driftwood logs, an"
-                    + " overturned wooden rowing boat with oars, a few posts and a torn net, dune grass";
-                case "cave" -> "a cave mouth in a rocky hill: the ground rises into a mound of stone, andesite and tuff, with a"
-                    + " dark opening 3 wide going in and down, moss and hanging roots over it, loose rocks and gravel at the"
-                    + " foot, a path leading to it";
-                case "scene" -> "a stretch of road or path where something happened: the road (gravel, dirt_path) across"
-                    + " the site with its verges, ditches and bushes, a fence or low wall along it, and the things that"
-                    + " show what happened (a dropped bundle, a broken basket or cart wheel, scattered stones, a torn cloth"
-                    + " on a bush, skid marks of coarse_dirt), each item separate";
-                case "landmark" -> "the " + p.name + " itself as the centre, well made and big enough to see from afar, as"
-                    + " it looks in the setting, with its surroundings (a path to it, stones, plants, a fence or low wall)";
-                case "pyeongsang" -> "a Korean 평상: a low, wide wooden platform (about 4x3, 1 block high: spruce or oak"
-                    + " slabs on fence posts) where villagers sit, with a woven straw mat and a small low wooden table, under"
-                    + " a big shady tree, with a path and a few pots around";
-                default -> "a fitting scene for " + p.kind + " \"" + p.name + "\"";
-            };
+        StringBuilder sb = new StringBuilder();
+        sb.append("(").append(sheet.era).append(sheet.mood.isBlank() ? "" : ", " + sheet.mood).append(")");
+        if (p.notes != null && !p.notes.isBlank()) {
+            sb.append(" THE KEEPER'S NOTES (follow them first, they beat the checklist): ").append(p.notes.strip());
         }
-        return what + " (" + sheet.era + (sheet.mood.isBlank() ? "" : ", " + sheet.mood) + ")"
-            + (p.notes.isBlank() ? "" : ". The keeper's notes (follow them first): " + p.notes);
+        if (!p.scenes.isEmpty()) {
+            sb.append(" Scenes here: ").append(String.join("; ", p.scenes)).append('.');
+        }
+        sb.append('\n').append(Outdoors.checklist(p, period));
+        return sb.toString();
     }
 }

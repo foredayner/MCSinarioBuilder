@@ -73,4 +73,21 @@ class OuterBandTest {
         assertNotEquals(OuterBand.Kind.ROAD, band.at(80, 159 + OuterBand.WIDTH).kind(), "the road does not reach the outside");
         assertEquals(0, band.at(165, 60).rise(), "the sea stays at sea level");
     }
+
+    @Test
+    void aPlacePutFarOutWidensItsSideAndGetsAFlatLotAndAPath() {
+        GroundPlan plan = plan();
+        // A lot 20 wide put 50 blocks west of the town, in the wooded north-west corner's latitude.
+        int[] pad = { -50, 40, 20, 20 };
+        OuterBand band = new OuterBand(plan, true, OuterBand.WIDTH, java.util.List.of(pad));
+        assertEquals(50 + OuterBand.PAD_MARGIN, band.west(), "the west side reaches past the lot");
+        assertEquals(OuterBand.WIDTH, band.east(), "the other sides stay as they were");
+        assertTrue(band.contains(-55, 50));
+        OuterBand.Column lot = band.at(-40, 50);
+        assertEquals(0, lot.rise(), "the lot is flat");
+        assertEquals(0.0, lot.t(), "at the town's level");
+        assertFalse(lot.tree(), "no tree on the lot");
+        assertEquals(OuterBand.Kind.PATH, band.at(-15, 50).kind(), "a path back to the town");
+        assertTrue(band.at(-58, 50).rise() > 0, "the closed stage's hills rise again past it");
+    }
 }
