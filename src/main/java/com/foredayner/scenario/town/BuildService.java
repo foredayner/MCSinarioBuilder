@@ -940,6 +940,7 @@ public final class BuildService {
         boolean house = !job.layout.building() && !s.outdoor && !"ruins".equals(job.sheet.place(placeId) == null ? "" : job.sheet.place(placeId).kind);
         Runnable done = () -> job.world.getServer().execute(() -> {
             if (job.placing.remove(placeId) != null) {
+                ScenarioBuilderMod.LOG.info("Doors of {}: house {} box {}", placeId, house, bp.min == null ? "-" : "set");
                 if (house && bp.min != null && bp.max != null) {
                     // Every way in: a double door with free ground in front of and behind it.
                     Doors.fix(job.world, new BlockPos(bp.min[0], bp.min[1], bp.min[2]), new BlockPos(bp.max[0], bp.max[1], bp.max[2]));
