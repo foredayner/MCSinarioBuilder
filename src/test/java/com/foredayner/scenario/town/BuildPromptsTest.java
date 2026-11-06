@@ -166,7 +166,7 @@ class BuildPromptsTest {
         ScenarioSheet sheet = greymouth();
         assertTrue(BuildPrompts.extra(sheet, sheet.place("inn"), 21).contains("NEVER build people"));
         String prop = BuildPrompts.propExtra();
-        assertTrue(prop.contains("NOT a building") && prop.contains("NEVER build people"), prop);
+        assertTrue(prop.contains("NOT A BUILDING") && prop.contains("NEVER build people"), prop);
         ScenarioSheet.Place well = new ScenarioSheet.Place();
         well.name = "우물";
         well.kind = "landmark";
