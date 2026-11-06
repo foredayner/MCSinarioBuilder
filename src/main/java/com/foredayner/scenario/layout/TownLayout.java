@@ -25,7 +25,8 @@ public final class TownLayout {
     public static final List<String> FRONTS = List.of("north", "east", "south", "west");
     public static final List<String> ZONES = List.of("water", "woods", "field", "cemetery", "square", "garden", "beach", "parking", "park");
 
-    public int size = SIZE;
+    /** A town's ground is set from its places (240 up to 400); building stages keep the old 160. */
+    public int size = 160;
     /** "town", or "building": the sites are rooms of one building on floors (see {@link IndoorPlan}). */
     public String stage = "town";
     public List<Site> sites = new ArrayList<>();
