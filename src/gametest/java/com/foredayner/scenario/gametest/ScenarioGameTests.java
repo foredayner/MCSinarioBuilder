@@ -309,8 +309,8 @@ public class ScenarioGameTests implements FabricGameTest {
                 // The ground: a street, the sea, the woods.
                 var plan = com.foredayner.scenario.town.GroundPlan.of(layout, sheet);
                 int[] road = null, sea = null;
-                for (int x = 0; x < 160 && (road == null || sea == null); x++) {
-                    for (int z = 0; z < 160; z++) {
+                for (int x = 0; x < plan.size && (road == null || sea == null); x++) {
+                    for (int z = 0; z < plan.size; z++) {
                         if (road == null && plan.cells[x][z] == com.foredayner.scenario.town.GroundPlan.Cell.ROAD) {
                             road = new int[] { x, z };
                         }
