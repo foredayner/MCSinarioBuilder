@@ -801,11 +801,6 @@ public final class BuildService {
         return "south";
     }
 
-    /** The north-west corner of the small square an outdoor place's object stands on. */
-    private static BlockPos propMin(Job job, TownLayout.Site s) {
-        return job.origin.add(s.x + Math.max(0, (s.w - PROP_LOT) / 2), 0, s.z + Math.max(0, (s.d - PROP_LOT) / 2));
-    }
-
     private static void design(Job job, String placeId) {
         ScenarioSheet.Place p = job.sheet.place(placeId);
         TownLayout.Site s = job.layout.site(placeId);
@@ -858,11 +853,11 @@ public final class BuildService {
                 AiBuildApi.propEraFor(job.sheet.period()), true);
             future = designer.building(job.world, roomMin(job, s), roomSite(s), req);
         } else if (s.outdoor) {
-            // Blocks, like a building, on a small square in the middle of the lot (never display entities).
-            AiBuildApi.Site small = new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT);
+            // A whole scene of blocks over the lot, ground included (never display entities).
+            AiBuildApi.Site whole = new AiBuildApi.Site(s.w, s.d, BuildPrompts.outdoorHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra() + blocksOnly(job.sheet), model);
-            future = designer.building(job.world, propMin(job, s), small, req);
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model);
+            future = designer.building(job.world, siteMin(job, s), whole, req);
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
@@ -896,13 +891,14 @@ public final class BuildService {
                 }
                 return;
             }
-            if (!job.layout.building() && !s.outdoor && ScenarioSheet.named(p) && !job.redone.contains(placeId)) {
-                // A scenario building whose design leaves most of its big lot empty: once more, bigger.
+            if (!job.layout.building() && (s.outdoor || ScenarioSheet.named(p)) && !job.redone.contains(placeId)) {
+                // A scenario building or outdoor scene that leaves most of its big lot empty: once more, bigger.
                 int[] used = usedSize(design.plan());
                 if (used[0] < s.w * 0.6 || used[1] < s.d * 0.6) {
                     job.redone.add(placeId);
                     job.notes.put(placeId, String.format(java.util.Locale.ROOT, "\nYOUR LAST DESIGN WAS ONLY %d x %d ON THIS %d x %d SITE:"
-                        + " make the building and its rooms bigger and use most of the site.", used[0], used[1], s.w, s.d));
+                        + (s.outdoor ? " spread the scene over the whole site." : " make the building bigger and use most of the site."),
+                        used[0], used[1], s.w, s.d));
                     bp.state = "waiting";
                     job.waiting.addFirst(placeId);
                     return;
@@ -941,8 +937,13 @@ public final class BuildService {
         UUID lane = UUID.randomUUID();
         bp.tag = tag;
         job.placing.put(placeId, lane);
+        boolean house = !job.layout.building() && !s.outdoor && !"ruins".equals(job.sheet.place(placeId) == null ? "" : job.sheet.place(placeId).kind);
         Runnable done = () -> job.world.getServer().execute(() -> {
             if (job.placing.remove(placeId) != null) {
+                if (house && bp.min != null && bp.max != null) {
+                    // Every way in: a double door with free ground in front of and behind it.
+                    Doors.fix(job.world, new BlockPos(bp.min[0], bp.min[1], bp.min[2]), new BlockPos(bp.max[0], bp.max[1], bp.max[2]));
+                }
                 bp.state = "done";
                 job.dirty = true;
             }
@@ -961,11 +962,13 @@ public final class BuildService {
                 bp.marks.put(e.getKey(), list);
             }
         } else if (s.outdoor) {
-            AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), propMin(job, s),
-                new AiBuildApi.Site(PROP_LOT, PROP_LOT, PROP_HEIGHT), s.front, tag, lane, done);
+            ScenarioSheet.Place p = job.sheet.place(placeId);
+            int high = BuildPrompts.outdoorHeight(p);
+            AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), siteMin(job, s),
+                new AiBuildApi.Site(s.w, s.d, high), s.front, tag, lane, done);
             bp.prop = true;
-            bp.min = new int[] { job.origin.getX() + s.x, job.origin.getY(), job.origin.getZ() + s.z };
-            bp.max = new int[] { job.origin.getX() + s.x + s.w - 1, job.origin.getY() + PROP_HEIGHT, job.origin.getZ() + s.z + s.d - 1 };
+            bp.min = new int[] { job.origin.getX() + s.x, job.origin.getY() - 2, job.origin.getZ() + s.z };
+            bp.max = new int[] { job.origin.getX() + s.x + s.w - 1, job.origin.getY() + high + 2, job.origin.getZ() + s.z + s.d - 1 };
             bp.marks.clear();
             for (var e : placed.marks().entrySet()) {
                 List<int[]> list = new ArrayList<>();

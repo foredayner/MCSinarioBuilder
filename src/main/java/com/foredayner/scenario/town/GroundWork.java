@@ -277,6 +277,9 @@ public final class GroundWork {
     private void decorate(int x, int z) {
         GroundPlan.Cell cell = plan.cells[x][z];
         String kind = plan.outdoorKind[x][z];
+        if (cell == GroundPlan.Cell.OUTDOOR && !"pine".equals(kind)) {
+            return; // an outdoor place's whole scene (ground details included) is designed by the AI
+        }
         if (cell == GroundPlan.Cell.WOODS || cell == GroundPlan.Cell.OUTDOOR && "woods".equals(kind)) {
             if (treeHere(x, z, 5, cell == GroundPlan.Cell.WOODS ? 85 : 60)) {
                 tree(x, z, GroundPlan.noise(x, z, 13) < 55);

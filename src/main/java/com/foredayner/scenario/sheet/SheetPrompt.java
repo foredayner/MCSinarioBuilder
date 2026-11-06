@@ -26,7 +26,7 @@ public final class SheetPrompt {
                         "condition": "kept|worn|abandoned|sinister" } ],
           "npcs": [ { "name": "...", "role": "...", "place": "place id", "room": "room name or ''", "notes": "..." } ],
           "clues": [ { "id": "short_ascii_id", "name": "...", "text": "what it says or shows, 1-3 sentences",
-                       "form": "book|note|map|item", "place": "place id", "room": "room name", "hidden": true|false } ],
+                       "form": "book|note|map|item", "place": "place id", "room": "a listed room or ''", "hidden": true|false } ],
           "links": [ { "from": "place id", "to": "place id", "kind": "road|path|tunnel|secret" } ],
           "terrain": { "coast": "none|north|east|south|west", "woods": "none|north|east|south|west", "notes": "..." },
           "outer": "open|closed",
@@ -54,8 +54,11 @@ public final class SheetPrompt {
           station, library), XL = 31x31 (mansion, factory). Outdoor places (cemetery, woods, dock) set "outdoor": true.
           Places under the ground (a cave, a crypt below, a tunnel, a mine) are kind "cave", "outdoor": true: the town shows
           their entrance only.
-        - Rooms: list the rooms of each building with their use, always including the rooms where scenes happen, NPCs
-          stand and clues lie. A basement room only if "basement": true. Secret rooms and passages are rooms too.
+        - Rooms: a building is ONE OPEN SPACE inside by default ("rooms": []): a shop, an inn's common room, a church,
+          a house where nothing is split are all one big room per floor. List rooms ONLY when the scenario itself
+          names separate rooms that matter (a study where a clue lies, a locked bedroom, a hidden room, a secret
+          passage, an office behind the counter): then list just those, with their use. A basement room only if
+          "basement": true. Secret rooms and passages are rooms too.
         - Clues: the physical things the investigators can find. form: book (journal, ledger, letters), note (one
           page), map (chart, plan), item (object). Give the text the clue reveals. hidden = behind or inside something.
         - Links: roads between places, paths to outdoor places, and passages UNDER THE GROUND the scenario names: kind

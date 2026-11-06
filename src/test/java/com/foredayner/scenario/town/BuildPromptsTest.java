@@ -158,7 +158,7 @@ class BuildPromptsTest {
         sheet.period = Period.EAST_MEDIEVAL;
         assertTrue(BuildPrompts.prop(sheet, graves).contains("mound"), "eastern graves are mounds");
         sheet.period = Period.WEST_MODERN;
-        assertTrue(BuildPrompts.prop(sheet, graves).contains("angel"));
+        assertTrue(BuildPrompts.prop(sheet, graves).contains("gravestones"));
     }
 
     @Test
@@ -170,7 +170,7 @@ class BuildPromptsTest {
         ScenarioSheet.Place well = new ScenarioSheet.Place();
         well.name = "우물";
         well.kind = "landmark";
-        assertTrue(BuildPrompts.propDescription(sheet, well).startsWith("outdoor object"));
+        assertTrue(BuildPrompts.propDescription(sheet, well).startsWith("outdoor place"));
         assertTrue(Archetypes.checklist("ruins", Period.EAST_POSTWAR).contains("no roof"));
     }
 

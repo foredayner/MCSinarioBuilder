@@ -18,7 +18,7 @@ public final class FixedDesigner implements BuildService.Designer {
 
     @Override
     public CompletableFuture<AiBuildApi.Design> building(ServerWorld world, BlockPos near, AiBuildApi.Site site, AiBuildApi.BuildingRequest req) {
-        if (req.description().startsWith("outdoor object")) {
+        if (req.description().startsWith("outdoor place")) {
             return CompletableFuture.completedFuture(new AiBuildApi.Design(false, "no props in tests", null, "", 0, 0, 0));
         }
         int w = site.width(), d = site.depth();
@@ -32,7 +32,7 @@ public final class FixedDesigner implements BuildService.Designer {
         int i = 0;
         for (String mark : req.marks() == null ? java.util.List.<String>of() : req.marks()) {
             String name = mark.trim().split(" ")[0];
-            int x = 2 + i % Math.max(1, w - 4), z = -2 - (i / Math.max(1, w - 4)) % Math.max(1, d - 4);
+            int x = 2 + i % Math.max(1, w - 4), z = -5 - (i / Math.max(1, w - 4)) % Math.max(1, d - 7);
             s.append(String.format(Locale.ROOT, "ai.placeBlock(%d, 1, %d, 'bookshelf')\n", x, z));
             s.append(String.format(Locale.ROOT, "ai.mark('%s', %d, 1, %d)\n", name.replace("'", ""), x, z));
             i++;

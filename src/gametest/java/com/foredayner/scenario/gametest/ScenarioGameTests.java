@@ -339,6 +339,18 @@ public class ScenarioGameTests implements FabricGameTest {
                 var inn = layout.site("inn");
                 var roof = world.getBlockState(origin.add(inn.x + inn.w / 2, 6, inn.z + inn.d / 2));
                 check(roof.isOf(net.minecraft.block.Blocks.DARK_OAK_PLANKS), "the inn stands (its roof): " + roof);
+                int doors = 0;
+                for (int x = 0; x < inn.w; x++) {
+                    for (int z = 0; z < inn.d; z++) {
+                        var at = origin.add(inn.x + x, 0, inn.z + z);
+                        for (int y = 0; y < 3; y++) {
+                            if (com.foredayner.scenario.town.Doors.lowerDoor(world.getBlockState(at.up(y)))) {
+                                doors++;
+                            }
+                        }
+                    }
+                }
+                check(doors == 2, "the inn's way in is a double door: " + doors);
                 com.foredayner.scenario.town.BuildService.clearForTests(world.getServer(), id, "inn");
             } catch (java.io.IOException e) {
                 restoreRoot.run();

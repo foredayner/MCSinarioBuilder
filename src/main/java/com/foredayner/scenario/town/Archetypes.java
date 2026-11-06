@@ -482,7 +482,7 @@ public final class Archetypes {
     /** What to put around the building on its lot (a western town). */
     public static String yard(ScenarioSheet.Place p) {
         String extra = switch (p.kind) {
-            case "shop", "inn", "newspaper", "hotel" -> "a hanging sign or banner over the door, crates or barrels by the entrance";
+            case "shop", "inn", "newspaper", "hotel" -> "a hanging sign or banner over the door, crates or barrels to the side of the entrance (never in front of the door)";
             case "church" -> "a few gravestones or a bench, a lamp post by the gate";
             case "farm" -> "hay bales, a water trough, a fenced animal pen";
             case "mansion" -> "a gate and gate posts at the front, hedges, a garden with flowers, lamp posts";
