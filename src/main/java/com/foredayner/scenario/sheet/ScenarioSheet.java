@@ -511,12 +511,12 @@ public final class ScenarioSheet {
 
     /** Block footprint of a size code. */
     /**
-     * A place's square lot. The scenario's own buildings (not the filler houses, the map's houses,
-     * outdoor places or ruins) get lots twice as wide, so their rooms are big enough to play in.
+     * A place's square lot. The scenario's own places (its buildings, outdoor places and ruins, not
+     * the filler houses or the map's houses) get lots twice as wide, so they are big enough to play in.
      */
     public static int footprint(Place p) {
         int base = footprint(p.size);
-        return named(p) ? Math.min(60, base * 2) : base;
+        return p.filler || p.mapFiller ? base : Math.min(60, base * 2);
     }
 
     /** One of the scenario's own buildings (its lot and rooms are doubled). */
