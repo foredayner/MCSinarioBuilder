@@ -69,6 +69,7 @@ class TownLayoutTest {
     @Test
     void tidyingFixesStreetsAroundBuildingsWithoutMovingThem() throws Exception {
         ScenarioSheet sheet = greymouth();
+        sheet.townSize = 240; // room to drag a building onto the main street without hitting another
         TownLayout layout = TownLayout.auto(sheet);
         layout.tidy(sheet);
         assertTrue(layout.check(sheet).isEmpty(), "tidying a good layout makes it again, still good: " + layout.check(sheet));
@@ -282,5 +283,16 @@ class TownLayoutTest {
         filler.mapFiller = true;
         sheet.places.add(filler);
         assertEquals(5, sheet.counted(), "map houses do not count toward the limit");
+    }
+
+    @Test
+    void theKeeperPicksTheStartingSize() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        sheet.townSize = 280;
+        assertTrue(ScenarioSheet.groundSize(sheet) >= 280, "at least the chosen size");
+        sheet.townSize = 0;
+        assertTrue(ScenarioSheet.groundSize(sheet) >= 120, "자동 starts small and grows as needed");
+        sheet.townSize = 120;
+        assertTrue(ScenarioSheet.groundSize(sheet) >= 120 && ScenarioSheet.groundSize(sheet) % 40 == 0);
     }
 }
