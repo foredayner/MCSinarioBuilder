@@ -351,6 +351,17 @@ public class ScenarioGameTests implements FabricGameTest {
                     }
                 }
                 check(doors == 2, "the inn's way in is a double door: " + doors);
+                int lights = 0;
+                for (int x = 0; x < inn.w; x++) {
+                    for (int z = 0; z < inn.d; z++) {
+                        for (int y = 0; y < 8; y++) {
+                            if (world.getBlockState(origin.add(inn.x + x, y, inn.z + z)).isOf(net.minecraft.block.Blocks.LIGHT)) {
+                                lights++;
+                            }
+                        }
+                    }
+                }
+                check(lights > 0, "the dark inn got invisible lights");
                 com.foredayner.scenario.town.BuildService.clearForTests(world.getServer(), id, "inn");
             } catch (java.io.IOException e) {
                 restoreRoot.run();

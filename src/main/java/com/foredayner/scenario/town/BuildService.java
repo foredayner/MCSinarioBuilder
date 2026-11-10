@@ -940,10 +940,16 @@ public final class BuildService {
         job.placing.put(placeId, lane);
         ScenarioSheet.Place place0 = job.sheet.place(placeId);
         boolean house = !job.layout.building() && !s.outdoor && place0 != null && !"ruins".equals(place0.kind);
-        BlockPos lotMin = house ? siteMin(job, s) : null;
-        BlockPos lotMax = house ? lotMin.add(s.w - 1, BuildPrompts.maxHeight(place0), s.d - 1) : null;
+        boolean indoors = !s.outdoor && place0 != null;
+        BlockPos lotMin = indoors ? siteMin(job, s) : null;
+        BlockPos lotMax = indoors ? lotMin.add(s.w - 1, BuildPrompts.maxHeight(place0), s.d - 1) : null;
         Runnable done = () -> job.world.getServer().execute(() -> {
             if (job.placing.remove(placeId) != null) {
+                if (indoors) {
+                    // Dark spots inside: invisible light blocks.
+                    int lit = Lights.fill(job.world, lotMin, lotMax);
+                    ScenarioBuilderMod.LOG.info("Lights in {}: {}", placeId, lit);
+                }
                 if (house) {
                     // Every way in: a double door with free ground in front of and behind it.
                     int found = Doors.fix(job.world, lotMin, lotMax);
@@ -1029,7 +1035,7 @@ public final class BuildService {
 
     /** 소품: 안함 — the AI Build Assistant keeps the design to blocks (it checks and asks again). */
     static String blocksOnly(ScenarioSheet sheet) {
-        return sheet != null && !sheet.useProps ? "\n" + AiBuildApi.BLOCKS_ONLY : "";
+        return "\n" + AiBuildApi.BLOCKS_ONLY; // the town is always blocks only: it stays whole without the mods
     }
 
 }

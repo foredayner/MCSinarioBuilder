@@ -160,7 +160,7 @@ class TownLayoutTest {
         assertEquals(Math.min(60, 2 * ScenarioSheet.footprint(sheet.place("mansion").size)), layout.site("mansion").w,
             "the scenario's own buildings get lots twice as wide");
         assertEquals(ScenarioSheet.groundSize(sheet), layout.size, "the ground grows with the lots");
-        assertTrue(layout.size >= 240 && layout.size <= 400);
+        assertTrue(layout.size >= 120 && layout.size <= 400);
         assertThrows(IllegalArgumentException.class, () -> TownLayout.fromAnswer("{\"places\":[{\"id\":\"castle\",\"x\":1,\"z\":1}]}", sheet));
     }
 

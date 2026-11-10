@@ -853,7 +853,7 @@ public final class TownLayout {
                     continue;
                 }
                 int near = dist[x + cell / 2][z + cell / 2];
-                String kind = modern ? (near < 22 && Math.floorMod(x / cell + z / cell, 2) == 0 ? "parking" : "park")
+                String kind = modern ? (near < 14 && Math.floorMod(x / cell * 3 + z / cell * 2, 7) == 0 ? "parking" : "park")
                     : near < 34 ? "garden" : "field";
                 if (run != null && run.kind.equals(kind)) {
                     run.w += cell;
@@ -1492,7 +1492,7 @@ public final class TownLayout {
                 }
                 // Old towns: gardens by the street, fields beyond. Modern towns: parking lots and
                 // little parks by the street, parks beyond.
-                String kind = modern ? (near < 22 && Math.floorMod(x / cell + z / cell, 2) == 0 ? "parking" : "park")
+                String kind = modern ? (near < 14 && Math.floorMod(x / cell * 3 + z / cell * 2, 7) == 0 ? "parking" : "park")
                     : near < 34 ? "garden" : "field";
                 if (run != null && run.kind.equals(kind)) {
                     run.w += cell;

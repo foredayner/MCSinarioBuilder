@@ -15,8 +15,8 @@ import java.util.Set;
 
 /**
  * After a town building is placed: every door in an outside wall becomes a double door (a second
- * door is set into the wall beside it), and the 2 blocks in front of and behind the pair are
- * cleared at door height so nothing stands in the way.
+ * door is set into the wall beside it), and the 2 blocks in front of and behind every door (inner
+ * ones too) are cleared at door height so nothing stands in the way (trapdoors, furniture, crates).
  */
 public final class Doors {
 
@@ -41,10 +41,11 @@ public final class Doors {
                     Direction facing = door.get(DoorBlock.FACING);
                     boolean front = covered(world, pos.offset(facing), max.getY());
                     boolean back = covered(world, pos.offset(facing.getOpposite()), max.getY());
-                    if (front == back) {
-                        continue; // a door between two rooms (or under a porch roof on both sides)
+                    // Only a way in from outside becomes a double door; every door gets free ground in front and behind.
+                    boolean outside = front != back;
+                    if (outside) {
+                        found++;
                     }
-                    found++;
                     Direction ccw = facing.rotateYCounterclockwise();
                     BlockPos other = null;
                     for (Direction side : new Direction[] { ccw, ccw.getOpposite() }) {
@@ -53,7 +54,7 @@ public final class Doors {
                             break;
                         }
                     }
-                    if (other == null) {
+                    if (other == null && outside) {
                         for (Direction side : new Direction[] { ccw, ccw.getOpposite() }) {
                             BlockPos wall = pos.offset(side);
                             if (wall(world, wall) && wall(world, wall.up())) {

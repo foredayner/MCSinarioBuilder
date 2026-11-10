@@ -42,11 +42,11 @@ public final class ScenarioSheet {
     public String style = "";
     /** The town's architecture guide (written by the AI from the era and place, edited by the keeper). */
     public String styleGuide = "";
-    /**
-     * 소품: 사용 — buildings may use the AI Build Assistant's colours, smooth pieces and furniture presets;
-     * off (안함): blocks only, so the town stays whole in a world without the mods.
-     */
-    public boolean useProps = true;
+    /** Kept for old sheets: the town is always built of blocks only now (no props, colours or smooth pieces). */
+    public boolean useProps = false;
+    /** The ground's starting size the keeper chose (120, 160, 240 or 280), or 0 = by the places (자동). It grows when the lots need it. */
+    public int townSize = 0;
+    public static final List<Integer> TOWN_SIZES = List.of(0, 120, 160, 240, 280);
     /** The keeper's map of the town ("file:<name>" kept with the scenario, or ""): the AI lays the town out after it. */
     public String mapImage = "";
     /** What the map shows: auto (the AI tells), town, outdoor or indoor (a floor plan). */
@@ -702,7 +702,7 @@ public final class ScenarioSheet {
             area += (long) f * f;
         }
         int side = (int) Math.ceil(Math.sqrt(area * 1.6));
-        int size = 240;
+        int size = sheet.townSize > 0 ? sheet.townSize : 120;
         while (size < side && size < 400) {
             size += 40;
         }

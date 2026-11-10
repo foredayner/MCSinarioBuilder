@@ -658,6 +658,23 @@ public class ScenarioScreen extends Screen {
             ? "참고 지도를 배치도 위에 흐리게 겹쳐 보기" : "참고 지도를 올리면 배치도 위에 겹쳐 볼 수 있어요")));
         overlay.active = mapShown;
         addDrawableChild(overlay);
+        // The town's starting size (자동: by the places); it grows when the places need more room.
+        if (sheet != null) {
+        int ts = sheet.townSize;
+        WoodUi.WoodButton size = new WoodUi.WoodButton(right() - 12 - 46 - 4 - 72, bottom() - 44, 72, 18,
+            Text.literal("크기: " + (ts > 0 ? Integer.toString(ts) : "자동")), b -> {
+                var sizes = com.foredayner.scenario.sheet.ScenarioSheet.TOWN_SIZES;
+                int i = Math.max(0, sizes.indexOf(sheet.townSize));
+                sheet.townSize = sizes.get((i + 1) % sizes.size());
+                ScenarioClientState.saveSheet();
+                ScenarioClientState.log("마을 크기: " + (sheet.townSize > 0 ? sheet.townSize + "칸에서 시작해요" : "장소에 맞춰 정해요")
+                    + ". 기본 배치나 AI로 배치를 다시 하면 적용돼요.");
+                clearAndInit();
+            }, false);
+        size.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+            "마을 땅의 시작 크기 (자동 / 120 / 160 / 240 / 280). 장소가 다 안 들어가면 40칸씩 늘어나요 (최대 400). 배치를 다시 만들 때 적용돼요.")));
+        addDrawableChild(size);
+        }
         if (layout == null || sheet == null) {
             askField = null;
             layoutProblems = List.of();
@@ -857,7 +874,7 @@ public class ScenarioScreen extends Screen {
             clearAndInit();
         }, false);
         tidy.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
-            "건물은 그대로 두고 나머지를 정리해요: 건물 밑을 지나는 길을 끊고, 길에서 먼 건물에 오솔길을 내고, 떨어진 길을 잇고, 건물 자리의 물·숲을 비워요. 겹친 건물은 로그로 알려 줘요.")));
+            "장소 자리는 그대로 두고 길과 땅(바다, 숲, 밭, 정원)을 지운 뒤 다시 만들어요. 겹친 장소는 로그로 알려 줘요.")));
         addDrawableChild(tidy);
     }
 
@@ -1330,23 +1347,8 @@ public class ScenarioScreen extends Screen {
             b -> ScenarioClientState.buildAction("build_here", null), false);
         here.active = !busy;
         here.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
-            "지금 서 있는 곳이 160x160 마을의 한가운데가 돼요. 그 안의 언덕·나무는 깎이고 땅이 평평해져요.")));
+            "지금 서 있는 곳이 마을의 한가운데가 돼요. 그 안의 언덕·나무는 깎이고 땅이 평평해져요.")));
         addDrawableChild(here);
-        var sheetNow = ScenarioClientState.sheet();
-        if (sheetNow != null) {
-            // 소품: 사용 / 안함 — off: buildings of blocks only, so the town stays whole without the mods.
-            boolean use = sheetNow.useProps;
-            WoodUi.WoodButton props = new WoodUi.WoodButton(r - 118 - 4 - 80, y, 80, 18, Text.literal(use ? "소품: 사용" : "소품: 안함"), b -> {
-                sheetNow.useProps = !sheetNow.useProps;
-                ScenarioClientState.saveSheet();
-                clearAndInit();
-            }, false);
-            props.active = !busy;
-            props.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(use
-                ? "건물에 색칠·매끈한 조각과 가구 프리셋(소파, TV, 커튼…)을 써요. 모드 없는 월드에서는 그 부분이 사라져요."
-                : "건물을 블록으로만 지어요. 모드 없는 월드(바닐라)로 옮겨도 그대로 남아요. 다음에 짓는 건물부터 적용돼요.")));
-            addDrawableChild(props);
-        }
         int by = y + 26;
         boolean started = build != null && ("done".equals(build.ground) || build.places.values().stream().anyMatch(p -> !"waiting".equals(p.state)));
         WoodUi.WoodButton start = new WoodUi.WoodButton(l, by, 92, 18, fit(started ? "이어서 짓기" : "짓기 시작", 92),

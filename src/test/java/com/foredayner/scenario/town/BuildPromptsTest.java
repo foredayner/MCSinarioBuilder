@@ -209,4 +209,13 @@ class BuildPromptsTest {
         assertTrue(Outdoors.checklist(woods, Period.WEST_MODERN).startsWith("MUST HAVE"));
         assertEquals(22, BuildPrompts.outdoorHeight(woods));
     }
+
+    @Test
+    void lightsReachAsFarAsTheirBrightness() {
+        java.util.List<int[]> sources = new java.util.ArrayList<>();
+        sources.add(new int[] { 0, 0, 0, 15 });
+        assertEquals(15, Lights.lightAt(sources, new int[] { 0, 0, 0 }));
+        assertEquals(8, Lights.lightAt(sources, new int[] { 4, 0, 3 }));
+        assertTrue(Lights.lightAt(sources, new int[] { 6, 0, 3 }) <= Lights.DARK, "dark 9 blocks away");
+    }
 }

@@ -82,6 +82,11 @@ public final class BuildPrompts {
         + " hinges on the outer sides). Keep the 2 blocks in front of each double door (outside) and the 2 blocks behind it"
         + " (inside) free: no blocks, furniture, fences, crates, plants or steps up there, only the floor or ground.";
 
+    /** Lights inside, fitting the period (dark spots left over get invisible light blocks after building). */
+    public static final String LIGHTS = "LIGHT: every room has lights that fit the period, at least one per room and more in big"
+        + " rooms: lanterns hung on chains, wall torches or lanterns, candles on tables and shelves (old times); glowstone,"
+        + " sea_lantern or froglights set into the ceiling, lamps on desks (modern times).";
+
     /** How high a building may go (blocks above the ground). */
     public static int maxHeight(ScenarioSheet.Place p) {
         int h = Math.min(30, p.floors * 5 + 8);
@@ -202,6 +207,7 @@ public final class BuildPrompts {
         if (!"ruins".equals(p.kind)) {
             sb.append('\n').append(p.rooms.isEmpty() ? OPEN_PLAN : ONLY_LISTED_ROOMS);
             sb.append('\n').append(DOORS);
+            sb.append('\n').append(LIGHTS);
         }
         if (p.refDescription != null && !p.refDescription.isBlank()) {
             // The keeper's own picture beats the general card.
