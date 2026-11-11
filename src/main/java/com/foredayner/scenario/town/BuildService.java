@@ -915,7 +915,8 @@ public final class BuildService {
             // A whole scene of blocks over the lot, ground included (never display entities).
             AiBuildApi.Site whole = new AiBuildApi.Site(s.w, s.d, BuildPrompts.outdoorHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model);
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet)
+                    + "\n" + AiBuildApi.TRIM_TO_SITE, model);
             future = designer.building(job.world, siteMin(job, s), whole, req);
         } else {
             AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
