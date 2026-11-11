@@ -264,8 +264,10 @@ public class ScenarioScreen extends Screen {
         if (sheet != null) {
             // Add a place (or a room) by hand.
             // Just after the "장소 n" heading, clear of the 무대 and 바깥 buttons on the right.
-            addDrawableChild(new WoodUi.WoodButton(colX(0) + 6 + this.textRenderer.getWidth("장소 " + sheet.places.size()), listTop() - 16, 44, 14,
-                Text.literal(sheet.building() ? "+ 방" : "+ 장소"), b -> this.client.setScreen(new AddPlaceScreen(this)), false));
+            WoodUi.WoodButton add = new WoodUi.WoodButton(colX(0) + 6 + this.textRenderer.getWidth("장소 " + sheet.places.size()),
+                listTop() - 16, 16, 14, Text.literal("+"), b -> this.client.setScreen(new AddPlaceScreen(this)), false);
+            add.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(sheet.building() ? "방 더하기" : "장소 더하기")));
+            addDrawableChild(add);
             boolean hasGuide = sheet.styleGuide != null && !sheet.styleGuide.isBlank();
             WoodUi.WoodButton style = new WoodUi.WoodButton(right() - 266, y, 80, 18, fit(hasGuide ? "스타일 가이드" : "스타일 가이드 +", 80),
                 b -> this.client.setScreen(new StyleScreen(this)), false);
@@ -288,8 +290,8 @@ public class ScenarioScreen extends Screen {
             // Around the town: a ring of land (open), the same ending in hills with the roads blocked (closed), or nothing.
             String outer = sheet.outer == null ? "open" : sheet.outer;
             // On the places column's header row (the top row is full on small windows).
-            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(colX(0) + colWidth() - 68, listTop() - 16, 66, 14,
-                fit("바깥: " + ("closed".equals(outer) ? "닫힘" : "none".equals(outer) ? "없음" : "열림"), 66), b -> {
+            WoodUi.WoodButton outerButton = new WoodUi.WoodButton(colX(0) + colWidth() - 56, listTop() - 16, 54, 14,
+                fit("바깥: " + ("closed".equals(outer) ? "닫힘" : "none".equals(outer) ? "없음" : "열림"), 54), b -> {
                     var all = com.foredayner.scenario.sheet.ScenarioSheet.OUTERS;
                     sheet.outer = all.get((Math.max(0, all.indexOf(outer)) + 1) % all.size());
                     ScenarioClientState.saveSheet();
@@ -302,8 +304,8 @@ public class ScenarioScreen extends Screen {
                     + "없음: 마을 땅만 지어요.\n짓기 전에 정해 주세요.")));
             addDrawableChild(outerButton);
             // The stage: a town of buildings, or one building whose rooms are the places.
-            WoodUi.WoodButton stageButton = new WoodUi.WoodButton(colX(0) + colWidth() - 136, listTop() - 16, 66, 14,
-                fit(sheet.building() ? "무대: 건물" : "무대: 마을", 66), b -> {
+            WoodUi.WoodButton stageButton = new WoodUi.WoodButton(colX(0) + colWidth() - 112, listTop() - 16, 54, 14,
+                fit(sheet.building() ? "무대: 건물" : "무대: 마을", 54), b -> {
                     sheet.stage = sheet.building() ? "town" : "building";
                     ScenarioClientState.saveSheet();
                     ScenarioClientState.setMessage(sheet.building()
