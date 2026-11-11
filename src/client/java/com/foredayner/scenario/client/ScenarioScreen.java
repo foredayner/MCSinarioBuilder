@@ -1401,7 +1401,7 @@ public class ScenarioScreen extends Screen {
         undo.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(ScenarioClientState.canUndo()
             ? "마을을 짓기 전의 땅으로 되돌려요 (짓는 중이면 멈춘 다음)." : "원래 땅의 기록이 없어요 (짓기 전이거나, 월드·서버를 다시 켰어요).")));
         addDrawableChild(undo);
-        WoodUi.WoodButton again = new WoodUi.WoodButton(l + 256, by, 72, 18, fit("새로 짓기", 72), b -> restartBuild(), true);
+        WoodUi.WoodButton again = new WoodUi.WoodButton(r - 118 - 4 - 72, y, 72, 18, fit("새로 짓기", 72), b -> restartBuild(), true);
         again.active = build != null && !undoing && (placed || started);
         again.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
             "이 월드의 짓기 기록을 비우고 처음부터 다시 시작해요. 지어진 건물은 남아요.")));
