@@ -942,7 +942,7 @@ public final class BuildService {
             AiBuildApi.Site site = new AiBuildApi.Site(size[0], size[1], BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
                 BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p),
-                BuildPrompts.extra(job.sheet, p, size[0]) + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
+                BuildPrompts.extra(job.sheet, p, size[0], size[1]) + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
                     + blocksOnly(job.sheet), model,
                 AiBuildApi.propEraFor(job.sheet.period()), false);
             future = designer.building(job.world, siteMin(job, s), site, req);
@@ -1028,7 +1028,8 @@ public final class BuildService {
             if (job.placing.remove(placeId) != null) {
                 if (indoors) {
                     // Dark spots inside: invisible light blocks.
-                    int lit = Lights.fill(job.world, lotMin, lotMax);
+                    int lit = Lights.fill(job.world, lotMin, lotMax,
+                        "ruins".equals(place0.kind) || Outdoors.worn(place0, job.sheet) ? Lights.DIM : Lights.BRIGHT);
                     ScenarioBuilderMod.LOG.info("Lights in {}: {}", placeId, lit);
                 }
                 if (house) {

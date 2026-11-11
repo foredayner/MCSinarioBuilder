@@ -70,7 +70,7 @@ public final class BuildPrompts {
             + " walk. Water edges of mud and dirt with granite and gravel patches, reeds, lily pads and a few stones.\n"
             + "- Built things in the scene follow the same craft as buildings: a base, a body and a top (lamp posts with a"
             + " stone base, an arm and a hanging lantern; benches of stairs with trapdoor arms; bridges with a railing and"
-            + " posts; wells with a stone ring, two posts and a small roof).\n" + NO_FIGURES;
+            + " posts; wells with a stone ring, two posts and a small roof).\n" + TOP_VIEW_OUTDOOR + NO_FIGURES;
     }
 
     /** A building with no rooms listed: one open space on each floor. */
@@ -98,6 +98,32 @@ public final class BuildPrompts {
     public static final String LIGHTS = "LIGHT: every room has lights that fit the period, at least one per room and more in big"
         + " rooms: lanterns hung on chains, wall torches or lanterns, candles on tables and shelves (old times); glowstone,"
         + " sea_lantern or froglights set into the ceiling, lamps on desks (modern times).";
+
+    /**
+     * The town is also a top-down map (in the VTT, with roofs and upper floors lifted off): every
+     * floor has to read clearly from above.
+     */
+    public static final String TOP_VIEW = """
+        SEEN FROM ABOVE: this town is also used as a top-down battle map, with the roof and the floors above lifted off,
+        so every floor must read clearly from straight above:
+        - STOREYS exactly 5 blocks floor to floor: the floor blocks of the storeys at y = 0, 5, 10 ..., each storey's
+          ceiling being the next one's floor (1 block thick). The top storey has its OWN flat ceiling under the roof,
+          so with the roof off it still looks finished. No half-levels or mezzanines unless the scenario asks.
+        - FLOORS whole, edge to edge (only the stairwell open, with a railing round it). Each walled room has its own
+          floor, different from the rooms next to it and from the open areas: e.g. planks in a parlour, a carpet rug
+          in a bedroom, polished stone or a checkered tile in a kitchen or bath, stone or bricks in a workshop;
+          halls and corridors plainer.
+        - WALLS in a block that stands out against the floors (clearly darker or lighter), inner walls 1 thick and
+          full height, so the rooms' outlines read as lines. Doorways through inner walls are clear gaps with a door.
+        - FURNITURE that reads from above and leaves the floor walkable: beds, tables with things on them, rugs under
+          the seating, counters and shelves along the walls; a clear lane 1-2 wide through every room to each door.
+          Nothing hangs low across a room (no beams or chandeliers below the ceiling) to hide the floor.
+        """.strip();
+
+    /** The same for an outdoor scene. */
+    public static final String TOP_VIEW_OUTDOOR = "- SEEN FROM ABOVE (the town is also a top-down map): paths clearly different"
+        + " from the ground beside them, crisp edges to water, fields and graves, and tree crowns that do NOT cover the"
+        + " whole site: leave clearings and the paths open to the sky between them.\n";
 
     /** How high a building may go (blocks above the ground). */
     public static int maxHeight(ScenarioSheet.Place p) {
@@ -155,6 +181,8 @@ public final class BuildPrompts {
         - In a modern or contemporary setting, use the ready-made furniture (ai.prop) for what blocks cannot show
           well (sofa, armchair, TV, fridge, lamps, clock, phone, computer, curtains, partitions); never in older periods.
         - Doors to other rooms may be in the other walls too: keep the middle block of each wall free on the floor.
+        - SEEN FROM ABOVE (this is also a top-down map with the ceiling lifted off): a floor finish of its own (a rug
+          of carpet, tiles, planks), furniture that reads from above, nothing hanging low across the room.
         """;
 
     /** The town's style for every building: the keeper's guide if there is one, else the sheet's short style notes. */
@@ -209,9 +237,14 @@ public final class BuildPrompts {
     }
 
     public static String extra(ScenarioSheet sheet, ScenarioSheet.Place p, int size) {
+        return extra(sheet, p, size, size);
+    }
+
+    /** For a site of width x depth (width along the front). */
+    public static String extra(ScenarioSheet sheet, ScenarioSheet.Place p, int width, int depth) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.ROOT, "The building takes most of the %dx%d site (leave 2-3 blocks around it for the yard); it may be"
-            + " up to %d blocks high.", size, size, maxHeight(p)));
+            + " up to %d blocks high.", width, depth, maxHeight(p)));
         if (ScenarioSheet.named(p)) {
             sb.append("\nThis is one of the scenario's own buildings, where the investigators play: its site is twice the usual size so that"
                 + " it is roomy inside. Use most of the site.");
@@ -220,6 +253,7 @@ public final class BuildPrompts {
             sb.append('\n').append(p.rooms.isEmpty() ? OPEN_PLAN : ONLY_LISTED_ROOMS);
             sb.append('\n').append(DOORS);
             sb.append('\n').append(LIGHTS);
+            sb.append('\n').append(TOP_VIEW);
             if (Outdoors.worn(p, sheet)) {
                 sb.append('\n').append(WORN);
             }

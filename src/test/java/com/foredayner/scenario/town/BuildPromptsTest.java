@@ -211,12 +211,30 @@ class BuildPromptsTest {
     }
 
     @Test
-    void lightsReachAsFarAsTheirBrightness() {
-        java.util.List<int[]> sources = new java.util.ArrayList<>();
-        sources.add(new int[] { 0, 0, 0, 15 });
-        assertEquals(15, Lights.lightAt(sources, new int[] { 0, 0, 0 }));
-        assertEquals(8, Lights.lightAt(sources, new int[] { 4, 0, 3 }));
-        assertTrue(Lights.lightAt(sources, new int[] { 6, 0, 3 }) <= Lights.DARK, "dark 9 blocks away");
+    void everyBuildingAndSceneIsMadeToReadFromAbove() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        ScenarioSheet.Place inn = sheet.place("inn");
+        String extra = BuildPrompts.extra(sheet, inn, 30, 22);
+        assertTrue(extra.contains("SEEN FROM ABOVE") && extra.contains("5 blocks floor to floor"), extra);
+        assertTrue(extra.contains("30x22"), extra);
+        assertTrue(BuildPrompts.propExtra(inn).contains("SEEN FROM ABOVE"));
+        assertTrue(BuildPrompts.ROOM_EXTRA.contains("SEEN FROM ABOVE"));
+    }
+
+    @Test
+    void lightSpreadsLikeTheGamesAndStopsAtWalls() {
+        int[][][] light = new int[12][1][5];
+        boolean[][][] solid = new boolean[12][1][5];
+        for (int z = 0; z < 5; z++) {
+            solid[6][0][z] = true; // a wall at x 6
+        }
+        light[0][0][0] = 15;
+        java.util.Deque<int[]> q = new java.util.ArrayDeque<>();
+        q.add(new int[] { 0, 0, 0 });
+        Lights.spread(light, solid, q);
+        assertEquals(8, light[4][0][3]);
+        assertEquals(0, light[7][0][0], "nothing behind the wall");
+        assertTrue(Lights.BRIGHT > 7, "rooms are lit, not just safe from mobs");
     }
 
     @Test

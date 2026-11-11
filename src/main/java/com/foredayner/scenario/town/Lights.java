@@ -7,44 +7,55 @@ import net.minecraft.block.LightBlock;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 /**
- * After a building is placed: the dark spots inside get invisible light blocks (vanilla's
- * minecraft:light), so every room is lit and no mob appears there. Light is worked out from the
- * blocks themselves (each lamp, torch or glowing block lights as far as its brightness reaches,
- * one less per block), not from the game's light engine, which is still catching up right after
- * placing. A spot is dark when it would get light 7 or less.
+ * After a building is placed: the dim spots inside get invisible light blocks (vanilla's
+ * minecraft:light) at head height, until every floor spot is properly lit. Light is worked out from
+ * the blocks themselves, spreading like the game's own block light (one less per step, stopped by
+ * solid blocks, so a lamp behind a wall does not light this room), not from the game's light
+ * engine, which is still catching up right after placing. Sky light is not counted: rooms are lit
+ * at night too.
  */
 public final class Lights {
 
     private Lights() {
     }
 
-    /** Light at or below this is dark (mobs spawn at 0; 8+ reads as a lit room). */
-    static final int DARK = 7;
+    /** Light every floor spot gets in an ordinary building (10 reads as a lit room, not just "no mobs"). */
+    public static final int BRIGHT = 10;
+    /** In an old, worn or abandoned building: dim but never pitch dark (and still no mobs). */
+    public static final int DIM = 7;
     /** The level of each light block put in. */
     static final int LEVEL = 15;
 
-    /** Light up the dark floor spots inside the building between min and max (inclusive). Returns how many lights went in. */
-    public static int fill(ServerWorld world, BlockPos min, BlockPos max) {
+    /** Light up the floor spots inside the building between min and max (inclusive) to at least {@code want}. Returns how many lights went in. */
+    public static int fill(ServerWorld world, BlockPos min, BlockPos max, int want) {
         int w = max.getX() - min.getX() + 1, h = max.getY() - min.getY() + 1, d = max.getZ() - min.getZ() + 1;
         if (w <= 0 || h <= 0 || d <= 0) {
             return 0;
         }
-        // Where the light comes from: every block that shines.
-        List<int[]> sources = new ArrayList<>();
+        int[][][] light = new int[w][h][d];
+        boolean[][][] solid = new boolean[w][h][d];
+        Deque<int[]> queue = new ArrayDeque<>();
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
                 for (int z = 0; z < d; z++) {
-                    int lum = world.getBlockState(min.add(x, y, z)).getLuminance();
-                    if (lum > DARK) {
-                        sources.add(new int[] { x, y, z, lum });
+                    BlockPos at = min.add(x, y, z);
+                    BlockState state = world.getBlockState(at);
+                    solid[x][y][z] = state.isSolidBlock(world, at);
+                    int lum = state.getLuminance();
+                    if (lum > 0) {
+                        light[x][y][z] = lum;
+                        queue.add(new int[] { x, y, z });
                     }
                 }
             }
         }
+        spread(light, solid, queue);
         // The floor spots inside: air with a solid floor under it, under a roof or ceiling.
         List<int[]> spots = new ArrayList<>();
         for (int x = 0; x < w; x++) {
@@ -64,36 +75,49 @@ public final class Lights {
         }
         int added = 0;
         for (int[] s : spots) {
-            if (lightAt(sources, s) > DARK) {
+            if (light[s[0]][s[1]][s[2]] >= want) {
                 continue;
             }
-            // A light just under the ceiling above the spot (or 2 up when the room is low).
-            BlockPos at = min.add(s[0], s[1], s[2]);
-            BlockPos put = null;
-            for (int up = 2; up >= 0; up--) {
-                BlockPos p = at.up(up);
-                if (p.getY() <= max.getY() && world.getBlockState(p).isAir()) {
-                    put = p;
+            // At head height over the spot (out of the way), or on the spot itself.
+            int[] put = null;
+            for (int up = 1; up >= 0; up--) {
+                int y = s[1] + up;
+                if (y < h && world.getBlockState(min.add(s[0], y, s[2])).isAir()) {
+                    put = new int[] { s[0], y, s[2] };
                     break;
                 }
             }
             if (put == null) {
                 continue;
             }
-            world.setBlockState(put, Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15, LEVEL), Block.NOTIFY_LISTENERS);
-            sources.add(new int[] { put.getX() - min.getX(), put.getY() - min.getY(), put.getZ() - min.getZ(), LEVEL });
+            world.setBlockState(min.add(put[0], put[1], put[2]), Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15, LEVEL),
+                Block.NOTIFY_LISTENERS);
+            light[put[0]][put[1]][put[2]] = LEVEL;
+            queue.add(put);
+            spread(light, solid, queue);
             added++;
         }
         return added;
     }
 
-    /** The light a spot gets from the sources: the brightest, less one per block of distance (walls ignored). */
-    static int lightAt(List<int[]> sources, int[] s) {
-        int best = 0;
-        for (int[] src : sources) {
-            int dist = Math.abs(src[0] - s[0]) + Math.abs(src[1] - s[1]) + Math.abs(src[2] - s[2]);
-            best = Math.max(best, src[3] - dist);
+    /** Spread light from the queued cells: one less per step, through anything that is not solid. */
+    static void spread(int[][][] light, boolean[][][] solid, Deque<int[]> queue) {
+        int w = light.length, h = light[0].length, d = light[0][0].length;
+        int[][] steps = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
+        while (!queue.isEmpty()) {
+            int[] c = queue.poll();
+            int next = light[c[0]][c[1]][c[2]] - 1;
+            if (next <= 0) {
+                continue;
+            }
+            for (int[] s : steps) {
+                int x = c[0] + s[0], y = c[1] + s[1], z = c[2] + s[2];
+                if (x < 0 || y < 0 || z < 0 || x >= w || y >= h || z >= d || solid[x][y][z] || light[x][y][z] >= next) {
+                    continue;
+                }
+                light[x][y][z] = next;
+                queue.add(new int[] { x, y, z });
+            }
         }
-        return best;
     }
 }
