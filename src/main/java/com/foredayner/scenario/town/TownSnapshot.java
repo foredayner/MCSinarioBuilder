@@ -30,6 +30,15 @@ public final class TownSnapshot {
         return world;
     }
 
+    /** The saved area's corners. */
+    public BlockPos min() {
+        return min;
+    }
+
+    public BlockPos max() {
+        return min.add(sx - 1, sy - 1, sz - 1);
+    }
+
     private int index(int x, int y, int z) {
         return (x * sz + z) * sy + y;
     }

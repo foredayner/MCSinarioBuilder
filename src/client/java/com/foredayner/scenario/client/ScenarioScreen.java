@@ -116,11 +116,6 @@ public class ScenarioScreen extends Screen {
                 ? t.label + " " + (ScenarioClientState.unreadError() ? "§c" : "§6") + "(" + Math.min(99, ScenarioClientState.unread()) + ")"
                 : t.label;
             WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(label), b -> {
-                if (t == Tab.BUILD && tab == Tab.LAYOUT) {
-                    // From the layout to building: building starts over from this layout.
-                    restartBuild();
-                    return;
-                }
                 tab = t;
                 clearAndInit();
             }, false).selected(t == tab);
@@ -151,25 +146,17 @@ public class ScenarioScreen extends Screen {
         }
     }
 
-    /** Going from the layout to building: this world's building starts over (asked first when something was built). */
+    /** 새로 짓기: this world's building starts over from the layout (asked first; a running build is stopped first). */
     private void restartBuild() {
-        var state = ScenarioClientState.build();
-        boolean work = state != null && (!"idle".equals(state.status) || state.places.values().stream()
-            .anyMatch(p -> !"waiting".equals(p.state)));
-        if (!work) {
-            tab = Tab.BUILD; // nothing built yet: nothing to start over (the chosen middle stays)
-            clearAndInit();
-            return;
-        }
         this.client.setScreen(new net.minecraft.client.gui.screen.ConfirmScreen(yes -> {
             if (yes) {
                 ScenarioClientState.buildAction("build_restart", null);
             }
-            tab = Tab.BUILD;
             this.client.setScreen(this);
         }, Text.literal("짓기를 새로 시작할까요?"),
-            Text.literal("이 월드의 짓기 기록을 비우고 지금 배치도로 다시 시작해요. 이미 지어진 건물은 월드에 남고, 되돌리기는 할 수 없게 돼요."),
-            Text.literal("새로 시작"), Text.literal("이어서 보기")));
+            Text.literal("이 월드의 짓기 기록을 비우고 지금 배치도로 처음부터 다시 시작해요 (짓는 중이면 멈춘 다음). "
+                + "이미 지어진 건물은 월드에 남고, 전체 되돌리기는 할 수 없게 돼요. 지운 다음 새로 지으려면 먼저 전체 되돌리기를 하세요."),
+            Text.literal("새로 짓기"), Text.literal("취소")));
     }
 
     private void initScenarioTab() {
@@ -1409,10 +1396,16 @@ public class ScenarioScreen extends Screen {
         addDrawableChild(stop);
         WoodUi.WoodButton undo = new WoodUi.WoodButton(l + 160, by, 92, 18, fit("전체 되돌리기", 92),
             b -> ScenarioClientState.buildAction("build_undo", null), true);
-        undo.active = !busy && ScenarioClientState.canUndo();
+        boolean undoing = build != null && "undoing".equals(build.status);
+        undo.active = !undoing && ScenarioClientState.canUndo();
         undo.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(ScenarioClientState.canUndo()
-            ? "마을을 짓기 전의 땅으로 되돌려요." : "원래 땅의 기록이 없어요 (짓기 전이거나 서버를 다시 켰어요).")));
+            ? "마을을 짓기 전의 땅으로 되돌려요 (짓는 중이면 멈춘 다음)." : "원래 땅의 기록이 없어요 (짓기 전이거나, 월드·서버를 다시 켰어요).")));
         addDrawableChild(undo);
+        WoodUi.WoodButton again = new WoodUi.WoodButton(l + 256, by, 72, 18, fit("새로 짓기", 72), b -> restartBuild(), true);
+        again.active = build != null && !undoing && (placed || started);
+        again.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
+            "이 월드의 짓기 기록을 비우고 처음부터 다시 시작해요. 지어진 건물은 남아요.")));
+        addDrawableChild(again);
         // Per place: go there, build again, clear.
         var sheet = ScenarioClientState.sheet();
         if (sheet == null || build == null) {

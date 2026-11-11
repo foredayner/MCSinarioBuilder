@@ -111,9 +111,15 @@ public final class BuildService {
     }
 
     /** Start this world's building of a scenario over: its record is cleared (the blocks in the world stay). */
+    /** What to do once a scenario's running job has stopped (새로 짓기 or 전체 되돌리기 pressed while it ran). */
+    private static final Map<String, Runnable> AFTER = new HashMap<>();
+
     public static void restart(ServerPlayerEntity player, String id) {
         if (JOBS.containsKey(id)) {
-            say(player, "짓는 중이에요. 먼저 멈춘 다음 새로 시작해 주세요.", id);
+            // Building: stop first, start over when it has stopped.
+            AFTER.put(id, () -> restart(player, id));
+            stop(player, id);
+            say(player, "멈추는 대로 새로 시작해요.", id);
             return;
         }
         BuildState state = new BuildState();
@@ -563,8 +569,20 @@ public final class BuildService {
 
     private static void undo(MinecraftServer server, ServerPlayerEntity player, String id) {
         try {
-            if (JOBS.containsKey(id)) {
-                say(player, "작업 중에는 되돌릴 수 없어요. 먼저 멈추세요.", id);
+            Job running = JOBS.get(id);
+            if (running != null) {
+                if ("undoing".equals(running.state.status)) {
+                    say(player, "이미 되돌리는 중이에요.", id);
+                    return;
+                }
+                // Building: stop first, then put the land back.
+                AFTER.put(id, () -> undo(server, player, id));
+                if (player != null) {
+                    stop(player, id);
+                } else {
+                    running.cancelled = true;
+                }
+                say(player, "멈추는 대로 원래 땅으로 되돌려요.", id);
                 return;
             }
             TownSnapshot snapshot = SNAPSHOTS.get(id);
@@ -581,7 +599,9 @@ public final class BuildService {
             }
             job.restore = snapshot;
             state.status = "undoing";
-            begin(job, 0, 0, job.layout.size - 1, job.layout.size - 1);
+            // Keep the whole saved area loaded while it is put back (the ring and places past the map too).
+            begin(job, snapshot.min().getX() - job.origin.getX(), snapshot.min().getZ() - job.origin.getZ(),
+                snapshot.max().getX() - job.origin.getX(), snapshot.max().getZ() - job.origin.getZ());
             say(player, "원래 땅으로 되돌리는 중이에요.", id);
         } catch (IOException e) {
             say(player, "되돌리지 못했어요: " + e.getMessage(), id);
@@ -643,6 +663,14 @@ public final class BuildService {
     }
 
     private static void end(Job job) {
+        endJob(job);
+        Runnable after = AFTER.remove(job.id);
+        if (after != null) {
+            after.run();
+        }
+    }
+
+    private static void endJob(Job job) {
         for (long key : job.forced) {
             job.world.setChunkForced((int) (key >> 32), (int) key, false);
         }
@@ -1061,6 +1089,7 @@ public final class BuildService {
     public static void reset() {
         JOBS.clear();
         SNAPSHOTS.clear();
+        AFTER.clear();
     }
 
     /** 소품: 안함 — the AI Build Assistant keeps the design to blocks (it checks and asks again). */
