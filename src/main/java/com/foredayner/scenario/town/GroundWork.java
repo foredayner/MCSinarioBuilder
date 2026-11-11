@@ -564,8 +564,9 @@ public final class GroundWork {
 
     private void lamp(int x, int z) {
         if (modern) {
-            // A tall pole with an arm reaching over the road and a light hanging from it.
-            for (int y = 0; y < 5; y++) {
+            // A slim pole on a base, an arm reaching over the road, and a light shining down from it.
+            set(x, y0, z, Blocks.POLISHED_ANDESITE.getDefaultState());
+            for (int y = 1; y < 5; y++) {
                 set(x, y0 + y, z, Blocks.ANDESITE_WALL.getDefaultState());
             }
             int[] toRoad = { 0, 0 };
@@ -576,7 +577,8 @@ public final class GroundWork {
             }
             set(x, y0 + 5, z, Blocks.SMOOTH_STONE_SLAB.getDefaultState());
             set(x + toRoad[0], y0 + 5, z + toRoad[1], Blocks.SMOOTH_STONE_SLAB.getDefaultState());
-            set(x + toRoad[0], y0 + 4, z + toRoad[1], Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, true));
+            set(x + toRoad[0], y0 + 4, z + toRoad[1], Blocks.END_ROD.getDefaultState()
+                .with(net.minecraft.block.EndRodBlock.FACING, net.minecraft.util.math.Direction.DOWN));
             return;
         }
         if (com.foredayner.scenario.sheet.Period.EAST_POSTWAR.equals(period) || com.foredayner.scenario.sheet.Period.EAST_MODERN.equals(period)) {
@@ -594,9 +596,26 @@ public final class GroundWork {
             set(x + toRoad[0], y0 + 4, z + toRoad[1], Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, true));
             return;
         }
-        set(x, y0, z, Blocks.COBBLESTONE_WALL.getDefaultState());
-        set(x, y0 + 1, z, Blocks.SPRUCE_FENCE.getDefaultState());
-        set(x, y0 + 2, z, Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, false));
+        // An old Western street lamp: a stone base, a dark iron post, a crossbar with a lantern hanging at each end
+        // (along the road), and a cap.
+        set(x, y0, z, Blocks.STONE_BRICKS.getDefaultState());
+        for (int y = 1; y < 4; y++) {
+            set(x, y0 + y, z, Blocks.POLISHED_BLACKSTONE_WALL.getDefaultState());
+        }
+        int[] along = { 1, 0 };
+        for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+            if (plan.at(x + d[0], z + d[1]) == GroundPlan.Cell.ROAD) {
+                along = new int[] { d[1], d[0] }; // across the way to the road: along it
+            }
+        }
+        net.minecraft.block.BlockState bar = Blocks.POLISHED_BLACKSTONE_SLAB.getDefaultState()
+            .with(net.minecraft.block.SlabBlock.TYPE, net.minecraft.block.enums.SlabType.TOP);
+        set(x, y0 + 4, z, Blocks.POLISHED_BLACKSTONE.getDefaultState());
+        set(x, y0 + 5, z, Blocks.POLISHED_BLACKSTONE_SLAB.getDefaultState());
+        for (int s = -1; s <= 1; s += 2) {
+            set(x + along[0] * s, y0 + 4, z + along[1] * s, bar);
+            set(x + along[0] * s, y0 + 3, z + along[1] * s, Blocks.LANTERN.getDefaultState().with(LanternBlock.HANGING, true));
+        }
     }
 
     // ------------------------------------------------------------------ joining
