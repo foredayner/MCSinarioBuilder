@@ -112,19 +112,15 @@ public final class BuildService {
 
     /** Start this world's building of a scenario over: its record is cleared (the blocks in the world stay). */
     public static void restart(ServerPlayerEntity player, String id) {
-        try {
-            if (JOBS.containsKey(id)) {
-                say(player, "짓는 중이에요. 먼저 멈춘 다음 새로 시작해 주세요.", id);
-                return;
-            }
-            BuildState state = new BuildState();
-            SNAPSHOTS.remove(id);
-            save(id, state);
-            send(player.getServer(), player.getUuid(), id, state);
-            say(player, "짓기를 새로 시작해요. 마을 한가운데를 다시 정해 주세요.", id);
-        } catch (IOException e) {
-            say(player, "새로 시작하지 못했어요: " + e.getMessage(), id);
+        if (JOBS.containsKey(id)) {
+            say(player, "짓는 중이에요. 먼저 멈춘 다음 새로 시작해 주세요.", id);
+            return;
         }
+        BuildState state = new BuildState();
+        SNAPSHOTS.remove(id);
+        save(id, state);
+        send(player.getServer(), player.getUuid(), id, state);
+        say(player, "짓기를 새로 시작해요. 마을 한가운데를 다시 정해 주세요.", id);
     }
 
     public static BuildState load(String id) throws IOException {
