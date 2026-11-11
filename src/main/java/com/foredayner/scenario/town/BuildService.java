@@ -93,8 +93,42 @@ public final class BuildService {
         return false;
     }
 
+    /** Which world this server runs: the build record is kept per world (a scenario built in one world starts fresh in another). */
+    private static String worldKey = "default";
+
+    public static void world(MinecraftServer server) {
+        try {
+            String root = server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).toAbsolutePath().normalize().toString();
+            worldKey = "w" + Integer.toHexString(root.hashCode());
+        } catch (RuntimeException e) {
+            worldKey = "default";
+        }
+    }
+
+    /** This world's build record of a scenario. */
+    static java.nio.file.Path buildFile(String id) throws IOException {
+        return ScenarioStore.dir(id).resolve("build-" + worldKey + ".json");
+    }
+
+    /** Start this world's building of a scenario over: its record is cleared (the blocks in the world stay). */
+    public static void restart(ServerPlayerEntity player, String id) {
+        try {
+            if (JOBS.containsKey(id)) {
+                say(player, "짓는 중이에요. 먼저 멈춘 다음 새로 시작해 주세요.", id);
+                return;
+            }
+            BuildState state = new BuildState();
+            SNAPSHOTS.remove(id);
+            save(id, state);
+            send(player.getServer(), player.getUuid(), id, state);
+            say(player, "짓기를 새로 시작해요. 마을 한가운데를 다시 정해 주세요.", id);
+        } catch (IOException e) {
+            say(player, "새로 시작하지 못했어요: " + e.getMessage(), id);
+        }
+    }
+
     public static BuildState load(String id) throws IOException {
-        var f = ScenarioStore.dir(id).resolve("build.json");
+        var f = buildFile(id);
         BuildState s = Files.exists(f) ? BuildState.fromJson(Files.readString(f, StandardCharsets.UTF_8)) : new BuildState();
         if (s.busy() && !JOBS.containsKey(id)) {
             // The server stopped while building.
@@ -113,7 +147,7 @@ public final class BuildService {
 
     public static void save(String id, BuildState state) {
         try {
-            Files.writeString(ScenarioStore.dir(id).resolve("build.json"), state.toJson(), StandardCharsets.UTF_8);
+            Files.writeString(buildFile(id), state.toJson(), StandardCharsets.UTF_8);
             ScenarioStore.Info info = ScenarioStore.info(id);
             String stage = "done".equals(state.status) ? "built" : info.stage;
             if (!stage.equals(info.stage)) {

@@ -871,6 +871,33 @@ public final class TownLayout {
         zones.addAll(added);
     }
 
+    /**
+     * The keeper chose another ground size: every place keeps its spot in proportion (its middle moved by the ratio,
+     * its lot the same size), kept inside the ground if it was inside; then the streets and zones are made again
+     * around them (tidy). Returns what was done, for the keeper.
+     */
+    public List<String> rescale(int newSize, ScenarioSheet sheet) {
+        List<String> notes = new ArrayList<>();
+        if (building() || newSize <= 0 || newSize == size) {
+            return notes;
+        }
+        double f = newSize / (double) size;
+        for (Site s : sites) {
+            boolean in = !outside(s);
+            double cx = s.x + s.w / 2.0, cz = s.z + s.d / 2.0;
+            s.x = (int) Math.round(cx * f - s.w / 2.0);
+            s.z = (int) Math.round(cz * f - s.d / 2.0);
+            if (in) {
+                s.x = Math.max(MARGIN, Math.min(newSize - MARGIN - s.w, s.x));
+                s.z = Math.max(MARGIN, Math.min(newSize - MARGIN - s.d, s.z));
+            }
+        }
+        notes.add("마을 땅을 " + size + "칸에서 " + newSize + "칸으로 바꾸고 장소를 비율대로 옮겼어요");
+        size = newSize;
+        notes.addAll(tidy(sheet));
+        return notes;
+    }
+
     /** What is left of a zone after taking out the box x1..x2, z1..z2 (end exclusive): up to four strips. */
     private static List<Zone> minus(Zone z, int x1, int z1, int x2, int z2) {
         List<Zone> out = new ArrayList<>();

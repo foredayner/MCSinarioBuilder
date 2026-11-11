@@ -116,6 +116,11 @@ public class ScenarioScreen extends Screen {
                 ? t.label + " " + (ScenarioClientState.unreadError() ? "§c" : "§6") + "(" + Math.min(99, ScenarioClientState.unread()) + ")"
                 : t.label;
             WoodUi.WoodButton button = new WoodUi.WoodButton(x, top() + 6, 70, 18, Text.literal(label), b -> {
+                if (t == Tab.BUILD && tab == Tab.LAYOUT) {
+                    // From the layout to building: building starts over from this layout.
+                    restartBuild();
+                    return;
+                }
                 tab = t;
                 clearAndInit();
             }, false).selected(t == tab);
@@ -144,6 +149,27 @@ public class ScenarioScreen extends Screen {
         } else if (tab == Tab.BUILD) {
             initBuildTab();
         }
+    }
+
+    /** Going from the layout to building: this world's building starts over (asked first when something was built). */
+    private void restartBuild() {
+        var state = ScenarioClientState.build();
+        boolean work = state != null && (!"idle".equals(state.status) || state.places.values().stream()
+            .anyMatch(p -> !"waiting".equals(p.state)));
+        if (!work) {
+            tab = Tab.BUILD; // nothing built yet: nothing to start over (the chosen middle stays)
+            clearAndInit();
+            return;
+        }
+        this.client.setScreen(new net.minecraft.client.gui.screen.ConfirmScreen(yes -> {
+            if (yes) {
+                ScenarioClientState.buildAction("build_restart", null);
+            }
+            tab = Tab.BUILD;
+            this.client.setScreen(this);
+        }, Text.literal("짓기를 새로 시작할까요?"),
+            Text.literal("이 월드의 짓기 기록을 비우고 지금 배치도로 다시 시작해요. 이미 지어진 건물은 월드에 남고, 되돌리기는 할 수 없게 돼요."),
+            Text.literal("새로 시작"), Text.literal("이어서 보기")));
     }
 
     private void initScenarioTab() {
@@ -237,7 +263,7 @@ public class ScenarioScreen extends Screen {
         var sheet = ScenarioClientState.sheet();
         if (sheet != null) {
             // Add a place (or a room) by hand.
-            addDrawableChild(new WoodUi.WoodButton(colX(0) + colWidth() - 54, listTop() - 17, 52, 14,
+            addDrawableChild(new WoodUi.WoodButton(colX(0) + colWidth() - 192, listTop() - 16, 52, 14,
                 Text.literal(sheet.building() ? "+ 방" : "+ 장소"), b -> this.client.setScreen(new AddPlaceScreen(this)), false));
             boolean hasGuide = sheet.styleGuide != null && !sheet.styleGuide.isBlank();
             WoodUi.WoodButton style = new WoodUi.WoodButton(right() - 266, y, 80, 18, fit(hasGuide ? "스타일 가이드" : "스타일 가이드 +", 80),
@@ -344,9 +370,20 @@ public class ScenarioScreen extends Screen {
                 fit(tooMany ? "장소를 " + com.foredayner.scenario.sheet.ScenarioSheet.MAX_PLACES + "곳 이하로" : hasLayout ? "배치도 보기 →" : "AI로 배치도 만들기 →", 136), b -> {
                     if (!hasLayout) {
                         ScenarioClientState.makeLayout(true);
+                        tab = Tab.LAYOUT;
+                        clearAndInit();
+                        return;
                     }
-                    tab = Tab.LAYOUT;
-                    clearAndInit();
+                    // The sheet to the layout: the layout is made again from the sheet as it is now (asked first).
+                    this.client.setScreen(new net.minecraft.client.gui.screen.ConfirmScreen(yes -> {
+                        if (yes) {
+                            ScenarioClientState.makeLayout(true);
+                        }
+                        tab = Tab.LAYOUT;
+                        this.client.setScreen(this);
+                    }, Text.literal("배치도를 새로 만들까요?"),
+                        Text.literal("지금 시트대로 AI가 배치도를 처음부터 다시 만들어요. 직접 옮기거나 정리한 배치는 사라져요."),
+                        Text.literal("새로 만들기"), Text.literal("그대로 보기")));
                 }, false);
             next.active = !tooMany || hasLayout;
             if (tooMany) {
@@ -667,12 +704,20 @@ public class ScenarioScreen extends Screen {
                 int i = Math.max(0, sizes.indexOf(sheet.townSize));
                 sheet.townSize = sizes.get((i + 1) % sizes.size());
                 ScenarioClientState.saveSheet();
-                ScenarioClientState.log("마을 크기: " + (sheet.townSize > 0 ? sheet.townSize + "칸에서 시작해요" : "장소에 맞춰 정해요")
-                    + ". 기본 배치나 AI로 배치를 다시 하면 적용돼요.");
+                var now = ScenarioClientState.layout();
+                if (now != null && !now.building()) {
+                    // Applied at once: the ground takes the new size and the places move in proportion.
+                    for (String note : now.rescale(com.foredayner.scenario.sheet.ScenarioSheet.groundSize(sheet), sheet)) {
+                        ScenarioClientState.log(note);
+                    }
+                    ScenarioClientState.saveLayout();
+                } else {
+                    ScenarioClientState.log("마을 크기: " + (sheet.townSize > 0 ? sheet.townSize + "칸에서 시작해요" : "장소에 맞춰 정해요") + ".");
+                }
                 clearAndInit();
             }, false);
         size.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
-            "마을 땅의 시작 크기 (자동 / 120 / 160 / 240 / 280). 장소가 다 안 들어가면 40칸씩 늘어나요 (최대 400). 배치를 다시 만들 때 적용돼요.")));
+            "마을 땅의 크기 (자동 / 120 / 160 / 240 / 280). 누르면 바로 바뀌고, 장소는 비율대로 옮겨지고 길과 땅은 새로 만들어져요. 장소가 다 안 들어가면 40칸씩 늘어나요 (최대 400).")));
         addDrawableChild(size);
         }
         if (layout == null || sheet == null) {

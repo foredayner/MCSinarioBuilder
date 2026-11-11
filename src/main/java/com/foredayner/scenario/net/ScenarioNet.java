@@ -285,6 +285,7 @@ public final class ScenarioNet {
             case "build_start" -> com.foredayner.scenario.town.BuildService.start(player, p.arg());
             case "build_stop" -> com.foredayner.scenario.town.BuildService.stop(player, p.arg());
             case "build_undo" -> com.foredayner.scenario.town.BuildService.undo(player, p.arg());
+            case "build_restart" -> com.foredayner.scenario.town.BuildService.restart(player, p.arg());
             case "build_redo", "build_clear", "build_tp" -> {
                 int nl = p.arg().indexOf('\n');
                 if (nl > 0) {

@@ -295,4 +295,22 @@ class TownLayoutTest {
         sheet.townSize = 120;
         assertTrue(ScenarioSheet.groundSize(sheet) >= 120 && ScenarioSheet.groundSize(sheet) % 40 == 0);
     }
+
+    @Test
+    void aNewSizeMovesThePlacesInProportion() throws Exception {
+        ScenarioSheet sheet = greymouth();
+        sheet.townSize = 240;
+        TownLayout layout = TownLayout.auto(sheet);
+        var first = layout.sites.get(0);
+        double before = (first.x + first.w / 2.0) / layout.size;
+        int old = layout.size;
+        var notes = layout.rescale(old + 80, sheet);
+        assertEquals(old + 80, layout.size);
+        assertFalse(notes.isEmpty());
+        double after = (first.x + first.w / 2.0) / layout.size;
+        assertEquals(before, after, 0.05, "the same spot in proportion");
+        for (var s : layout.sites) {
+            assertTrue(layout.outside(s) || s.x >= TownLayout.MARGIN && s.x + s.w <= layout.size - TownLayout.MARGIN, "inside stays inside");
+        }
+    }
 }
