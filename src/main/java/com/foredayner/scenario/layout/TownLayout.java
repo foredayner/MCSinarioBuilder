@@ -228,6 +228,21 @@ public final class TownLayout {
         return s.x >= -r && s.z >= -r && s.x + s.w <= size + r && s.z + s.d <= size + r;
     }
 
+    /** The end of a problem line for two sites over each other (the build fits them to each other). */
+    public static final String OVERLAP = " overlap; move one so they are apart";
+
+    /**
+     * The problems the keeper is shown: places they put over each other are not one (the build fits
+     * them to each other: a building in an outdoor place, or two joined buildings or scenes).
+     */
+    public List<String> keeperCheck(ScenarioSheet sheet) {
+        List<String> list = new ArrayList<>(check(sheet));
+        if (!building()) {
+            list.removeIf(line -> line.endsWith(OVERLAP));
+        }
+        return list;
+    }
+
     public List<String> check(ScenarioSheet sheet) {
         if (building()) {
             return IndoorPlan.check(this, sheet);
@@ -259,8 +274,10 @@ public final class TownLayout {
         for (int i = 0; i < sites.size(); i++) {
             for (int j = i + 1; j < sites.size(); j++) {
                 Site a = sites.get(i), b = sites.get(j);
-                if (overlaps(a.x, a.z, a.w, a.d, b.x, b.z, b.w, b.d, GAP)) {
-                    problems.add(a.id + " and " + b.id + " overlap or are closer than " + GAP + " blocks");
+                if (overlaps(a.x, a.z, a.w, a.d, b.x, b.z, b.w, b.d, 0)) {
+                    problems.add(a.id + " and " + b.id + OVERLAP);
+                } else if (overlaps(a.x, a.z, a.w, a.d, b.x, b.z, b.w, b.d, GAP)) {
+                    problems.add(a.id + " and " + b.id + " are closer than " + GAP + " blocks");
                 }
             }
         }
@@ -628,12 +645,13 @@ public final class TownLayout {
         // 5. The open ground.
         fillOpen(modern);
         notes.add("길과 땅을 지우고 지금 장소 자리에 맞춰 다시 만들었어요 (오솔길 " + (lanes + joined) + "곳)");
-        // 6. Overlapping places are the keeper's to move.
+        // 6. Overlapping places are built to fit each other (BuildService / Overlaps).
         for (int i = 0; i < sites.size(); i++) {
             for (int j = i + 1; j < sites.size(); j++) {
                 Site a = sites.get(i), b = sites.get(j);
                 if (overlaps(a.x, a.z, a.w, a.d, b.x, b.z, b.w, b.d, 0)) {
-                    notes.add(name(sheet, a) + "와(과) " + name(sheet, b) + "이(가) 겹쳐 있어요 (직접 옮겨 주세요)");
+                    notes.add(name(sheet, a) + "와(과) " + name(sheet, b) + "이(가) 겹쳐 있어요 (지을 때 서로 맞춰 지어요"
+                        + (a.outdoor != b.outdoor ? ": 야외 안의 건물" : a.outdoor ? ": 땅을 나눠 이어지게" : ": 붙은 건물로") + ")");
                 }
             }
         }

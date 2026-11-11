@@ -275,6 +275,8 @@ public final class BuildService {
         final Set<Long> forced = new HashSet<>();
         boolean cancelled;
         boolean dirty = true;
+        /** How overlapping places were fitted to each other. */
+        Overlaps.Result overlaps = new Overlaps.Result();
         int sinceSent;
 
         Job(String id, ServerWorld world, BuildState state, ScenarioSheet sheet, TownLayout layout, UUID owner) {
@@ -326,7 +328,14 @@ public final class BuildService {
         }
         sheet.normalize();
         layout.check(sheet);
-        return new Job(id, world(server, state), state, sheet, layout, player == null ? null : player.getUuid());
+        // Places put over each other are fitted to each other (on this copy of the layout only).
+        Overlaps.Result overlaps = Overlaps.resolve(layout, sheet);
+        for (String t : overlaps.told) {
+            ScenarioBuilderMod.LOG.info("Overlap: {}", t);
+        }
+        Job job = new Job(id, world(server, state), state, sheet, layout, player == null ? null : player.getUuid());
+        job.overlaps = overlaps;
+        return job;
     }
 
     /** Lay the ground (if not yet) and build every place not built yet. */
@@ -449,6 +458,14 @@ public final class BuildService {
             }
             if (site != null) {
                 rects.add(new int[] { site.x, site.z, site.x + site.w - 1, site.z + site.d - 1 });
+            }
+            if (site != null && site.outdoor && !job.overlaps.holes(placeId).isEmpty()) {
+                // The buildings standing in this outdoor place stay.
+                List<int[]> kept = new ArrayList<>();
+                for (int[] r : rects) {
+                    kept.addAll(Overlaps.without(r, job.overlaps.holes(placeId)));
+                }
+                rects = kept;
             }
             String tag = bp.tag;
             if (job.layout.building() && site != null) {
@@ -885,7 +902,8 @@ public final class BuildService {
             AiBuildApi.Design same = job.designs.get(model0.id);
             String other = job.state.place(model0.id).state;
             boolean pending = "waiting".equals(other) || "designing".equals(other);
-            if (same != null) {
+            TownLayout.Site modelSite = job.layout.site(model0.id);
+            if (same != null && modelSite != null && modelSite.w == s.w && modelSite.d == s.d) {
                 bp.state = "placing";
                 bp.error = "";
                 job.ready.put(placeId, same);
@@ -913,16 +931,19 @@ public final class BuildService {
             future = designer.building(job.world, roomMin(job, s), roomSite(s), req);
         } else if (s.outdoor) {
             // A whole scene of blocks over the lot, ground included (never display entities).
-            AiBuildApi.Site whole = new AiBuildApi.Site(s.w, s.d, BuildPrompts.outdoorHeight(p));
+            int[] size = Overlaps.designSize(s);
+            AiBuildApi.Site whole = new AiBuildApi.Site(size[0], size[1], BuildPrompts.outdoorHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet)
-                    + "\n" + AiBuildApi.TRIM_TO_SITE, model);
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
+                    + blocksOnly(job.sheet) + "\n" + AiBuildApi.TRIM_TO_SITE, model);
             future = designer.building(job.world, siteMin(job, s), whole, req);
         } else {
-            AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
+            int[] size = Overlaps.designSize(s);
+            AiBuildApi.Site site = new AiBuildApi.Site(size[0], size[1], BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
                 BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p),
-                BuildPrompts.extra(job.sheet, p, s.w) + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model,
+                BuildPrompts.extra(job.sheet, p, size[0]) + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
+                    + blocksOnly(job.sheet), model,
                 AiBuildApi.propEraFor(job.sheet.period()), false);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }
@@ -954,11 +975,12 @@ public final class BuildService {
             if (!job.layout.building() && (s.outdoor || ScenarioSheet.named(p)) && !job.redone.contains(placeId)) {
                 // A scenario building or outdoor scene that leaves most of its big lot empty: once more, bigger.
                 int[] used = usedSize(design.plan());
-                if (used[0] < s.w * 0.6 || used[1] < s.d * 0.6) {
+                int[] room = Overlaps.designSize(s);
+                if (used[0] < room[0] * 0.6 || used[1] < room[1] * 0.6) {
                     job.redone.add(placeId);
                     job.notes.put(placeId, String.format(java.util.Locale.ROOT, "\nYOUR LAST DESIGN WAS ONLY %d x %d ON THIS %d x %d SITE:"
                         + (s.outdoor ? " spread the scene over the whole site." : " make the building bigger and use most of the site."),
-                        used[0], used[1], s.w, s.d));
+                        used[0], used[1], room[0], room[1]));
                     bp.state = "waiting";
                     job.waiting.addFirst(placeId);
                     return;
@@ -1034,8 +1056,13 @@ public final class BuildService {
         } else if (s.outdoor) {
             ScenarioSheet.Place p = job.sheet.place(placeId);
             int high = BuildPrompts.outdoorHeight(p);
+            int cut = Overlaps.carve(design.plan(), s, job.overlaps);
+            if (cut > 0) {
+                ScenarioBuilderMod.LOG.info("Cut {} commands out of {} where other places stand", cut, placeId);
+            }
+            int[] size = Overlaps.designSize(s);
             AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), siteMin(job, s),
-                new AiBuildApi.Site(s.w, s.d, high), s.front, tag, lane, done);
+                new AiBuildApi.Site(size[0], size[1], high), s.front, tag, lane, done);
             bp.prop = true;
             bp.min = new int[] { job.origin.getX() + s.x, job.origin.getY() - 2, job.origin.getZ() + s.z };
             bp.max = new int[] { job.origin.getX() + s.x + s.w - 1, job.origin.getY() + high + 2, job.origin.getZ() + s.z + s.d - 1 };
@@ -1049,7 +1076,8 @@ public final class BuildService {
             }
         } else {
             ScenarioSheet.Place p = job.sheet.place(placeId);
-            AiBuildApi.Site site = new AiBuildApi.Site(s.w, s.d, BuildPrompts.maxHeight(p));
+            int[] size = Overlaps.designSize(s);
+            AiBuildApi.Site site = new AiBuildApi.Site(size[0], size[1], BuildPrompts.maxHeight(p));
             AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), siteMin(job, s), site, s.front, tag, lane, done);
             bp.min = new int[] { placed.min().getX(), placed.min().getY(), placed.min().getZ() };
             bp.max = new int[] { placed.max().getX(), placed.max().getY(), placed.max().getZ() };

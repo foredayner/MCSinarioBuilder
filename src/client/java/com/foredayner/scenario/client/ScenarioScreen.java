@@ -715,7 +715,7 @@ public class ScenarioScreen extends Screen {
             layoutProblems = List.of();
             return;
         }
-        layoutProblems = layout.check(sheet);
+        layoutProblems = layout.keeperCheck(sheet);
         clampListScroll();
         // A building's rooms are changed by asking the AI (or by the floor plans): no controls per room.
         var place = layout.building() ? null : sheet.place(picked);
@@ -909,7 +909,7 @@ public class ScenarioScreen extends Screen {
             clearAndInit();
         }, false);
         tidy.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(
-            "장소 자리는 그대로 두고 길과 땅(바다, 숲, 밭, 정원)을 지운 뒤 다시 만들어요. 겹친 장소는 로그로 알려 줘요.")));
+            "장소 자리는 그대로 두고 길과 땅(바다, 숲, 밭, 정원)을 지운 뒤 다시 만들어요. 겹친 장소는 지을 때 서로 맞춰 지어요.")));
         addDrawableChild(tidy);
     }
 

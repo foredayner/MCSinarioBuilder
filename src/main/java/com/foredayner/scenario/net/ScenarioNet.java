@@ -358,7 +358,7 @@ public final class ScenarioNet {
             }
             sheet.normalize();
             var layout = com.foredayner.scenario.layout.TownLayout.fromJson(gunzip(p.data()));
-            java.util.List<String> problems = layout.check(sheet);
+            java.util.List<String> problems = layout.keeperCheck(sheet);
             com.foredayner.scenario.layout.LayoutService.save(p.id(), layout);
             layout(player, p.id(), layout);
             status(player, problems.isEmpty() ? "배치를 저장했어요." : "저장했지만 확인할 것이 있어요: " + problems.get(0), p.id());
