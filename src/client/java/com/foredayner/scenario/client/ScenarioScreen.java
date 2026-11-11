@@ -263,7 +263,8 @@ public class ScenarioScreen extends Screen {
         var sheet = ScenarioClientState.sheet();
         if (sheet != null) {
             // Add a place (or a room) by hand.
-            addDrawableChild(new WoodUi.WoodButton(colX(0) + colWidth() - 192, listTop() - 16, 52, 14,
+            // Just after the "장소 n" heading, clear of the 무대 and 바깥 buttons on the right.
+            addDrawableChild(new WoodUi.WoodButton(colX(0) + 6 + this.textRenderer.getWidth("장소 " + sheet.places.size()), listTop() - 16, 44, 14,
                 Text.literal(sheet.building() ? "+ 방" : "+ 장소"), b -> this.client.setScreen(new AddPlaceScreen(this)), false));
             boolean hasGuide = sheet.styleGuide != null && !sheet.styleGuide.isBlank();
             WoodUi.WoodButton style = new WoodUi.WoodButton(right() - 266, y, 80, 18, fit(hasGuide ? "스타일 가이드" : "스타일 가이드 +", 80),
