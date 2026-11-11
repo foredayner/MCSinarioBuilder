@@ -64,7 +64,13 @@ public final class BuildPrompts {
             + " them (lanterns, signs, fences, benches, stones, scattered things).\n"
             + "- Keep a walkable way in from the front edge (z = -1 side) to the middle, 2 wide, and room for the"
             + " investigators to stand.\n"
-            + "- Use most of the site: spread the scene over it, not one lump in the middle.\n" + NO_FIGURES;
+            + "- Use most of the site: spread the scene over it, not one lump in the middle.\n"
+            + "- Nothing natural runs straight: paths, hedges, banks and edges turn at least every 7 blocks; paths 2-3 wide,"
+            + " edged with a different block and wider where they meet; worn spots of coarse_dirt and dirt_path where people"
+            + " walk. Water edges of mud and dirt with granite and gravel patches, reeds, lily pads and a few stones.\n"
+            + "- Built things in the scene follow the same craft as buildings: a base, a body and a top (lamp posts with a"
+            + " stone base, an arm and a hanging lantern; benches of stairs with trapdoor arms; bridges with a railing and"
+            + " posts; wells with a stone ring, two posts and a small roof).\n" + NO_FIGURES;
     }
 
     /** A building with no rooms listed: one open space on each floor. */
@@ -81,6 +87,12 @@ public final class BuildPrompts {
     public static final String DOORS = "DOORS: every door in an outside wall is a DOUBLE door (two doors side by side, 2 blocks wide,"
         + " hinges on the outer sides). Keep the 2 blocks in front of each double door (outside) and the 2 blocks behind it"
         + " (inside) free: no blocks, furniture, fences, crates, plants or steps up there, only the floor or ground.";
+
+    /** An old, abandoned or haunted building: textured walls (only these; others keep one wall block). */
+    public static final String WORN = "THIS BUILDING IS OLD AND WORN: texture its walls with ai.wallMix - one main block with 2-3"
+        + " near-colour blocks in PATCHES (not evenly sprinkled), the cracked and mossy ones low near the ground and under the"
+        + " eaves, darker at the bottom and lighter toward the top; a few broken window panes, cobwebs in corners, a sagging"
+        + " fence, weeds and vines at the foot of the walls.";
 
     /** Lights inside, fitting the period (dark spots left over get invisible light blocks after building). */
     public static final String LIGHTS = "LIGHT: every room has lights that fit the period, at least one per room and more in big"
@@ -208,6 +220,9 @@ public final class BuildPrompts {
             sb.append('\n').append(p.rooms.isEmpty() ? OPEN_PLAN : ONLY_LISTED_ROOMS);
             sb.append('\n').append(DOORS);
             sb.append('\n').append(LIGHTS);
+            if (Outdoors.worn(p, sheet)) {
+                sb.append('\n').append(WORN);
+            }
         }
         if (p.refDescription != null && !p.refDescription.isBlank()) {
             // The keeper's own picture beats the general card.

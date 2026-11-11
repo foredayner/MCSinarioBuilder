@@ -218,4 +218,16 @@ class BuildPromptsTest {
         assertEquals(8, Lights.lightAt(sources, new int[] { 4, 0, 3 }));
         assertTrue(Lights.lightAt(sources, new int[] { 6, 0, 3 }) <= Lights.DARK, "dark 9 blocks away");
     }
+
+    @Test
+    void oldBuildingsGetTexturedWallsOthersKeepOneBlock() {
+        ScenarioSheet.Place house = new ScenarioSheet.Place();
+        house.name = "버려진 저택";
+        house.kind = "house";
+        assertTrue(Outdoors.worn(house, null));
+        ScenarioSheet.Place shop = new ScenarioSheet.Place();
+        shop.name = "Golden Bakery";
+        shop.kind = "shop";
+        assertFalse(Outdoors.worn(shop, null), "gold is not old");
+    }
 }

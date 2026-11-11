@@ -29,6 +29,15 @@ public final class Outdoors {
         return TERRAIN.matcher(said(p)).find();
     }
 
+    /** Words that make a building old and worn (textured walls). */
+    private static final java.util.regex.Pattern WORN = java.util.regex.Pattern.compile(
+        "낡은|낡고|오래된|버려진|폐가|폐허|흉가|허물어|무너진|방치|녹슨|abandoned|derelict|ruined|haunted|(?<![a-z])old(?![a-z])|weathered|decrepit|crumbling");
+
+    /** Whether the place (or the scenario's mood for it) is old and worn. */
+    public static boolean worn(ScenarioSheet.Place p, ScenarioSheet sheet) {
+        return "ruins".equals(p.kind) || WORN.matcher(said(p)).find();
+    }
+
     /** All the place says about itself. */
     static String said(ScenarioSheet.Place p) {
         return ((p.name == null ? "" : p.name) + " " + (p.notes == null ? "" : p.notes) + " " + String.join(" ", p.scenes))
