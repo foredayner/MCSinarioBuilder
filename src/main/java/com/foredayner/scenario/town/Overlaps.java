@@ -337,12 +337,12 @@ public final class Overlaps {
                 if (whole[4] > yhi) {
                     parts.add(new int[] { whole[0], Math.max(whole[1], yhi + 1), whole[2], whole[3], whole[4], whole[5] });
                 }
-                List<int[]> cut = new ArrayList<>(parts);
+                List<int[]> kept = new ArrayList<>(parts);
                 if (whole[4] >= ylo && whole[1] <= yhi) {
                     int[] mid = { whole[0], Math.max(whole[1], ylo), whole[2], whole[3], Math.min(whole[4], yhi), whole[5] };
-                    cut.addAll(minus(mid, hx1, hz1, hx2, hz2));
+                    kept.addAll(minus(mid, hx1, hz1, hx2, hz2));
                 }
-                for (int[] k : cut) {
+                for (int[] k : kept) {
                     boolean one = k[0] == k[3] && k[1] == k[4] && k[2] == k[5];
                     out.add(new BuildPlan.Op(one && "set".equals(op.kind) ? "set" : "fill", k[0], k[1], k[2], k[3], k[4], k[5],
                         blocks.get(i), hollow || outline ? "replace" : op.mode));
