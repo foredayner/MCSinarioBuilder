@@ -254,6 +254,14 @@ public final class BuildPrompts {
             sb.append('\n').append(DOORS);
             sb.append('\n').append(LIGHTS);
             sb.append('\n').append(TOP_VIEW);
+            if (p.floors > 1) {
+                int w = com.foredayner.scenario.layout.Underground.stairWidth(width, depth);
+                sb.append(String.format(Locale.ROOT, "\nSTAIRS BETWEEN FLOORS (a must, checked): from each floor to the next, ONE STRAIGHT"
+                    + " flight (no turns, no landings) %d block%s wide: 4 stair blocks rising one block each from the floor below, then"
+                    + " step off onto the floor above (floors 5 apart). 3 blocks of head room over every step; the hole in the floor"
+                    + " above exactly over the steps, with a railing round it. A ladder is not stairs. The ground floor has a door"
+                    + " (2 high) in an outer wall with open ground in front of it.", w, w > 1 ? "s" : ""));
+            }
             if (Outdoors.worn(p, sheet)) {
                 sb.append('\n').append(WORN);
             }
@@ -295,8 +303,8 @@ public final class BuildPrompts {
             sb.append("\nColours named in the description (sign bands, walls, awnings) are the keeper's choice: use exactly those.");
         }
         if (p.cellars > 0) {
-            sb.append("\nA cellar is dug under this building by code (with a hatch and ladder down): build nothing below the ground")
-                .append(" floor and keep the ground floor's floor whole.");
+            sb.append("\nA cellar is dug under this building by code, with straight stairs down (where, below): build nothing below")
+                .append(" the ground floor and keep the ground floor's floor whole.");
         }
         if (p.filler) {
             sb.append("\nAn ordinary lived-in town building; nothing in it matters to the story.");

@@ -5,6 +5,8 @@ import com.example.api.AiBuildApi;
 import com.foredayner.scenario.ScenarioBuilderMod;
 import com.foredayner.scenario.layout.LayoutService;
 import com.foredayner.scenario.layout.TownLayout;
+import com.foredayner.scenario.layout.Underground;
+import com.foredayner.scenario.sheet.Period;
 import com.foredayner.scenario.net.ScenarioNet;
 import com.foredayner.scenario.sheet.ScenarioSheet;
 import com.foredayner.scenario.sheet.SheetService;
@@ -269,6 +271,8 @@ public final class BuildService {
         final Map<String, String> notes = new HashMap<>();
         /** Places designed again once already because their design was too small. */
         final Set<String> redone = new HashSet<>();
+        /** How many times a building was sent back for its stairs or door. */
+        final Map<String, Integer> stairTries = new HashMap<>();
         /** Places waiting for the design of the place they are the same as. */
         final Deque<String> later = new ArrayDeque<>();
         final Map<String, UUID> placing = new HashMap<>();
@@ -942,8 +946,8 @@ public final class BuildService {
             AiBuildApi.Site site = new AiBuildApi.Site(size[0], size[1], BuildPrompts.maxHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.description(job.sheet, p), BuildPrompts.style(job.sheet),
                 BuildPrompts.rooms(job.sheet, p), BuildPrompts.marks(job.sheet, p),
-                BuildPrompts.extra(job.sheet, p, size[0], size[1]) + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
-                    + blocksOnly(job.sheet), model,
+                BuildPrompts.extra(job.sheet, p, size[0], size[1]) + Overlaps.note(job.overlaps, s) + cellarStairsNote(job, s)
+                    + job.notes.getOrDefault(placeId, "") + blocksOnly(job.sheet), model,
                 AiBuildApi.propEraFor(job.sheet.period()), false);
             future = designer.building(job.world, siteMin(job, s), site, req);
         }
@@ -986,10 +990,89 @@ public final class BuildService {
                     return;
                 }
             }
+            if (!s.outdoor && !job.layout.building() && !checkStairs(job, s, p, placeId, bp, design.plan())) {
+                return; // sent back to the AI
+            }
             bp.state = "placing";
             job.designs.put(placeId, design);
             job.ready.put(placeId, design);
         }));
+    }
+
+    /** Where the stairs into this building's cellar go (its lot coordinates), or null. */
+    static Underground.Stairwell cellarStairs(Job job, TownLayout.Site s) {
+        for (Underground.Cellar c : Underground.cellars(job.layout, job.sheet)) {
+            if (c.id().equals(s.id)) {
+                return Underground.stairwell(c, s.w, s.d);
+            }
+        }
+        return null;
+    }
+
+    /** The cellar stairs' cells on the ground floor, in the design's frame: {x1, z1, x2, z2}, or null. */
+    static int[] cellarStairsInDesign(Job job, TownLayout.Site s) {
+        Underground.Stairwell sw = cellarStairs(job, s);
+        if (sw == null) {
+            return null;
+        }
+        int[] r = sw.reserved();
+        return Overlaps.toDesign(s, new Overlaps.Rect(r[0], r[1], r[2], r[3]));
+    }
+
+    /** What the AI is told about the cellar stairs' place on its ground floor. */
+    static String cellarStairsNote(Job job, TownLayout.Site s) {
+        Underground.Stairwell sw = cellarStairs(job, s);
+        int[] d = cellarStairsInDesign(job, s);
+        if (sw == null || d == null) {
+            return "";
+        }
+        return String.format(java.util.Locale.ROOT, "\nSTAIRS DOWN TO THE CELLAR go in at x %d..%d, z %d..%d on the ground floor (a straight flight"
+            + " %d block%s wide with a railing round it, cut in by code): keep those cells free of walls, furniture and everything"
+            + " else from y = 1 up to the ceiling, and keep the floor at y = 0 there. They stand inside a room or the hall, with a"
+            + " way to them from the door.", d[0], d[2], d[1], d[3], sw.width(), sw.width() > 1 ? "s" : "");
+    }
+
+    /**
+     * A building's design: the cellar stairs' cells cut free, then the walk check (a door in, and
+     * stairs to every floor). Sends it back to the AI (twice at most) with what is wrong; after
+     * that puts in stairs itself where it can. False when it was sent back.
+     */
+    private static boolean checkStairs(Job job, TownLayout.Site s, ScenarioSheet.Place p, String placeId, BuildState.Place bp,
+                                       com.example.ai.build.BuildPlan plan) {
+        int[] hole = cellarStairsInDesign(job, s);
+        if (hole != null) {
+            Overlaps.carve(plan, hole[0], hole[1], hole[2], hole[3], 1, StairCheck.STOREY - 1);
+        }
+        int[] size = Overlaps.designSize(s);
+        int high = BuildPrompts.maxHeight(p);
+        int floors = Math.max(1, p.floors);
+        int width = Underground.stairWidth(s.w, s.d);
+        String problem = StairCheck.problem(plan, size[0], size[1], high, floors, width);
+        if (problem == null) {
+            return true;
+        }
+        int tries = job.stairTries.merge(placeId, 1, Integer::sum);
+        if (tries <= 2) {
+            job.notes.put(placeId, "\nYOUR LAST DESIGN FAILED THIS CHECK, FIX IT:\n" + problem + "\n");
+            bp.state = "waiting";
+            job.waiting.addFirst(placeId);
+            return false;
+        }
+        int added = StairCheck.addStairs(plan, size[0], size[1], high, floors, width, stairsFor(job.sheet.period()));
+        String still = StairCheck.problem(plan, size[0], size[1], high, floors, width);
+        if (added > 0) {
+            message(job, p.name + ": 위층 계단이 없어 직접 놓았어요.");
+        }
+        if (still != null) {
+            message(job, p.name + ": 오가는 길(출입문·계단)을 확인하지 못했어요. 지은 뒤 살펴봐 주세요.");
+            ScenarioBuilderMod.LOG.info("{}: {}", placeId, still);
+        }
+        return true;
+    }
+
+    private static String stairsFor(String period) {
+        return Period.medieval(period) ? "minecraft:spruce_stairs" : Period.contemporary(period) ? "minecraft:stone_brick_stairs"
+            : "minecraft:oak_stairs";
     }
 
     /** Width and depth of the blocks a design places (x and z extent). */

@@ -94,6 +94,63 @@ public final class Underground {
         return out;
     }
 
+    /** A building whose lot is at least this wide both ways gets stairs 2 blocks wide (else 1). */
+    public static final int WIDE_STAIRS_FROM = 16;
+
+    /** Stairs this wide for a building lot w x d. */
+    public static int stairWidth(int w, int d) {
+        return Math.min(w, d) >= WIDE_STAIRS_FROM ? 2 : 1;
+    }
+
+    /**
+     * The straight stairs down into a cellar: cell (index, lane) is at (x0 + dx*index + sx*lane,
+     * z0 + dz*index + sz*lane). The first flight (ground floor down to the first cellar floor) runs
+     * from index 0 (its top, on the ground floor) to its landing at most index LENGTH - 1, in lanes
+     * 0..width-1; a second cellar floor gets a second flight beside it (lanes width..2*width-1),
+     * running back the other way. Lanes -1 and width are kept for the railing on the ground floor,
+     * index LENGTH for the railing across its far end.
+     */
+    public record Stairwell(String id, int x0, int z0, int dx, int dz, int sx, int sz, int width, int levels) {
+        /** Top, up to 5 steps, landing. */
+        public static final int LENGTH = 7;
+
+        public int[] cell(int index, int lane) {
+            return new int[] { x0 + dx * index + sx * lane, z0 + dz * index + sz * lane };
+        }
+
+        /** What the ground floor keeps free for it (stairs and railing): {x1, z1, x2, z2}. */
+        public int[] reserved() {
+            int[] a = cell(0, -1), b = cell(LENGTH, width);
+            return new int[] { Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]) };
+        }
+    }
+
+    /**
+     * Where the stairs into this cellar go: in the middle of it, along its longer side; null for a
+     * landing (a ladder) or a cellar too small for them (then a ladder too).
+     */
+    public static Stairwell stairwell(Cellar c, int lotW, int lotD) {
+        if (c.landing()) {
+            return null;
+        }
+        int ix1 = c.x1() + 1, iz1 = c.z1() + 1, ix2 = c.x2() - 1, iz2 = c.z2() - 1;
+        int iw = ix2 - ix1 + 1, id = iz2 - iz1 + 1;
+        boolean alongX = iw >= id;
+        int along = alongX ? iw : id, across = alongX ? id : iw;
+        int needAlong = Stairwell.LENGTH + 1;
+        for (int width = stairWidth(lotW, lotD); width >= 1; width--) {
+            int needAcross = width * c.levels() + 2;
+            if (along < needAlong || across < needAcross) {
+                continue;
+            }
+            int a0 = (alongX ? ix1 : iz1) + (along - needAlong) / 2;
+            int c0 = (alongX ? iz1 : ix1) + (across - needAcross) / 2 + 1; // lane 0 (lane -1 is the railing)
+            return alongX ? new Stairwell(c.id(), a0, c0, 1, 0, 0, 1, width, c.levels())
+                : new Stairwell(c.id(), c0, a0, 0, 1, 1, 0, width, c.levels());
+        }
+        return null;
+    }
+
     static Cellar cellarOf(List<Cellar> cellars, String id) {
         for (Cellar c : cellars) {
             if (c.id().equals(id)) {

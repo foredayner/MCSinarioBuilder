@@ -291,13 +291,18 @@ public final class Overlaps {
 
     /** Remove the cells x1..x2, z1..z2 (all heights) from every block command of the plan. */
     static int carve(BuildPlan plan, int hx1, int hz1, int hx2, int hz2) {
+        return carve(plan, hx1, hz1, hx2, hz2, Integer.MIN_VALUE / 2, Integer.MAX_VALUE / 2);
+    }
+
+    /** Remove the cells x1..x2, z1..z2, heights ylo..yhi, from every block command of the plan. */
+    public static int carve(BuildPlan plan, int hx1, int hz1, int hx2, int hz2, int ylo, int yhi) {
         List<BuildPlan.Op> out = new ArrayList<>(plan.ops.size());
         int cut = 0;
         for (BuildPlan.Op op : plan.ops) {
             int minX = Math.min(op.x1, op.x2), maxX = Math.max(op.x1, op.x2);
             int minY = Math.min(op.y1, op.y2), maxY = Math.max(op.y1, op.y2);
             int minZ = Math.min(op.z1, op.z2), maxZ = Math.max(op.z1, op.z2);
-            if (maxX < hx1 || minX > hx2 || maxZ < hz1 || minZ > hz2) {
+            if (maxX < hx1 || minX > hx2 || maxZ < hz1 || minZ > hz2 || maxY < ylo || minY > yhi) {
                 out.add(op);
                 continue;
             }
@@ -323,8 +328,21 @@ public final class Overlaps {
                 blocks.add(op.block);
             }
             for (int i = 0; i < pieces.size(); i++) {
-                int[] p = pieces.get(i);
-                for (int[] k : minus(p, hx1, hz1, hx2, hz2)) {
+                int[] whole = pieces.get(i);
+                // Above and below the cut heights stays as it is; the middle loses the column.
+                List<int[]> parts = new ArrayList<>();
+                if (whole[1] < ylo) {
+                    parts.add(new int[] { whole[0], whole[1], whole[2], whole[3], Math.min(whole[4], ylo - 1), whole[5] });
+                }
+                if (whole[4] > yhi) {
+                    parts.add(new int[] { whole[0], Math.max(whole[1], yhi + 1), whole[2], whole[3], whole[4], whole[5] });
+                }
+                List<int[]> cut = new ArrayList<>(parts);
+                if (whole[4] >= ylo && whole[1] <= yhi) {
+                    int[] mid = { whole[0], Math.max(whole[1], ylo), whole[2], whole[3], Math.min(whole[4], yhi), whole[5] };
+                    cut.addAll(minus(mid, hx1, hz1, hx2, hz2));
+                }
+                for (int[] k : cut) {
                     boolean one = k[0] == k[3] && k[1] == k[4] && k[2] == k[5];
                     out.add(new BuildPlan.Op(one && "set".equals(op.kind) ? "set" : "fill", k[0], k[1], k[2], k[3], k[4], k[5],
                         blocks.get(i), hollow || outline ? "replace" : op.mode));

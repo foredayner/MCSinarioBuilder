@@ -90,8 +90,14 @@ public class ScenarioGameTests implements FabricGameTest {
         int[] mid = c.middle();
         check(at.apply(mid, y0 - 3).isAir(), "the cellar is hollow");
         check(!at.apply(new int[] { c.x1(), mid[1] }, y0 - 3).isAir(), "with walls");
-        check(at.apply(mid, y0 - 2).isOf(net.minecraft.block.Blocks.LANTERN) || at.apply(mid, y0 - 2).isOf(net.minecraft.block.Blocks.SOUL_LANTERN),
-            "and a light");
+        boolean lit = false;
+        for (int lx = c.x1() + 1; lx < c.x2(); lx++) {
+            for (int lz = c.z1() + 1; lz < c.z2(); lz++) {
+                var b = at.apply(new int[] { lx, lz }, y0 - 2);
+                lit |= b.isOf(net.minecraft.block.Blocks.LANTERN) || b.isOf(net.minecraft.block.Blocks.SOUL_LANTERN);
+            }
+        }
+        check(lit, "and a light");
         var t = com.foredayner.scenario.layout.Underground.tunnels(layout, sheet).get(0);
         long door = t.doorways().iterator().next();
         var fake = at.apply(new int[] { com.foredayner.scenario.layout.Underground.keyX(door), com.foredayner.scenario.layout.Underground.keyZ(door) },
@@ -101,14 +107,21 @@ public class ScenarioGameTests implements FabricGameTest {
         long inside = t.inside().iterator().next();
         check(at.apply(new int[] { com.foredayner.scenario.layout.Underground.keyX(inside), com.foredayner.scenario.layout.Underground.keyZ(inside) },
             y0 - 4).isAir(), "the tunnel is open inside");
-        boolean ladder = false, trapdoor = false;
-        for (int lx = c.x1() + 1; lx < c.x2(); lx++) {
-            for (int lz = c.z1() + 1; lz < c.z2(); lz++) {
-                ladder |= at.apply(new int[] { lx, lz }, y0 - 3).isOf(net.minecraft.block.Blocks.LADDER);
-                trapdoor |= at.apply(new int[] { lx, lz }, y0 - 1).isOf(net.minecraft.block.Blocks.SPRUCE_TRAPDOOR);
+        // Straight stairs down: a stair block one lower at each step, from the ground floor to the cellar floor.
+        var sw = work.stairwell(c.id());
+        check(sw != null, "the cellar has stairs");
+        int steps = 0;
+        for (int k = 1; k <= 6; k++) {
+            int[] cell = sw.cell(k, 0);
+            for (int y = y0 - 7; y <= y0 + 1; y++) {
+                if (at.apply(cell, y).getBlock() instanceof net.minecraft.block.StairsBlock) {
+                    steps++;
+                }
             }
         }
-        check(ladder && trapdoor, "a trapdoor and a ladder lead down");
+        check(steps >= 4, "straight stairs lead down (" + steps + " steps)");
+        int[] foot = sw.cell(6, 0);
+        check(at.apply(foot, y0 - 5).isAir() && at.apply(foot, y0 - 4).isAir(), "with room to stand at the foot");
         context.complete();
     }
 
