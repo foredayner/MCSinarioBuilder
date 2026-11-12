@@ -88,7 +88,7 @@ public class ScenarioGameTests implements FabricGameTest {
         java.util.function.BiFunction<int[], Integer, net.minecraft.block.BlockState> at = (xz, y) ->
             world.getBlockState(new net.minecraft.util.math.BlockPos(origin.getX() + xz[0], y, origin.getZ() + xz[1]));
         int[] mid = c.middle();
-        check(at.apply(mid, y0 - 3).isAir(), "the cellar is hollow");
+        check(at.apply(new int[] { c.x1() + 1, c.z1() + 1 }, y0 - 3).isAir(), "the cellar is hollow"); // (its middle has the stairs)
         check(!at.apply(new int[] { c.x1(), mid[1] }, y0 - 3).isAir(), "with walls");
         boolean lit = false;
         for (int lx = c.x1() + 1; lx < c.x2(); lx++) {
