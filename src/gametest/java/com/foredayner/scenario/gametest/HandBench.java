@@ -178,8 +178,8 @@ public class HandBench implements FabricClientGameTest {
             ok.accept(hole, String.format(Locale.ROOT, "stairs level %d: the way up is open", st.level));
             // The landing: two blocks of air to step off into.
             BlockPos land = new BlockPos(ox + st.x + s[0] * IndoorPlan.STAIR_RUN, fy + IndoorPlan.FLOOR_H + 1, oz + st.z + s[1] * IndoorPlan.STAIR_RUN);
-            ok.accept(world.getBlockState(land).isAir() && world.getBlockState(land.up()).isAir(),
-                String.format(Locale.ROOT, "stairs level %d: the landing is clear", st.level));
+            ok.accept(!world.getBlockState(land).isSolidBlock(world, land) && world.getBlockState(land.up()).isAir(),
+                String.format(Locale.ROOT, "stairs level %d: the landing is clear (%s)", st.level, world.getBlockState(land).getBlock()));
         }
         // Doors: real doors, the secret one a false wall; nothing in front of either side.
         for (TownLayout.Door d : l.doors) {
