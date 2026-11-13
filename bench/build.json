@@ -1,0 +1,14 @@
+{
+  "placed": true,
+  "originX": -125,
+  "originY": -60,
+  "originZ": -121,
+  "dimension": "minecraft:overworld",
+  "status": "idle",
+  "ground": "waiting",
+  "groundPercent": 0,
+  "places": {},
+  "tokensIn": 0,
+  "tokensOut": 0,
+  "message": ""
+}

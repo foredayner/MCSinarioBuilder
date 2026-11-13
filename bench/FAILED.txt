@@ -1,0 +1,1 @@
+no architecture guide after 5 minutes (see the client log)

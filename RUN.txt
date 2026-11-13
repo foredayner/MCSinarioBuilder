@@ -1,0 +1,1 @@
+f47dea82741dcb07b7e0c5f46d60b377ed6d9bde bench=success model=claude-haiku-5-5 sheet=e2e scenario=apartment302
