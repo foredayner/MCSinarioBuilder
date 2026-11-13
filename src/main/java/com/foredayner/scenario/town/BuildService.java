@@ -157,10 +157,57 @@ public final class BuildService {
     }
 
     /** Write the clues file from the sheet and where the built places marked their clues. */
+    /**
+     * The flights of a building stage, in world blocks, for the game table to show and walk: each
+     * with its floors, direction, the step blocks (the last one set in the floor above), and where
+     * a character stands at the bottom (on the first step) and at the top (on the last).
+     */
+    static com.google.gson.JsonArray stairsJson(TownLayout layout, BuildState state) {
+        com.google.gson.JsonArray out = new com.google.gson.JsonArray();
+        if (layout == null || !layout.building()) {
+            return out;
+        }
+        int run = com.foredayner.scenario.layout.IndoorPlan.STAIR_RUN;
+        for (TownLayout.Stair st : layout.stairs) {
+            int[] step = switch (st.dir == null ? "" : st.dir) {
+                case "east" -> new int[] { 1, 0 };
+                case "south" -> new int[] { 0, 1 };
+                case "west" -> new int[] { -1, 0 };
+                default -> new int[] { 0, -1 };
+            };
+            int fy = ShellWork.floorY(new BlockPos(state.originX, state.originY, state.originZ), st.level);
+            com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+            o.addProperty("from", st.level);
+            o.addProperty("to", st.level + 1);
+            o.addProperty("dir", st.dir);
+            com.google.gson.JsonArray steps = new com.google.gson.JsonArray();
+            for (int i = 0; i <= run; i++) {
+                com.google.gson.JsonArray b = new com.google.gson.JsonArray();
+                b.add(state.originX + st.x + step[0] * i);
+                b.add(fy + 1 + i);
+                b.add(state.originZ + st.z + step[1] * i);
+                steps.add(b);
+            }
+            o.add("steps", steps);
+            com.google.gson.JsonArray bottom = new com.google.gson.JsonArray();
+            bottom.add(state.originX + st.x);
+            bottom.add(fy + 2);
+            bottom.add(state.originZ + st.z);
+            o.add("bottom", bottom);
+            com.google.gson.JsonArray top = new com.google.gson.JsonArray();
+            top.add(state.originX + st.x + step[0] * run);
+            top.add(fy + run + 2);
+            top.add(state.originZ + st.z + step[1] * run);
+            o.add("top", top);
+            out.add(o);
+        }
+        return out;
+    }
+
     static void saveClues(String id, BuildState state) {
         try {
             ScenarioSheet sheet = SheetService.load(id);
-            if (sheet == null || sheet.clues.isEmpty()) {
+            if (sheet == null) {
                 return;
             }
             com.google.gson.JsonArray list = new com.google.gson.JsonArray();
@@ -198,13 +245,15 @@ public final class BuildService {
                 o.add("checks", checks);
                 list.add(o);
             }
-            if (list.isEmpty()) {
+            com.google.gson.JsonArray stairs = stairsJson(LayoutService.load(id), state);
+            if (list.isEmpty() && stairs.isEmpty()) {
                 return;
             }
             com.google.gson.JsonObject file = new com.google.gson.JsonObject();
             file.addProperty("version", 1);
             file.addProperty("scenario", sheet.title == null ? id : sheet.title);
             file.add("clues", list);
+            file.add("stairs", stairs);
             Files.writeString(cluesFile(id), new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(file),
                 StandardCharsets.UTF_8);
         } catch (IOException | RuntimeException e) {
@@ -1022,10 +1071,9 @@ public final class BuildService {
                     stair.accept(st.x + step[0] * i, st.z + step[1] * i);
                 }
             } else if (st.level == s.level - 1) {
-                for (int i = 1; i < run; i++) {
-                    stair.accept(st.x + step[0] * i, st.z + step[1] * i);
+                for (int i = 1; i <= run; i++) {
+                    stair.accept(st.x + step[0] * i, st.z + step[1] * i); // the hole, and the last step in the floor
                 }
-                add.accept(st.x + step[0] * run, st.z + step[1] * run);
                 add.accept(st.x + step[0] * (run + 1), st.z + step[1] * (run + 1));
             }
         }

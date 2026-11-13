@@ -174,7 +174,9 @@ public class HandBench implements FabricClientGameTest {
                     }
                 }
             }
-            ok.accept(steps, String.format(Locale.ROOT, "stairs level %d at (%d,%d) %s: all four steps", st.level, st.x, st.z, st.dir));
+            BlockPos last = new BlockPos(ox + st.x + s[0] * IndoorPlan.STAIR_RUN, fy + IndoorPlan.FLOOR_H, oz + st.z + s[1] * IndoorPlan.STAIR_RUN);
+            steps &= world.getBlockState(last).getBlock() instanceof StairsBlock;
+            ok.accept(steps, String.format(Locale.ROOT, "stairs level %d at (%d,%d) %s: all five steps (the last in the floor above)", st.level, st.x, st.z, st.dir));
             ok.accept(hole, String.format(Locale.ROOT, "stairs level %d: the way up is open", st.level));
             // The landing: two blocks of air to step off into.
             BlockPos land = new BlockPos(ox + st.x + s[0] * IndoorPlan.STAIR_RUN, fy + IndoorPlan.FLOOR_H + 1, oz + st.z + s[1] * IndoorPlan.STAIR_RUN);
@@ -234,6 +236,8 @@ public class HandBench implements FabricClientGameTest {
             var json = com.google.gson.JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
             int n = json.getAsJsonArray("clues").size();
             ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
+            int m = json.has("stairs") ? json.getAsJsonArray("stairs").size() : 0;
+            ok.accept(m == l.stairs.size(), "clues file has " + m + " of " + l.stairs.size() + " flights of stairs");
         } else {
             ok.accept(false, "clues file written");
         }

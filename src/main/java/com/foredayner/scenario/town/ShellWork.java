@@ -206,6 +206,8 @@ public final class ShellWork {
                     put(origin, x, fy + IndoorPlan.FLOOR_H, z, air);
                 }
             }
+            // The last step is the landing itself, set in the floor above: no full block to jump at the top.
+            put(origin, st.x + step[0] * IndoorPlan.STAIR_RUN, fy + IndoorPlan.FLOOR_H, st.z + step[1] * IndoorPlan.STAIR_RUN, stair);
         }
     }
 
