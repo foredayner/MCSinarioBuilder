@@ -53,8 +53,14 @@ public class HandBench implements FabricClientGameTest {
             return;
         }
         HandDesigner hand = new HandDesigner();
+        // Real terrain (a flat world lies just over the bottom of the world: no room for the cellar).
         try (TestSingleplayerContext game = context.worldBuilder()
-                .adjustSettings(creator -> creator.setGameMode(WorldCreator.Mode.CREATIVE))
+                .setUseConsistentSettings(false)
+                .adjustSettings(creator -> {
+                    creator.setWorldType(creator.getNormalWorldTypes().get(0));
+                    creator.setSeed("302");
+                    creator.setGameMode(WorldCreator.Mode.CREATIVE);
+                })
                 .create()) {
             game.getClientWorld().waitForChunksRender();
             for (String c : new String[] { "time set noon", "weather clear", "gamerule doDaylightCycle false", "gamerule doWeatherCycle false",

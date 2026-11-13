@@ -153,6 +153,7 @@ public class ScenarioBench implements FabricClientGameTest {
                 server.getPlayerManager().getOpList().add(new net.minecraft.server.OperatorEntry(player.getGameProfile(), 4, false));
                 try {
                     BuildService.designer = new Recorder();
+                    BuildService.checkDepth = false; // a flat world: its cellars reach the bottom
                     BuildService.columnsPerTick = 1500;
                     if (endToEnd) {
                         ScenarioStore.Info info = ScenarioStore.save("e2e", ScenarioGameTests.resource("/scenarios/" + e2e + ".txt"), false);

@@ -66,6 +66,8 @@ public final class BuildService {
     };
 
     public static Designer designer = AI;
+    /** Refuse a spot with no room under it for the cellars (tests on flat worlds turn it off). */
+    public static boolean checkDepth = true;
     /** Designs asked for at the same time. */
     public static int parallel = 3;
     /** Ground columns per tick. */
@@ -254,12 +256,34 @@ public final class BuildService {
                 say(player, "여기에는 지을 땅이 없어요 (너무 낮거나 높아요).", id);
                 return;
             }
+            int depth = cellarDepth(LayoutService.load(id), SheetService.load(id));
+            if (checkDepth && state.originY - 1 - depth <= player.getServerWorld().getBottomY()) {
+                // A flat world's ground lies just over the bottom of the world: no room for the cellars.
+                say(player, "여기는 지하를 팔 깊이가 없어요 (지면 y = " + (state.originY - 1) + ", 지하에 " + depth
+                    + "칸 필요). 더 높은 땅에서 정하세요 (평지 세계는 너무 낮아요).", id);
+                return;
+            }
             save(id, state);
             send(player.getServer(), player.getUuid(), id, state);
             say(player, "여기를 마을 한가운데로 정했어요. 지면 높이 y = " + (state.originY - 1) + ".", id);
         } catch (IOException e) {
             say(player, "정하지 못했어요: " + e.getMessage(), id);
         }
+    }
+
+    /** How many blocks under the ground the cellars of a stage or town reach (0 when there are none). */
+    static int cellarDepth(TownLayout layout, ScenarioSheet sheet) {
+        int depth = 0;
+        if (layout != null && layout.building()) {
+            for (TownLayout.Site s : layout.sites) {
+                depth = Math.max(depth, -s.level * com.foredayner.scenario.layout.IndoorPlan.FLOOR_H + (s.level < 0 ? 1 : 0));
+            }
+        } else if (sheet != null) {
+            for (ScenarioSheet.Place p : sheet.places) {
+                depth = Math.max(depth, p.cellars * com.foredayner.scenario.layout.Underground.LEVEL_H + (p.cellars > 0 ? 1 : 0));
+            }
+        }
+        return depth;
     }
 
     /** The town's middle at {@code at}, its ground at the surface there. */
@@ -956,11 +980,22 @@ public final class BuildService {
      */
     static List<int[]> roomKeepClear(TownLayout l, TownLayout.Site s) {
         List<int[]> out = new ArrayList<>();
-        java.util.function.BiConsumer<Integer, Integer> add = (x, z) -> {
-            if (x > s.x && x < s.x + s.w - 1 && z > s.z && z < s.z + s.d - 1 && out.stream().noneMatch(c -> c[0] == x && c[1] == z)) {
-                out.add(new int[] { x, z });
+        // {x, z, 0 for a door's cell (a rug may lie there) or 1 for the stairs (nothing at all)}
+        java.util.function.BiConsumer<int[], Integer> put = (c, kind) -> {
+            int x = c[0], z = c[1];
+            if (x <= s.x || x >= s.x + s.w - 1 || z <= s.z || z >= s.z + s.d - 1) {
+                return;
             }
+            for (int[] o : out) {
+                if (o[0] == x && o[1] == z) {
+                    o[2] = Math.max(o[2], kind);
+                    return;
+                }
+            }
+            out.add(new int[] { x, z, kind });
         };
+        java.util.function.BiConsumer<Integer, Integer> add = (x, z) -> put.accept(new int[] { x, z }, 0);
+        java.util.function.BiConsumer<Integer, Integer> stair = (x, z) -> put.accept(new int[] { x, z }, 1);
         for (TownLayout.Door d : l.doors) {
             if (d.level != s.level) {
                 continue;
@@ -982,13 +1017,16 @@ public final class BuildService {
                 default -> new int[] { 0, -1 };
             };
             if (st.level == s.level) {
-                for (int i = -1; i < run; i++) {
-                    add.accept(st.x + step[0] * i, st.z + step[1] * i);
+                add.accept(st.x - step[0], st.z - step[1]);
+                for (int i = 0; i < run; i++) {
+                    stair.accept(st.x + step[0] * i, st.z + step[1] * i);
                 }
             } else if (st.level == s.level - 1) {
-                for (int i = 1; i <= run + 1; i++) {
-                    add.accept(st.x + step[0] * i, st.z + step[1] * i);
+                for (int i = 1; i < run; i++) {
+                    stair.accept(st.x + step[0] * i, st.z + step[1] * i);
                 }
+                add.accept(st.x + step[0] * run, st.z + step[1] * run);
+                add.accept(st.x + step[0] * (run + 1), st.z + step[1] * (run + 1));
             }
         }
         return out;
@@ -1000,7 +1038,7 @@ public final class BuildService {
         List<int[]> out = new ArrayList<>();
         for (int[] c : roomKeepClear(l, s)) {
             int[] d = Overlaps.toDesign(lot, new Overlaps.Rect(c[0], c[1], c[0], c[1]));
-            out.add(new int[] { d[0], d[1] });
+            out.add(new int[] { d[0], d[1], c[2] });
         }
         return out;
     }
@@ -1289,9 +1327,18 @@ public final class BuildService {
         if (job.layout.building()) {
             // Nothing in front of the doors, on the stairs or over the holes they come up through.
             int cut = 0;
+            // Rugs stay in front of the doors (only the stairs lose theirs).
+            List<com.example.ai.build.BuildPlan.Op> rugs = new ArrayList<>();
+            design.plan().ops.removeIf(op -> op.block != null && op.block.contains("carpet") && op.y1 == op.y2 && rugs.add(op));
+            var rugPlan = new com.example.ai.build.BuildPlan();
+            rugPlan.ops.addAll(rugs);
             for (int[] c : roomKeepClearInDesign(job.layout, s)) {
                 cut += Overlaps.carve(design.plan(), c[0], c[1], c[0], c[1]);
+                if (c[2] == 1) {
+                    Overlaps.carve(rugPlan, c[0], c[1], c[0], c[1]);
+                }
             }
+            design.plan().ops.addAll(0, rugPlan.ops); // first: the furniture goes over them
             if (cut > 0) {
                 ScenarioBuilderMod.LOG.info("Cut {} commands of {} off its doors and stairs", cut, placeId);
             }

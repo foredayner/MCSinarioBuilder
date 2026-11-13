@@ -183,6 +183,7 @@ public class ScenarioClientGameTest implements FabricClientGameTest {
                 com.foredayner.scenario.town.BuildService.designer = new FixedDesigner();
                 com.foredayner.scenario.town.BuildService.columnsPerTick = 1500;
                 var player = server.getPlayerManager().getPlayerList().get(0);
+                com.foredayner.scenario.town.BuildService.checkDepth = false; // a flat world: its cellars reach the bottom
                 com.foredayner.scenario.town.BuildService.here(player, id);
                 com.foredayner.scenario.town.BuildService.start(player, id);
             });
