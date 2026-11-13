@@ -15,6 +15,9 @@ on:
       places:
         description: Comma-separated place ids (empty = every place of the sheet)
         default: ""
+      scenario:
+        description: End to end from this scenario text in the test resources (e.g. apartment302); overrides sheet
+        default: ""
   push:
     branches: [bench]
 
@@ -68,7 +71,7 @@ jobs:
           SCN_BENCH_ONLY: "1"
           SCN_BENCH_MODEL: ${{ github.event.inputs.model || 'claude-haiku-5-5' }}
           SCN_BENCH_SHEET: ${{ github.event.inputs.sheet || 'greymouth' }}
-          SCN_BENCH_E2E: ${{ (github.event.inputs.sheet || 'greymouth') == 'e2e' && 'greymouth' || '' }}
+          SCN_BENCH_E2E: ${{ github.event.inputs.scenario || ((github.event.inputs.sheet || 'greymouth') == 'e2e' && 'greymouth' || '') }}
           SCN_BENCH_PLACES: ${{ github.event.inputs.places || '' }}
           SCN_BENCH_PARALLEL: "8"
           SCN_BENCH_PHOTOS: ${{ (github.event.inputs.sheet || 'greymouth') == 'meigol' && '0' || '1' }}
@@ -91,7 +94,7 @@ jobs:
           mkdir -p "$out/logs"
           # Never publish the key: drop any line that could contain it.
           grep -v -i "x-api-key\|authorization\|sk-ant" build/clientgametest/logs/latest.log > "$out/logs/client.log" 2>/dev/null || true
-          echo "${GITHUB_SHA} bench=${{ steps.bench.outcome }} model=${{ github.event.inputs.model || 'claude-haiku-5-5' }} sheet=${{ github.event.inputs.sheet || 'greymouth' }}" > "$out/RUN.txt"
+          echo "${GITHUB_SHA} bench=${{ steps.bench.outcome }} model=${{ github.event.inputs.model || 'claude-haiku-5-5' }} sheet=${{ github.event.inputs.sheet || 'greymouth' }} scenario=${{ github.event.inputs.scenario || '' }}" > "$out/RUN.txt"
           cd "$out"
           git init -q
           git checkout -q -b bench-results

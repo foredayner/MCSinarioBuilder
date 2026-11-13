@@ -269,6 +269,36 @@ public class ScenarioBench implements FabricClientGameTest {
             });
             if (endToEnd) {
                 write("e2e_report.txt", game.getServer().computeOnServer(server -> report(id)));
+                // The clues file for Foundry, and a look at where each clue lies.
+                java.util.List<int[]> clueSpots = game.getServer().computeOnServer(server -> {
+                    java.util.List<int[]> spots = new ArrayList<>();
+                    try {
+                        var f = BuildService.cluesFile(id);
+                        if (Files.exists(f)) {
+                            String json = Files.readString(f, StandardCharsets.UTF_8);
+                            write("clues.json", json);
+                            for (var el : com.google.gson.JsonParser.parseString(json).getAsJsonObject().getAsJsonArray("clues")) {
+                                var o = el.getAsJsonObject();
+                                spots.add(new int[] { o.get("x").getAsInt(), o.get("y").getAsInt(), o.get("z").getAsInt() });
+                            }
+                        } else {
+                            write("clues.json", "no clues file");
+                        }
+                    } catch (Exception e) {
+                        write("clues.json", e.toString());
+                    }
+                    return spots;
+                });
+                game.getServer().runCommand("gamemode spectator @a");
+                context.runOnClient(client -> client.options.hudHidden = true);
+                for (int k = 0; k < Math.min(clueSpots.size(), 10); k++) {
+                    int[] c = clueSpots.get(k);
+                    game.getServer().runCommand(String.format(Locale.ROOT, "tp @a %.1f %.1f %.1f facing %d.5 %d.5 %d.5",
+                        c[0] + 2.5, c[1] + 1.2, c[2] + 2.5, c[0], c[1], c[2]));
+                    context.waitTicks(40);
+                    game.getClientWorld().waitForChunksRender();
+                    context.takeScreenshot("bench_clue_" + k);
+                }
             }
             game.getServer().runCommand("gamemode spectator @a");
             context.runOnClient(client -> client.options.hudHidden = true);

@@ -150,7 +150,7 @@ public final class BuildService {
     }
 
     /** The clues file for Foundry (Blockworld Bridge): every clue that has been built, with where it lies. */
-    static java.nio.file.Path cluesFile(String id) throws IOException {
+    public static java.nio.file.Path cluesFile(String id) throws IOException {
         return ScenarioStore.dir(id).resolve("clues-" + worldKey + ".json");
     }
 
