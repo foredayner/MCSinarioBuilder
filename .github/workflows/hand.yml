@@ -46,7 +46,7 @@ jobs:
             chmod +x gradlew
             mkdir -p build/clientgametest
             echo "eula=true" > build/clientgametest/eula.txt
-            bash -c "./gradlew runClientGametest --stacktrace > hand-gradle.log 2>&1; s=\$?; tail -c 20000 hand-gradle.log; exit \$s"
+            bash -c "./gradlew runClientGametest --stacktrace > hand-gradle.log 2>&1; s=$?; tail -c 20000 hand-gradle.log; exit $s"
       - name: Publish results to the hand-results branch
         if: always()
         run: |
