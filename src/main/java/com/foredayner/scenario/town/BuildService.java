@@ -149,9 +149,73 @@ public final class BuildService {
         return s;
     }
 
+    /** The clues file for Foundry (Blockworld Bridge): every clue that has been built, with where it lies. */
+    static java.nio.file.Path cluesFile(String id) throws IOException {
+        return ScenarioStore.dir(id).resolve("clues-" + worldKey + ".json");
+    }
+
+    /** Write the clues file from the sheet and where the built places marked their clues. */
+    static void saveClues(String id, BuildState state) {
+        try {
+            ScenarioSheet sheet = SheetService.load(id);
+            if (sheet == null || sheet.clues.isEmpty()) {
+                return;
+            }
+            com.google.gson.JsonArray list = new com.google.gson.JsonArray();
+            for (ScenarioSheet.Clue c : sheet.clues) {
+                int[] at = null;
+                for (BuildState.Place bp : state.places.values()) {
+                    List<int[]> marks = bp.marks.get(BuildPrompts.clueMark(c));
+                    if (marks != null && !marks.isEmpty()) {
+                        at = marks.get(0);
+                        break;
+                    }
+                }
+                if (at == null) {
+                    continue;
+                }
+                com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+                o.addProperty("id", c.id);
+                o.addProperty("name", c.name);
+                o.addProperty("kind", c.kind());
+                o.addProperty("item", c.item());
+                o.addProperty("text", c.text);
+                o.addProperty("place", c.place);
+                o.addProperty("x", at[0]);
+                o.addProperty("y", at[1]);
+                o.addProperty("z", at[2]);
+                com.google.gson.JsonArray checks = new com.google.gson.JsonArray();
+                for (ScenarioSheet.Check ch : c.checks) {
+                    com.google.gson.JsonObject k = new com.google.gson.JsonObject();
+                    k.addProperty("label", ch.label);
+                    k.addProperty("skill", ch.skill);
+                    k.addProperty("difficulty", ch.difficulty);
+                    k.addProperty("text", ch.text);
+                    checks.add(k);
+                }
+                o.add("checks", checks);
+                list.add(o);
+            }
+            if (list.isEmpty()) {
+                return;
+            }
+            com.google.gson.JsonObject file = new com.google.gson.JsonObject();
+            file.addProperty("version", 1);
+            file.addProperty("scenario", sheet.title == null ? id : sheet.title);
+            file.add("clues", list);
+            Files.writeString(cluesFile(id), new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(file),
+                StandardCharsets.UTF_8);
+        } catch (IOException | RuntimeException e) {
+            ScenarioBuilderMod.LOG.warn("Could not write the clues file: {}", e.toString());
+        }
+    }
+
     public static void save(String id, BuildState state) {
         try {
             Files.writeString(buildFile(id), state.toJson(), StandardCharsets.UTF_8);
+            if ("done".equals(state.status)) {
+                saveClues(id, state);
+            }
             ScenarioStore.Info info = ScenarioStore.info(id);
             String stage = "done".equals(state.status) ? "built" : info.stage;
             if (!stage.equals(info.stage)) {

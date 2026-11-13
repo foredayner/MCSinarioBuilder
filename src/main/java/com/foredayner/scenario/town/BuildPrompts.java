@@ -215,7 +215,9 @@ public final class BuildPrompts {
         for (ScenarioSheet.Clue c : sheet.clues) {
             if (c.place.equals(p.id)) {
                 out.add(clueMark(c) + " (" + c.name + ", a " + c.form + ")" + (c.room.isBlank() || p.rooms.isEmpty() ? "" : " in the " + c.room)
-                    + (c.hidden ? ", hidden inside or behind something" : ", where it can be seen"));
+                    + (c.hidden ? ", hidden inside or behind something" : ", where it can be seen")
+                + "; mark the AIR block it lies in, just above the floor, table or shelf it rests on (a floating marker for the"
+                + " game table goes there)");
             }
         }
         for (ScenarioSheet.Npc n : sheet.npcs) {

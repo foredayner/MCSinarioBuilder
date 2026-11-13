@@ -147,6 +147,36 @@ public final class ScenarioSheet {
         public String place = "";
         public String room = "";
         public boolean hidden;
+        /** Can be picked up and carried away (a letter, a key, a photograph). */
+        public boolean carry;
+        /** More found out about it by a check: what the check is and what it reveals. */
+        public List<Check> checks = new ArrayList<>();
+
+        /** How Foundry treats it: hidden (spotted first), item (carried away) or normal. */
+        public String kind() {
+            return hidden ? "hidden" : carry ? "item" : "normal";
+        }
+
+        /** The Minecraft item it shows as. */
+        public String item() {
+            String f = form == null ? "" : form;
+            String n = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+            if (n.contains("열쇠") || n.contains("key")) {
+                return "tripwire_hook";
+            }
+            if (n.contains("사진") || n.contains("photo") || "map".equals(f)) {
+                return "filled_map";
+            }
+            return "book".equals(f) ? "written_book" : "item".equals(f) ? "paper" : "paper";
+        }
+    }
+
+    /** A check that finds out more about a clue (skill: a key such as spot, library, occult). */
+    public static final class Check {
+        public String label = "";
+        public String skill = "spot";
+        public String difficulty = "regular";
+        public String text = "";
     }
 
     public static final class Link {
@@ -342,6 +372,10 @@ public final class ScenarioSheet {
         Set<String> clueIds = new HashSet<>();
         int k = 1;
         for (Clue c : clues) {
+            if (c.checks == null) {
+                c.checks = new ArrayList<>();
+            }
+            c.checks.removeIf(ch -> ch == null || ch.text == null || ch.text.isBlank());
             if (c.id == null || c.id.isBlank()) {
                 c.id = "clue" + k;
             }

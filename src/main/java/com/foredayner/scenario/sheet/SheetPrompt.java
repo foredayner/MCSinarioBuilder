@@ -26,7 +26,9 @@ public final class SheetPrompt {
                         "condition": "kept|worn|abandoned|sinister" } ],
           "npcs": [ { "name": "...", "role": "...", "place": "place id", "room": "room name or ''", "notes": "..." } ],
           "clues": [ { "id": "short_ascii_id", "name": "...", "text": "what it says or shows, 1-3 sentences",
-                       "form": "book|note|map|item", "place": "place id", "room": "a listed room or ''", "hidden": true|false } ],
+                       "form": "book|note|map|item", "place": "place id", "room": "a listed room or ''", "hidden": true|false,
+                       "carry": true|false, "checks": [ { "label": "...", "skill": "spot|library|occult|history|psychology|medicine|locksmith|appraise|naturalWorld|science|cthulhuMythos|otherLanguage",
+                                   "difficulty": "regular|hard|extreme", "text": "what the check finds out" } ] } ],
           "links": [ { "from": "place id", "to": "place id", "kind": "road|path|tunnel|secret" } ],
           "terrain": { "coast": "none|north|east|south|west", "woods": "none|north|east|south|west", "notes": "..." },
           "outer": "open|closed",
@@ -65,7 +67,10 @@ public final class SheetPrompt {
           passage, an office behind the counter): then list just those, with their use. A basement room only if
           "basement": true. Secret rooms and passages are rooms too.
         - Clues: the physical things the investigators can find. form: book (journal, ledger, letters), note (one
-          page), map (chart, plan), item (object). Give the text the clue reveals. hidden = behind or inside something.
+          page), map (chart, plan), item (object). Give the text the clue reveals. hidden = behind or inside something
+          (found by spotting it). carry = it can be picked up and taken away (a letter, a diary, a key, a photograph); a
+          bookcase or a stain cannot. checks: 0-2 things a closer look finds out, each with the skill it takes and what it
+          reveals (deciphering the handwriting with library, the symbol with occult); none when there is nothing more.
         - Links: roads between places, paths to outdoor places, and passages UNDER THE GROUND the scenario names: kind
           "tunnel" for an open one (a sewer, an old mine passage, a cellar link everyone knows), "secret" for a hidden
           one (behind a false wall). Both ends must be places (buildings get a cellar for it).
