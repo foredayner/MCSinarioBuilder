@@ -46,6 +46,8 @@ public final class TownLayout {
         public int level;
         /** The way in from outside. */
         public boolean entrance;
+        /** A hidden way: built as a false wall (the GM opens it in play). */
+        public boolean secret;
     }
 
     /** A straight flight of stairs (building stage) from {@code level} up to the next, starting at (x, z) and climbing toward dir. */

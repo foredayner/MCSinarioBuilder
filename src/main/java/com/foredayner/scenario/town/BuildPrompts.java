@@ -175,12 +175,11 @@ public final class BuildPrompts {
         - The site is the room's empty inside, from the floor (y = 0) to just under the ceiling. Fill it with the
           furniture and things this room is for, mostly along the walls (beds, tables and chairs, shelves, cupboards,
           a stove, rugs of carpet, paintings and banners on the walls, plants), in the period's style.
-        - The door is in the middle of the FRONT edge (z = -1 side): keep a clear path 1 block wide from there into
-          the room, and the middle of the room walkable.
+        - The main door is on the FRONT edge (z = -1 side); the cells in front of every door, and of any stairs, are
+          listed below to keep empty: keep a clear path 1 block wide from them into the room, and the middle walkable.
         - Light it: a lantern, candles or lamps (one or two light sources).
         - In a modern or contemporary setting, use the ready-made furniture (ai.prop) for what blocks cannot show
           well (sofa, armchair, TV, fridge, lamps, clock, phone, computer, curtains, partitions); never in older periods.
-        - Doors to other rooms may be in the other walls too: keep the middle block of each wall free on the floor.
         - SEEN FROM ABOVE (this is also a top-down map with the ceiling lifted off): a floor finish of its own (a rug
           of carpet, tiles, planks), furniture that reads from above, nothing hanging low across the room.
         """;

@@ -539,9 +539,17 @@ public final class BuildService {
             if (job.layout.building() && site != null) {
                 // A room: empty its inside (the walls, floors and the rooms around stay).
                 BlockPos min = roomMin(job, site);
-                AiBuildApi.Site inside = roomSite(site);
+                AiBuildApi.Site inside = roomArea(site);
+                // The stairs (and what holds them up) stay: their cells were never furnished.
+                java.util.Set<Long> keep = new java.util.HashSet<>();
+                for (int[] c : roomKeepClear(job.layout, site)) {
+                    keep.add(BlockPos.asLong(c[0] - site.x - 1, 0, c[1] - site.z - 1));
+                }
                 for (int x = 0; x < inside.width(); x++) {
                     for (int z = 0; z < inside.depth(); z++) {
+                        if (keep.contains(BlockPos.asLong(x, 0, z))) {
+                            continue;
+                        }
                         for (int y = 0; y <= inside.maxHeight(); y++) {
                             BlockPos at = min.add(x, y, z);
                             if (!job.world.getBlockState(at).isAir() && !(job.world.getBlockState(at).getBlock() instanceof net.minecraft.block.StairsBlock)) {
@@ -917,8 +925,98 @@ public final class BuildService {
         return job.origin.add(s.x + 1, s.level * com.foredayner.scenario.layout.IndoorPlan.FLOOR_H, s.z + 1);
     }
 
-    private static AiBuildApi.Site roomSite(TownLayout.Site s) {
+    /** A room's inside in world axes (x then z). */
+    private static AiBuildApi.Site roomArea(TownLayout.Site s) {
         return new AiBuildApi.Site(Math.max(1, s.w - 2), Math.max(1, s.d - 2), com.foredayner.scenario.layout.IndoorPlan.FLOOR_H - 2);
+    }
+
+    /** A room's inside as a lot of its own, its front on the side of its door (as the AI designs it). */
+    static TownLayout.Site roomLot(TownLayout l, TownLayout.Site s) {
+        TownLayout.Site in = new TownLayout.Site();
+        in.id = s.id;
+        in.x = s.x + 1;
+        in.z = s.z + 1;
+        in.w = Math.max(1, s.w - 2);
+        in.d = Math.max(1, s.d - 2);
+        in.level = s.level;
+        in.front = roomFront(l, s);
+        return in;
+    }
+
+    /** The room's design site: its width runs along the door's side, so it is the room's depth when the door is east or west. */
+    static AiBuildApi.Site roomSite(TownLayout l, TownLayout.Site s) {
+        int[] size = Overlaps.designSize(roomLot(l, s));
+        return new AiBuildApi.Site(size[0], size[1], com.foredayner.scenario.layout.IndoorPlan.FLOOR_H - 2);
+    }
+
+    /**
+     * Cells of a room (layout x, z) its furnishing must leave empty: the cell inside each of its doors,
+     * the steps of a flight that starts here and the cell before it, and where a flight from the floor
+     * below comes up (the hole and the landing).
+     */
+    static List<int[]> roomKeepClear(TownLayout l, TownLayout.Site s) {
+        List<int[]> out = new ArrayList<>();
+        java.util.function.BiConsumer<Integer, Integer> add = (x, z) -> {
+            if (x > s.x && x < s.x + s.w - 1 && z > s.z && z < s.z + s.d - 1 && out.stream().noneMatch(c -> c[0] == x && c[1] == z)) {
+                out.add(new int[] { x, z });
+            }
+        };
+        for (TownLayout.Door d : l.doors) {
+            if (d.level != s.level) {
+                continue;
+            }
+            for (int[] o : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                boolean inWall = (d.x == s.x || d.x == s.x + s.w - 1) && d.z > s.z && d.z < s.z + s.d - 1
+                    || (d.z == s.z || d.z == s.z + s.d - 1) && d.x > s.x && d.x < s.x + s.w - 1;
+                if (inWall) {
+                    add.accept(d.x + o[0], d.z + o[1]);
+                }
+            }
+        }
+        int run = com.foredayner.scenario.layout.IndoorPlan.STAIR_RUN;
+        for (TownLayout.Stair st : l.stairs) {
+            int[] step = switch (st.dir == null ? "" : st.dir) {
+                case "east" -> new int[] { 1, 0 };
+                case "south" -> new int[] { 0, 1 };
+                case "west" -> new int[] { -1, 0 };
+                default -> new int[] { 0, -1 };
+            };
+            if (st.level == s.level) {
+                for (int i = -1; i < run; i++) {
+                    add.accept(st.x + step[0] * i, st.z + step[1] * i);
+                }
+            } else if (st.level == s.level - 1) {
+                for (int i = 1; i <= run + 1; i++) {
+                    add.accept(st.x + step[0] * i, st.z + step[1] * i);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** The cells to keep clear in the room's design frame ({x, z} each). */
+    static List<int[]> roomKeepClearInDesign(TownLayout l, TownLayout.Site s) {
+        TownLayout.Site lot = roomLot(l, s);
+        List<int[]> out = new ArrayList<>();
+        for (int[] c : roomKeepClear(l, s)) {
+            int[] d = Overlaps.toDesign(lot, new Overlaps.Rect(c[0], c[1], c[0], c[1]));
+            out.add(new int[] { d[0], d[1] });
+        }
+        return out;
+    }
+
+    /** What the AI is told about the cells to leave empty in a room. */
+    static String roomKeepClearNote(TownLayout l, TownLayout.Site s) {
+        List<int[]> cells = roomKeepClearInDesign(l, s);
+        if (cells.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("\nKEEP THESE FLOOR CELLS EMPTY at every height (in front of the doors, the stairs and where"
+            + " stairs come up through the floor; anything you put there is removed):");
+        for (int[] c : cells) {
+            sb.append(String.format(java.util.Locale.ROOT, " (x %d, z %d)", c[0], c[1]));
+        }
+        return sb.append('\n').toString();
     }
 
     /** The side of a room its (first) door is in: its furnishing keeps that side's middle clear. */
@@ -994,9 +1092,9 @@ public final class BuildService {
         if (job.layout.building()) {
             // A room of the building stage: its furnishing, inside walls built by code.
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.roomDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA + blocksOnly(job.sheet), model,
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.ROOM_EXTRA + roomKeepClearNote(job.layout, s) + blocksOnly(job.sheet), model,
                 AiBuildApi.propEraFor(job.sheet.period()), true);
-            future = designer.building(job.world, roomMin(job, s), roomSite(s), req);
+            future = designer.building(job.world, roomMin(job, s), roomSite(job.layout, s), req);
         } else if (s.outdoor) {
             // A whole scene of blocks over the lot, ground included (never display entities).
             int[] size = Overlaps.designSize(s);
@@ -1189,7 +1287,15 @@ public final class BuildService {
             }
         });
         if (job.layout.building()) {
-            AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), roomMin(job, s), roomSite(s),
+            // Nothing in front of the doors, on the stairs or over the holes they come up through.
+            int cut = 0;
+            for (int[] c : roomKeepClearInDesign(job.layout, s)) {
+                cut += Overlaps.carve(design.plan(), c[0], c[1], c[0], c[1]);
+            }
+            if (cut > 0) {
+                ScenarioBuilderMod.LOG.info("Cut {} commands of {} off its doors and stairs", cut, placeId);
+            }
+            AiBuildApi.Placed placed = AiBuildApi.placeBuilding(job.world, design.plan(), roomMin(job, s), roomSite(job.layout, s),
                 roomFront(job.layout, s), tag, lane, done);
             bp.min = new int[] { placed.min().getX(), placed.min().getY(), placed.min().getZ() };
             bp.max = new int[] { placed.max().getX(), placed.max().getY(), placed.max().getZ() };

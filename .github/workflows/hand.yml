@@ -1,0 +1,68 @@
+name: hand
+
+# The whole way from a test scenario to a built stage with no AI: the sheet, floor plan and room
+# furnishings are written by hand as the AI would answer (src/gametest/resources/scenarios/<name>.*
+# and HandDesigner). Checks what the builder made and photographs it. Start it from the Actions tab
+# or by pushing to the "hand" branch. Results go to the hand-results branch.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Test scenario with a hand-made sheet and plan
+        default: apartment302
+  push:
+    branches: [hand]
+
+permissions:
+  contents: write
+
+jobs:
+  hand:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Get the AI Build Assistant (required mod)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p libs
+          gh release download mc1.21.4-latest -R foredayner/McTestBuilder -p '*.jar' -D libs-dl --clobber
+          mv "$(ls libs-dl/*.jar | grep -v sources | head -1)" libs/minecraft-ai-build-assistant.jar
+      - name: Build it in a real client
+        id: hand
+        continue-on-error: true
+        uses: modmuss50/xvfb-action@v1
+        env:
+          SCN_BENCH_ONLY: "1"
+          SCN_HAND: ${{ github.event.inputs.scenario || 'apartment302' }}
+        with:
+          run: |
+            chmod +x gradlew
+            mkdir -p build/clientgametest
+            echo "eula=true" > build/clientgametest/eula.txt
+            bash -c "./gradlew runClientGametest --stacktrace > hand-gradle.log 2>&1; s=\$?; tail -c 20000 hand-gradle.log; exit \$s"
+      - name: Publish results to the hand-results branch
+        if: always()
+        run: |
+          out=$(mktemp -d)
+          cp -r build/clientgametest/hand "$out/" 2>/dev/null || true
+          cp -r build/clientgametest/screenshots "$out/" 2>/dev/null || true
+          mkdir -p "$out/logs"
+          cp build/clientgametest/logs/latest.log "$out/logs/client.log" 2>/dev/null || true
+          tail -c 200000 hand-gradle.log > "$out/logs/gradle.log" 2>/dev/null || true
+          echo "${GITHUB_SHA} hand=${{ steps.hand.outcome }} scenario=${{ github.event.inputs.scenario || 'apartment302' }}" > "$out/RUN.txt"
+          cd "$out"
+          git init -q
+          git checkout -q -b hand-results
+          git add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "hand for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" hand-results
+      - name: Fail when the checks failed
+        if: steps.hand.outcome != 'success'
+        run: exit 1

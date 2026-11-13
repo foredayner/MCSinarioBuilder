@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * Builds the shell of a building stage from its floor plan, exactly, by code: the floors (a cellar
  * dug out), the walls of every room (outside walls in the outside material with windows), the
- * doors, the stairs (with their holes in the floor above) and the roof over the top rooms. The
+ * doors (a secret one as a false wall), the stairs (with their holes in the floor above) and the roof over the top rooms. The
  * rooms are furnished afterwards, one AI design each. A few hundred blocks per tick.
  */
 public final class ShellWork {
@@ -131,7 +131,8 @@ public final class ShellWork {
                             } else if (outside && corner(l, level, x, z)) {
                                 put(origin, x, y, z, pal.trim());
                             } else {
-                                put(origin, x, y, z, outside ? (level < 0 ? Blocks.STONE_BRICKS.getDefaultState() : pal.outside()) : pal.inside());
+                                // A cellar's walls are all of stone.
+                                put(origin, x, y, z, level < 0 ? Blocks.STONE_BRICKS.getDefaultState() : outside ? pal.outside() : pal.inside());
                             }
                         }
                         // Windows in the outside walls, every third block, two high.
@@ -161,6 +162,13 @@ public final class ShellWork {
         // Doors, after the walls.
         for (TownLayout.Door d : l.doors) {
             int fy = floorY(origin, d.level);
+            if (d.secret) {
+                // A false wall: plain stone in a cellar (a patch newer than the bricks), the room wall above ground.
+                BlockState fake = d.level < 0 ? Blocks.STONE.getDefaultState() : pal.inside();
+                put(origin, d.x, fy + 1, d.z, fake);
+                put(origin, d.x, fy + 2, d.z, fake);
+                continue;
+            }
             boolean vertical = verticalWall(l, d);
             Direction facing = vertical ? Direction.EAST : Direction.SOUTH;
             BlockState lower = pal.door().getDefaultState().with(DoorBlock.FACING, facing).with(DoorBlock.HALF, DoubleBlockHalf.LOWER);

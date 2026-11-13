@@ -16,7 +16,7 @@ public final class IndoorPrompt {
 
         {
           "rooms": [ { "id": "room id", "level": 0, "x": west edge, "z": north edge, "w": width, "d": depth } ],
-          "doors": [ { "x": .., "z": .., "level": 0, "entrance": false } ],
+          "doors": [ { "x": .., "z": .., "level": 0, "entrance": false, "secret": false } ],
           "stairs": [ { "x": .., "z": .., "level": 0, "dir": "north|east|south|west" } ]
         }
 
@@ -31,7 +31,7 @@ public final class IndoorPrompt {
           Upper floors stand over the floor below (inside its outline); a basement under the ground floor.
         - Doors are wall blocks: a door between two rooms is on their shared wall (not on a corner), so one side is
           inside each room. The entrance ("entrance": true) is a door in an outside wall of the ground floor, best
-          on the south side.
+          on the south side. A hidden way into a secret room is a door with "secret": true (built as a false wall).
         - Stairs: a straight flight of 4 steps from level L up to L+1, starting at (x,z) and climbing toward dir.
           The 4 step cells are inside one room of level L; the cell after them (the landing) and the 3 cells under
           it are inside one room of level L+1. Put them along a wall, not in front of a door. One flight between
@@ -63,6 +63,11 @@ public final class IndoorPrompt {
                 sb.append(" - ").append(p.notes);
             }
             sb.append('\n');
+        }
+        for (ScenarioSheet.Link l : sheet.links) {
+            if ("secret".equals(l.kind) && sheet.place(l.from) != null && sheet.place(l.to) != null) {
+                sb.append("- a SECRET door between ").append(l.from).append(" and ").append(l.to).append('\n');
+            }
         }
         sb.append("\nSETTING: ").append(sheet.setting).append(" / ").append(sheet.mood).append(" / period ").append(sheet.period());
         return sb.toString();

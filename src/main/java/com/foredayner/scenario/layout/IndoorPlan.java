@@ -94,6 +94,7 @@ public final class IndoorPlan {
                 d.z = o.get("z").getAsInt();
                 d.level = o.has("level") ? o.get("level").getAsInt() : 0;
                 d.entrance = o.has("entrance") && o.get("entrance").getAsBoolean();
+                d.secret = o.has("secret") && o.get("secret").getAsBoolean();
                 l.doors.add(d);
             }
         }
@@ -125,7 +126,8 @@ public final class IndoorPlan {
         for (int i = 0; i < l.doors.size(); i++) {
             TownLayout.Door d = l.doors.get(i);
             sb.append(i == 0 ? "" : ",").append("\n {\"x\":").append(d.x - b[0]).append(",\"z\":").append(d.z - b[1])
-                .append(",\"level\":").append(d.level).append(d.entrance ? ",\"entrance\":true" : "").append('}');
+                .append(",\"level\":").append(d.level).append(d.entrance ? ",\"entrance\":true" : "")
+                .append(d.secret ? ",\"secret\":true" : "").append('}');
         }
         sb.append("],\n\"stairs\":[");
         for (int i = 0; i < l.stairs.size(); i++) {
@@ -294,6 +296,7 @@ public final class IndoorPlan {
     public static List<String> check(TownLayout l, ScenarioSheet sheet) {
         List<String> problems = new ArrayList<>();
         l.sites.removeIf(s -> !s.id.startsWith("_") && sheet.place(s.id) == null);
+        markSecrets(l, sheet);
         for (TownLayout.Site s : l.sites) {
             s.outdoor = false;
             if (s.w < MIN_SIDE || s.d < MIN_SIDE) {
@@ -353,6 +356,22 @@ public final class IndoorPlan {
         return ox > 1 && oz > 1;
     }
 
+    /** A door between two rooms the sheet links by a "secret" passage is hidden (a false wall). */
+    static void markSecrets(TownLayout l, ScenarioSheet sheet) {
+        for (TownLayout.Door d : l.doors) {
+            TownLayout.Site[] j = joins(l, d);
+            if (j == null || j[1] == null || d.entrance) {
+                continue;
+            }
+            for (ScenarioSheet.Link link : sheet.links) {
+                if ("secret".equals(link.kind) && (link.from.equals(j[0].id) && link.to.equals(j[1].id)
+                    || link.from.equals(j[1].id) && link.to.equals(j[0].id))) {
+                    d.secret = true;
+                }
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ repair
 
     /**
@@ -375,6 +394,7 @@ public final class IndoorPlan {
         if (l.doors.size() < before) {
             notes.add("벽에 있지 않은 문 " + (before - l.doors.size()) + "개를 뺐어요");
         }
+        markSecrets(l, sheet);
         int stairsBefore = l.stairs.size();
         l.stairs.removeIf(st -> stairJoins(l, st) == null);
         if (l.stairs.size() < stairsBefore) {
