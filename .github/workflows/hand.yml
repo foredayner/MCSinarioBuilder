@@ -53,6 +53,9 @@ jobs:
           out=$(mktemp -d)
           cp -r build/clientgametest/hand "$out/" 2>/dev/null || true
           cp -r build/clientgametest/screenshots "$out/" 2>/dev/null || true
+          # The built world, for the game-table play test on a real server (FVTT_MC "playtest").
+          save=$(ls -td build/clientgametest/saves/*/ 2>/dev/null | head -1)
+          if [ -n "$save" ]; then (cd "$save" && zip -qr "$out/world.zip" level.dat region data entities 2>/dev/null); ls -la "$out/world.zip" || true; fi
           mkdir -p "$out/logs"
           cp build/clientgametest/logs/latest.log "$out/logs/client.log" 2>/dev/null || true
           tail -c 200000 hand-gradle.log > "$out/logs/gradle.log" 2>/dev/null || true

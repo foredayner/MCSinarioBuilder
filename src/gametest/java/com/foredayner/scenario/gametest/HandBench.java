@@ -111,6 +111,7 @@ public class HandBench implements FabricClientGameTest {
                     write("scripts.txt", sc.toString());
                     checks.addAll(check(server.getOverworld(), id, state));
                     write("checks.txt", String.join("\n", checks) + "\n");
+                    write("playtest.json", playtest(server.getOverworld(), id, state));
                     return new int[] { state.originX, state.originY, state.originZ };
                 } catch (java.io.IOException e) {
                     throw new RuntimeException(e);
@@ -242,6 +243,87 @@ public class HandBench implements FabricClientGameTest {
             ok.accept(false, "clues file written");
         }
         return out;
+    }
+
+    // ------------------------------------------------------------------ for the play test
+
+    /** A cell a character can stand in: two blocks of air (or rugs) on something solid. */
+    private static boolean standable(ServerWorld world, BlockPos feet) {
+        var below = feet.down();
+        return world.getBlockState(below).isSolidBlock(world, below)
+            && !world.getBlockState(feet).isSolidBlock(world, feet) && world.getBlockState(feet).getCollisionShape(world, feet).isEmpty()
+            && world.getBlockState(feet.up()).isAir();
+    }
+
+    /**
+     * Where a play test on a real server walks to (world blocks, feet): just outside the entrance,
+     * and a free spot in each room nearest its middle; with the stage's floors. The relay's play
+     * test reads it with the clues file.
+     */
+    private static String playtest(ServerWorld world, String id, com.foredayner.scenario.town.BuildState state) throws java.io.IOException {
+        TownLayout l = LayoutService.load(id);
+        int ox = state.originX, oy = state.originY, oz = state.originZ;
+        com.google.gson.JsonObject out = new com.google.gson.JsonObject();
+        com.google.gson.JsonArray origin = new com.google.gson.JsonArray();
+        origin.add(ox);
+        origin.add(oy);
+        origin.add(oz);
+        out.add("origin", origin);
+        int[] b = IndoorPlan.bounds(l);
+        com.google.gson.JsonArray box = new com.google.gson.JsonArray();
+        for (int v : new int[] { ox + b[0], oz + b[1], ox + b[2], oz + b[3] }) {
+            box.add(v);
+        }
+        out.add("bounds", box);
+        for (TownLayout.Door d : l.doors) {
+            if (!d.entrance) {
+                continue;
+            }
+            // The outside cell next to the door (the one not in any room), a step further out.
+            for (int[] o : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                int x = d.x + o[0], z = d.z + o[1];
+                boolean inRoom = l.sites.stream().anyMatch(s -> s.level == d.level && x > s.x && x < s.x + s.w - 1 && z > s.z && z < s.z + s.d - 1);
+                boolean wall = l.sites.stream().anyMatch(s -> s.level == d.level && x >= s.x && x <= s.x + s.w - 1 && z >= s.z && z <= s.z + s.d - 1);
+                if (!inRoom && !wall) {
+                    com.google.gson.JsonArray e = new com.google.gson.JsonArray();
+                    e.add(ox + d.x + o[0] * 3);
+                    e.add(floorY(oy, d.level) + 1);
+                    e.add(oz + d.z + o[1] * 3);
+                    out.add("entrance", e);
+                }
+            }
+        }
+        com.google.gson.JsonArray rooms = new com.google.gson.JsonArray();
+        for (TownLayout.Site s : l.sites) {
+            int fy = floorY(oy, s.level);
+            double mx = ox + s.x + s.w / 2.0, mz = oz + s.z + s.d / 2.0;
+            BlockPos best = null;
+            double bestD = Double.MAX_VALUE;
+            for (int x = ox + s.x + 1; x < ox + s.x + s.w - 1; x++) {
+                for (int z = oz + s.z + 1; z < oz + s.z + s.d - 1; z++) {
+                    BlockPos feet = new BlockPos(x, fy + 1, z);
+                    double dd = Math.hypot(x + 0.5 - mx, z + 0.5 - mz);
+                    if (dd < bestD && standable(world, feet)) {
+                        best = feet;
+                        bestD = dd;
+                    }
+                }
+            }
+            com.google.gson.JsonObject r = new com.google.gson.JsonObject();
+            r.addProperty("id", s.id);
+            r.addProperty("level", s.level);
+            r.addProperty("floorY", fy + 1);
+            if (best != null) {
+                com.google.gson.JsonArray at = new com.google.gson.JsonArray();
+                at.add(best.getX());
+                at.add(best.getY());
+                at.add(best.getZ());
+                r.add("stand", at);
+            }
+            rooms.add(r);
+        }
+        out.add("rooms", rooms);
+        return new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(out);
     }
 
     // ------------------------------------------------------------------ pictures
