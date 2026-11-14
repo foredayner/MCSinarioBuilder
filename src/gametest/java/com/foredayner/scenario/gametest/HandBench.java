@@ -251,7 +251,8 @@ public class HandBench implements FabricClientGameTest {
     private static boolean standable(ServerWorld world, BlockPos feet) {
         var below = feet.down();
         return world.getBlockState(below).isSolidBlock(world, below)
-            && !world.getBlockState(feet).isSolidBlock(world, feet) && world.getBlockState(feet).getCollisionShape(world, feet).isEmpty()
+            // nothing at the feet higher than a rug
+            && world.getBlockState(feet).getCollisionShape(world, feet).getMax(net.minecraft.util.math.Direction.Axis.Y) <= 0.1
             && world.getBlockState(feet.up()).isAir();
     }
 
