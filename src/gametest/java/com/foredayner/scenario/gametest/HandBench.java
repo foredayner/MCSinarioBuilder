@@ -293,6 +293,18 @@ public class HandBench implements FabricClientGameTest {
                 }
             }
         }
+        // Secret doors (false walls): the two blocks one walks through, feet and head.
+        com.google.gson.JsonArray secrets = new com.google.gson.JsonArray();
+        for (TownLayout.Door d : l.doors) {
+            if (d.secret) {
+                com.google.gson.JsonArray at = new com.google.gson.JsonArray();
+                at.add(ox + d.x);
+                at.add(floorY(oy, d.level) + 1);
+                at.add(oz + d.z);
+                secrets.add(at);
+            }
+        }
+        out.add("secretDoors", secrets);
         com.google.gson.JsonArray rooms = new com.google.gson.JsonArray();
         for (TownLayout.Site s : l.sites) {
             int fy = floorY(oy, s.level);
