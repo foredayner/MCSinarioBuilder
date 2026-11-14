@@ -1,0 +1,113 @@
+ok   the build finished (done)
+ok   room hallway_1f built (done )
+ok   room office built (done )
+ok   room hallway_3f built (done )
+ok   room unit301 built (done )
+ok   room living302 built (done )
+ok   room study302 built (done )
+ok   room bedroom302 built (done )
+ok   room boiler_room built (done )
+ok   room hidden_space built (done )
+ok   stairs level -1 at (78,68) east: all five steps (the last in the floor above)
+ok   stairs level -1: the way up is open
+ok   stairs level -1: the landing is clear (Block{minecraft:air})
+ok   stairs level 0 at (85,68) east: all five steps (the last in the floor above)
+ok   stairs level 0: the way up is open
+ok   stairs level 0: the landing is clear (Block{minecraft:air})
+ok   stairs level 1 at (88,66) west: all five steps (the last in the floor above)
+ok   stairs level 1: the way up is open
+ok   stairs level 1: the landing is clear (Block{minecraft:air})
+ok   stairs level 2 at (85,68) east: all five steps (the last in the floor above)
+ok   stairs level 2: the way up is open
+ok   stairs level 2: the landing is clear (Block{minecraft:air})
+ok   door level 0 at (67,67) (entrance): Block{minecraft:birch_door}
+ok     in front of it at (68,67): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok   door level 0 at (71,65): Block{minecraft:birch_door}
+ok     in front of it at (71,66): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok     in front of it at (71,64): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok   door level 0 at (83,65): Block{minecraft:birch_door}
+ok     in front of it at (83,66): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok     in front of it at (83,64): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 0 at (73,69): Block{minecraft:birch_door}
+ok     in front of it at (73,70): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (73,68): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok   door level 0 at (83,69): Block{minecraft:birch_door}
+ok     in front of it at (83,70): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (83,68): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok   door level 1 at (73,65): Block{minecraft:birch_door}
+ok     in front of it at (73,66): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (73,64): clear (Block{minecraft:air} / Block{minecraft:light})
+ok   door level 1 at (82,65): Block{minecraft:birch_door}
+ok     in front of it at (82,66): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (82,64): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 1 at (73,69): Block{minecraft:birch_door}
+ok     in front of it at (73,70): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (73,68): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 1 at (83,69): Block{minecraft:birch_door}
+ok     in front of it at (83,70): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (83,68): clear (Block{minecraft:air} / Block{minecraft:light})
+ok   door level 2 at (71,65): Block{minecraft:birch_door}
+ok     in front of it at (71,66): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok     in front of it at (71,64): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 2 at (79,65): Block{minecraft:birch_door}
+ok     in front of it at (79,66): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok     in front of it at (79,64): clear (Block{minecraft:yellow_carpet} / Block{minecraft:air})
+ok   door level 2 at (90,65): Block{minecraft:birch_door}
+ok     in front of it at (90,66): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok     in front of it at (90,64): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 2 at (79,69): Block{minecraft:birch_door}
+ok     in front of it at (79,70): clear (Block{minecraft:yellow_carpet} / Block{minecraft:air})
+ok     in front of it at (79,68): clear (Block{minecraft:light_gray_carpet} / Block{minecraft:air})
+ok   door level 2 at (75,73): Block{minecraft:birch_door}
+ok     in front of it at (76,73): clear (Block{minecraft:yellow_carpet} / Block{minecraft:air})
+ok     in front of it at (74,73): clear (Block{minecraft:brown_carpet} / Block{minecraft:air})
+ok   door level 2 at (83,73): Block{minecraft:birch_door}
+ok     in front of it at (84,73): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (82,73): clear (Block{minecraft:yellow_carpet} / Block{minecraft:air})
+ok   door level 3 at (73,65): Block{minecraft:birch_door}
+ok     in front of it at (73,66): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (73,64): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 3 at (82,65): Block{minecraft:birch_door}
+ok     in front of it at (82,66): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (82,64): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 3 at (73,69): Block{minecraft:birch_door}
+ok     in front of it at (73,70): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (73,68): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   door level 3 at (83,69): Block{minecraft:birch_door}
+ok     in front of it at (83,70): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (83,68): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   secret door level -1 at (75,67): a false wall of Block{minecraft:stone}
+ok     in front of it at (76,67): clear (Block{minecraft:air} / Block{minecraft:air})
+ok     in front of it at (74,67): clear (Block{minecraft:air} / Block{minecraft:air})
+ok   clue bills (normal) has its spot at -8,100,-22 (Block{minecraft:light_gray_carpet})
+ok     clue bills is not inside a solid block
+ok     clue bills lies inside its room
+ok   clue bookshelf (normal) has its spot at -13,110,-17 (Block{minecraft:brown_carpet})
+ok     clue bookshelf is not inside a solid block
+ok     clue bookshelf lies inside its room
+ok   clue manuscript (normal) has its spot at -9,111,-14 (Block{minecraft:air})
+ok     clue manuscript is not inside a solid block
+ok     clue manuscript lies inside its room
+ok   clue floorboard (hidden) has its spot at 3,111,-19 (Block{minecraft:air})
+ok     clue floorboard is not inside a solid block
+ok     clue floorboard lies inside its room
+ok   clue diary (item) has its spot at 3,111,-18 (Block{minecraft:air})
+ok     clue diary is not inside a solid block
+ok     clue diary lies inside its room
+ok   clue key_rack (normal) has its spot at -9,101,-30 (Block{minecraft:air})
+ok     clue key_rack is not inside a solid block
+ok     clue key_rack lies inside its room
+ok   clue rusty_key (item) has its spot at -1,111,-15 (Block{minecraft:air})
+ok     clue rusty_key is not inside a solid block
+ok     clue rusty_key lies inside its room
+ok   clue new_wall (normal) has its spot at -6,95,-22 (Block{minecraft:air})
+ok     clue new_wall is not inside a solid block
+ok     clue new_wall lies inside its room
+ok   clue silver_ring (hidden) has its spot at -3,96,-18 (Block{minecraft:air})
+ok     clue silver_ring is not inside a solid block
+ok     clue silver_ring lies inside its room
+ok   clue altar (normal) has its spot at -12,96,-22 (Block{minecraft:air})
+ok     clue altar is not inside a solid block
+ok     clue altar lies inside its room
+ok   clues file has 10 of 10 clues
+ok   clues file has 4 of 4 flights of stairs

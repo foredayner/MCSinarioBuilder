@@ -1,0 +1,260 @@
+{
+  "placed": true,
+  "originX": -82,
+  "originY": 100,
+  "originZ": -89,
+  "dimension": "minecraft:overworld",
+  "status": "done",
+  "ground": "done",
+  "groundPercent": 100,
+  "places": {
+    "hallway_1f": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_2cb64faa",
+      "min": [
+        -14,
+        100,
+        -23
+      ],
+      "max": [
+        8,
+        103,
+        -21
+      ],
+      "marks": {
+        "clue:bills": [
+          [
+            -8,
+            100,
+            -22
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "office": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_ee23bd48",
+      "min": [
+        -14,
+        100,
+        -30
+      ],
+      "max": [
+        -8,
+        103,
+        -25
+      ],
+      "marks": {
+        "npc:최씨": [
+          [
+            -14,
+            100,
+            -27
+          ]
+        ],
+        "clue:key_rack": [
+          [
+            -9,
+            101,
+            -30
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "hallway_3f": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_2cb64fe8",
+      "min": [
+        -14,
+        110,
+        -23
+      ],
+      "max": [
+        8,
+        113,
+        -21
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "unit301": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_218ea064",
+      "min": [
+        -6,
+        110,
+        -30
+      ],
+      "max": [
+        0,
+        113,
+        -25
+      ],
+      "marks": {
+        "npc:오순례": [
+          [
+            -5,
+            110,
+            -27
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "living302": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_5ade7c20",
+      "min": [
+        -6,
+        110,
+        -19
+      ],
+      "max": [
+        0,
+        113,
+        -14
+      ],
+      "marks": {
+        "clue:rusty_key": [
+          [
+            -1,
+            111,
+            -15
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "study302": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_91a10298",
+      "min": [
+        -14,
+        110,
+        -19
+      ],
+      "max": [
+        -8,
+        113,
+        -14
+      ],
+      "marks": {
+        "clue:manuscript": [
+          [
+            -9,
+            111,
+            -14
+          ]
+        ],
+        "clue:bookshelf": [
+          [
+            -13,
+            110,
+            -17
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "bedroom302": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_b583cba5",
+      "min": [
+        2,
+        110,
+        -19
+      ],
+      "max": [
+        8,
+        113,
+        -14
+      ],
+      "marks": {
+        "clue:floorboard": [
+          [
+            3,
+            111,
+            -19
+          ]
+        ],
+        "clue:diary": [
+          [
+            3,
+            111,
+            -18
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "boiler_room": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_ef5bb9f1",
+      "min": [
+        -6,
+        95,
+        -27
+      ],
+      "max": [
+        8,
+        98,
+        -17
+      ],
+      "marks": {
+        "clue:silver_ring": [
+          [
+            -3,
+            96,
+            -18
+          ]
+        ],
+        "clue:new_wall": [
+          [
+            -6,
+            95,
+            -22
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "hidden_space": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_71cbefbd",
+      "min": [
+        -12,
+        95,
+        -24
+      ],
+      "max": [
+        -8,
+        98,
+        -20
+      ],
+      "marks": {
+        "clue:altar": [
+          [
+            -12,
+            96,
+            -22
+          ]
+        ]
+      },
+      "prop": false
+    }
+  },
+  "tokensIn": 0,
+  "tokensOut": 0,
+  "message": "마을을 다 지었어요."
+}

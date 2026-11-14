@@ -1,0 +1,267 @@
+{
+  "origin": [
+    -82,
+    100,
+    -89
+  ],
+  "bounds": [
+    -15,
+    -31,
+    9,
+    -13
+  ],
+  "entrance": [
+    -18,
+    100,
+    -22
+  ],
+  "secretDoors": [
+    [
+      -7,
+      95,
+      -22
+    ]
+  ],
+  "rooms": [
+    {
+      "id": "hallway_1f",
+      "level": 0,
+      "floorY": 100,
+      "stand": [
+        -3,
+        100,
+        -22
+      ]
+    },
+    {
+      "id": "office",
+      "level": 0,
+      "floorY": 100,
+      "stand": [
+        -11,
+        100,
+        -28
+      ]
+    },
+    {
+      "id": "_unit101",
+      "level": 0,
+      "floorY": 100,
+      "stand": [
+        1,
+        100,
+        -28
+      ]
+    },
+    {
+      "id": "_unit102",
+      "level": 0,
+      "floorY": 100,
+      "stand": [
+        -9,
+        100,
+        -17
+      ]
+    },
+    {
+      "id": "_unit103",
+      "level": 0,
+      "floorY": 100,
+      "stand": [
+        3,
+        100,
+        -17
+      ]
+    },
+    {
+      "id": "_hall2f",
+      "level": 1,
+      "floorY": 105,
+      "stand": [
+        -3,
+        105,
+        -22
+      ]
+    },
+    {
+      "id": "_unit201",
+      "level": 1,
+      "floorY": 105,
+      "stand": [
+        -9,
+        105,
+        -28
+      ]
+    },
+    {
+      "id": "_unit202",
+      "level": 1,
+      "floorY": 105,
+      "stand": [
+        3,
+        105,
+        -28
+      ]
+    },
+    {
+      "id": "_unit203",
+      "level": 1,
+      "floorY": 105,
+      "stand": [
+        -9,
+        105,
+        -17
+      ]
+    },
+    {
+      "id": "_unit204",
+      "level": 1,
+      "floorY": 105,
+      "stand": [
+        3,
+        105,
+        -17
+      ]
+    },
+    {
+      "id": "hallway_3f",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        -3,
+        110,
+        -22
+      ]
+    },
+    {
+      "id": "_unit303",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        -11,
+        110,
+        -27
+      ]
+    },
+    {
+      "id": "unit301",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        -3,
+        110,
+        -28
+      ]
+    },
+    {
+      "id": "_unit304",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        5,
+        110,
+        -28
+      ]
+    },
+    {
+      "id": "study302",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        -11,
+        110,
+        -17
+      ]
+    },
+    {
+      "id": "living302",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        -3,
+        110,
+        -17
+      ]
+    },
+    {
+      "id": "bedroom302",
+      "level": 2,
+      "floorY": 110,
+      "stand": [
+        5,
+        110,
+        -17
+      ]
+    },
+    {
+      "id": "_hall4f",
+      "level": 3,
+      "floorY": 115,
+      "stand": [
+        -3,
+        115,
+        -22
+      ]
+    },
+    {
+      "id": "_unit401",
+      "level": 3,
+      "floorY": 115,
+      "stand": [
+        -9,
+        115,
+        -28
+      ]
+    },
+    {
+      "id": "_unit402",
+      "level": 3,
+      "floorY": 115,
+      "stand": [
+        3,
+        115,
+        -28
+      ]
+    },
+    {
+      "id": "_unit403",
+      "level": 3,
+      "floorY": 115,
+      "stand": [
+        -9,
+        115,
+        -17
+      ]
+    },
+    {
+      "id": "_unit404",
+      "level": 3,
+      "floorY": 115,
+      "stand": [
+        3,
+        115,
+        -17
+      ]
+    },
+    {
+      "id": "boiler_room",
+      "level": -1,
+      "floorY": 95,
+      "stand": [
+        1,
+        95,
+        -22
+      ]
+    },
+    {
+      "id": "hidden_space",
+      "level": -1,
+      "floorY": 95,
+      "stand": [
+        -10,
+        95,
+        -22
+      ]
+    }
+  ]
+}

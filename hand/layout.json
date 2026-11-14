@@ -1,0 +1,463 @@
+{
+  "size": 160,
+  "stage": "building",
+  "sites": [
+    {
+      "id": "hallway_1f",
+      "x": 67,
+      "z": 65,
+      "w": 25,
+      "d": 5,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 0
+    },
+    {
+      "id": "office",
+      "x": 67,
+      "z": 58,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 0
+    },
+    {
+      "id": "_unit101",
+      "x": 75,
+      "z": 58,
+      "w": 17,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 0
+    },
+    {
+      "id": "_unit102",
+      "x": 67,
+      "z": 69,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 0
+    },
+    {
+      "id": "_unit103",
+      "x": 79,
+      "z": 69,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 0
+    },
+    {
+      "id": "_hall2f",
+      "x": 67,
+      "z": 65,
+      "w": 25,
+      "d": 5,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 1
+    },
+    {
+      "id": "_unit201",
+      "x": 67,
+      "z": 58,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 1
+    },
+    {
+      "id": "_unit202",
+      "x": 79,
+      "z": 58,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 1
+    },
+    {
+      "id": "_unit203",
+      "x": 67,
+      "z": 69,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 1
+    },
+    {
+      "id": "_unit204",
+      "x": 79,
+      "z": 69,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 1
+    },
+    {
+      "id": "hallway_3f",
+      "x": 67,
+      "z": 65,
+      "w": 25,
+      "d": 5,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "_unit303",
+      "x": 67,
+      "z": 58,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "unit301",
+      "x": 75,
+      "z": 58,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "_unit304",
+      "x": 83,
+      "z": 58,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "study302",
+      "x": 67,
+      "z": 69,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "living302",
+      "x": 75,
+      "z": 69,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "bedroom302",
+      "x": 83,
+      "z": 69,
+      "w": 9,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 2
+    },
+    {
+      "id": "_hall4f",
+      "x": 67,
+      "z": 65,
+      "w": 25,
+      "d": 5,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 3
+    },
+    {
+      "id": "_unit401",
+      "x": 67,
+      "z": 58,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 3
+    },
+    {
+      "id": "_unit402",
+      "x": 79,
+      "z": 58,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 3
+    },
+    {
+      "id": "_unit403",
+      "x": 67,
+      "z": 69,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 3
+    },
+    {
+      "id": "_unit404",
+      "x": 79,
+      "z": 69,
+      "w": 13,
+      "d": 8,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": 3
+    },
+    {
+      "id": "boiler_room",
+      "x": 75,
+      "z": 61,
+      "w": 17,
+      "d": 13,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": -1
+    },
+    {
+      "id": "hidden_space",
+      "x": 69,
+      "z": 64,
+      "w": 7,
+      "d": 7,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": true,
+      "level": -1
+    }
+  ],
+  "doors": [
+    {
+      "x": 67,
+      "z": 67,
+      "level": 0,
+      "entrance": true,
+      "secret": false
+    },
+    {
+      "x": 71,
+      "z": 65,
+      "level": 0,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 83,
+      "z": 65,
+      "level": 0,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 73,
+      "z": 69,
+      "level": 0,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 83,
+      "z": 69,
+      "level": 0,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 73,
+      "z": 65,
+      "level": 1,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 82,
+      "z": 65,
+      "level": 1,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 73,
+      "z": 69,
+      "level": 1,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 83,
+      "z": 69,
+      "level": 1,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 71,
+      "z": 65,
+      "level": 2,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 79,
+      "z": 65,
+      "level": 2,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 90,
+      "z": 65,
+      "level": 2,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 79,
+      "z": 69,
+      "level": 2,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 75,
+      "z": 73,
+      "level": 2,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 83,
+      "z": 73,
+      "level": 2,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 73,
+      "z": 65,
+      "level": 3,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 82,
+      "z": 65,
+      "level": 3,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 73,
+      "z": 69,
+      "level": 3,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 83,
+      "z": 69,
+      "level": 3,
+      "entrance": false,
+      "secret": false
+    },
+    {
+      "x": 75,
+      "z": 67,
+      "level": -1,
+      "entrance": false,
+      "secret": true
+    }
+  ],
+  "stairs": [
+    {
+      "x": 78,
+      "z": 68,
+      "level": -1,
+      "dir": "east"
+    },
+    {
+      "x": 85,
+      "z": 68,
+      "level": 0,
+      "dir": "east"
+    },
+    {
+      "x": 88,
+      "z": 66,
+      "level": 1,
+      "dir": "west"
+    },
+    {
+      "x": 85,
+      "z": 68,
+      "level": 2,
+      "dir": "east"
+    }
+  ],
+  "roads": [
+    {
+      "points": [
+        [
+          65,
+          67
+        ],
+        [
+          1,
+          67
+        ]
+      ],
+      "width": 3,
+      "kind": "path"
+    }
+  ],
+  "zones": [
+    {
+      "kind": "garden",
+      "x": 61,
+      "z": 52,
+      "w": 37,
+      "d": 31
+    }
+  ]
+}
