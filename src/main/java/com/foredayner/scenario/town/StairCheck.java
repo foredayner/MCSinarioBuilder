@@ -247,10 +247,10 @@ public final class StairCheck {
                 out.add(k == 0 ? "the ground floor cannot be entered from outside: it needs a door (2 high) in an outer wall with"
                     + " open ground in front of it"
                     : String.format(Locale.ROOT, "storey %d (its floor at y = %d) cannot be reached from the floor below: build ONE"
-                        + " STRAIGHT staircase %d block%s wide (4 stair blocks rising one by one from the floor at y = %d, then step"
-                        + " onto the floor at y = %d), with 3 blocks of head room over every step, the hole in the floor above"
-                        + " over the steps, and a railing round the hole", k + 1, k * STOREY, stairWidth, stairWidth > 1 ? "s" : "",
-                        (k - 1) * STOREY, k * STOREY));
+                        + " STRAIGHT staircase %d block%s wide (5 stair blocks rising one by one from the floor at y = %d, the fifth"
+                        + " set into the floor at y = %d in place of a floor block, all facing the way the flight rises), with 3"
+                        + " blocks of head room over every step, the hole in the floor above over the steps, and a railing round the"
+                        + " hole", k + 1, k * STOREY, stairWidth, stairWidth > 1 ? "s" : "", (k - 1) * STOREY, k * STOREY));
             }
         }
         return out.isEmpty() ? null : "GETTING ABOUT THE BUILDING:\n- " + String.join("\n- ", out);
@@ -286,7 +286,10 @@ public final class StairCheck {
         return added;
     }
 
-    /** Cells: {x, z, dx, dz, sx, sz}: index 0 is the top (on storey k), index 5 the foot (on storey k-1). */
+    /**
+     * Cells: {x, z, dx, dz, sx, sz}: index -1 is where one steps off at the top (on storey k), index 0
+     * the fifth step (set into storey k's floor), index 5 the foot (on storey k-1).
+     */
     private static int[] findFlight(Grid g, boolean[] seen, int k, int w, int d, int width) {
         int top = k * STOREY + 1, foot = (k - 1) * STOREY + 1;
         int[][] runs = { { 1, 0, 0, 1 }, { -1, 0, 0, 1 }, { 0, 1, 1, 0 }, { 0, -1, 1, 0 } };
@@ -304,13 +307,13 @@ public final class StairCheck {
 
     private static boolean fits(Grid g, boolean[] seen, int x, int z, int[] r, int width, int top, int foot) {
         for (int lane = 0; lane < width; lane++) {
-            for (int i = 0; i <= 5; i++) {
+            for (int i = -1; i <= 5; i++) {
                 int cx = x + r[0] * i + r[2] * lane, cz = z + r[1] * i + r[3] * lane;
                 if (cx < 0 || cz > -1 || cx >= g.sx - 2 || cz < g.z0 + 1) {
                     return false;
                 }
-                if (i == 0) {
-                    // The top: standing on the floor above.
+                if (i <= 0) {
+                    // The top step, set into the floor above, and where one steps off it: on that floor.
                     if (!stand(g, cx, top, cz)) {
                         return false;
                     }
@@ -340,7 +343,8 @@ public final class StairCheck {
         int dx = s[2], dz = s[3];
         String facing = -dx > 0 ? "east" : -dx < 0 ? "west" : -dz > 0 ? "south" : "north"; // up, toward the top
         for (int lane = 0; lane < width; lane++) {
-            for (int i = 1; i <= 4; i++) {
+            // Five steps: the last (i = 0) in the floor above, so one walks off it without a jump.
+            for (int i = 0; i <= 4; i++) {
                 int x = s[0] + dx * i + s[4] * lane, z = s[1] + dz * i + s[5] * lane;
                 int stairY = top - 1 - i;
                 plan.ops.add(new BuildPlan.Op("fill", x, stairY + 1, z, x, Math.min(stairY + 3, top + 1), z, "minecraft:air", "replace"));

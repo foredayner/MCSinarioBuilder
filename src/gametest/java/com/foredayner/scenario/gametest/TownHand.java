@@ -170,7 +170,9 @@ final class TownHand {
         s.block(cx - 1, 0, zf, k.floor).block(cx, 0, zf, k.floor);
         s.block(cx - 1, 1, zf, "spruce_door[facing=south,half=lower,hinge=left]").block(cx - 1, 2, zf, "spruce_door[facing=south,half=upper,hinge=left]");
         s.block(cx, 1, zf, "spruce_door[facing=south,half=lower,hinge=right]").block(cx, 2, zf, "spruce_door[facing=south,half=upper,hinge=right]");
-        s.block(cx - 1, 0, zf + 1, "cobblestone_slab[type=bottom]").block(cx, 0, zf + 1, "cobblestone_slab[type=bottom]");
+        if (!"에블린의 집".equals(name)) {
+            s.block(cx - 1, 0, zf + 1, "cobblestone_slab[type=bottom]").block(cx, 0, zf + 1, "cobblestone_slab[type=bottom]");
+        } // (Evelyn's house has none: the builder puts a step of stairs there itself.)
         // The top storey's own ceiling, and a gabled roof over it (ridge along x).
         int top = floors * 5;
         s.layer(x0, zb, x1, zf, top, k.upper);
@@ -191,8 +193,10 @@ final class TownHand {
                 s.layer(ex0, north + 1, ex1, south - 1, y, k.ridge);
             }
         }
-        // Stairs to each floor above: along the inside of the west wall, rising toward the back.
+        // Stairs to each floor above: along the inside of the west wall, rising toward the back. The
+        // town hall's are back to front (facing the foot, as the AI drew them once): the builder turns them.
         int width = Math.max(1, stairWidth(extra));
+        String stair = "마을 회관".equals(name) ? "spruce_stairs[facing=south]" : "spruce_stairs[facing=north]";
         for (int f = 0; f + 1 < floors; f++) {
             int y = f * 5;
             int z0 = zf - 2;
@@ -200,7 +204,7 @@ final class TownHand {
                 int x = x0 + 1 + lane;
                 for (int i = 0; i <= 4; i++) {
                     // The fifth step is set in the floor above: no full block to climb at the top.
-                    s.block(x, y + 1 + i, z0 - i, "spruce_stairs[facing=north]");
+                    s.block(x, y + 1 + i, z0 - i, stair);
                     for (int under = y + 1; under < y + 1 + i; under++) {
                         s.block(x, under, z0 - i, k.floor);
                     }
@@ -307,7 +311,18 @@ final class TownHand {
     }
 
     private static void house(Script s, Inside in) {
-        // One room: the stove and table at the front, the bed and a bedside shelf (the diary) at the back.
+        // Two rooms: the stove and table at the front; a bedroom at the back behind a wall with a
+        // single door (one block wide), the bed and a bedside shelf (the diary) in it.
+        int zp = in.b() + 2, dx = in.midX();
+        for (int x = in.l(); x <= in.r(); x++) {
+            for (int y = 1; y <= 4; y++) {
+                if (x != dx || y > 2) {
+                    s.block(x, y, zp, "spruce_planks");
+                }
+            }
+        }
+        s.block(dx, 1, zp, "oak_door[facing=south,half=lower,hinge=left]").block(dx, 2, zp, "oak_door[facing=south,half=upper,hinge=left]");
+        s.keep.add(new int[] { dx, zp - 1, dx, zp + 2 });
         s.thing(in.r(), 1, in.f(), "furnace[facing=west]");
         s.thing(in.r() - 2, 1, in.f() - 1, "spruce_fence").thing(in.r() - 2, 2, in.f() - 1, "spruce_pressure_plate");
         s.thing(in.r() - 3, 1, in.f() - 1, "spruce_stairs[facing=east]");

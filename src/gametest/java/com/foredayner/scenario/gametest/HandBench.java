@@ -198,6 +198,46 @@ public class HandBench implements FabricClientGameTest {
         return notes;
     }
 
+    /** A door in a building (its lower half), whether it is one block wide, and the way out of it (null: an inner door). */
+    record Door(BlockPos at, boolean single, net.minecraft.util.math.Direction out) {
+    }
+
+    private static boolean overhead(ServerWorld world, BlockPos p) {
+        for (int y = 2; y <= 16; y++) {
+            BlockPos q = p.up(y);
+            if (!world.getBlockState(q).getCollisionShape(world, q).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean lowerDoor(net.minecraft.block.BlockState st) {
+        return st.getBlock() instanceof DoorBlock && st.get(DoorBlock.HALF) == net.minecraft.block.enums.DoubleBlockHalf.LOWER;
+    }
+
+    /** Every door on the ground floor of a place's lot. */
+    private static List<Door> doorsIn(ServerWorld world, int ox, int oy, int oz, TownLayout.Site s) {
+        List<Door> out = new ArrayList<>();
+        for (int x = ox + s.x; x < ox + s.x + s.w; x++) {
+            for (int z = oz + s.z; z < oz + s.z + s.d; z++) {
+                for (int y = oy - 1; y <= oy + 2; y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    var st = world.getBlockState(p);
+                    if (!lowerDoor(st)) {
+                        continue;
+                    }
+                    var f = st.get(DoorBlock.FACING);
+                    var side = f.rotateYClockwise();
+                    boolean single = !lowerDoor(world.getBlockState(p.offset(side))) && !lowerDoor(world.getBlockState(p.offset(side.getOpposite())));
+                    boolean front = overhead(world, p.offset(f)), back = overhead(world, p.offset(f.getOpposite()));
+                    out.add(new Door(p, single, front == back ? null : front ? f.getOpposite() : f));
+                }
+            }
+        }
+        return out;
+    }
+
     /** The place a cell (layout x, z) belongs to, or null. */
     private static TownLayout.Site siteAt(TownLayout l, int x, int z) {
         for (TownLayout.Site s : l.sites) {
@@ -317,6 +357,52 @@ public class HandBench implements FabricClientGameTest {
                 }
             }
         }
+        // Doors: a step up to every outside door whose ground is a block lower (Evelyn's house had none
+        // drawn), facing the door; and the house's inner door stays a single one.
+        for (ScenarioSheet.Place p : sheet.places) {
+            TownLayout.Site s = l.site(p.id);
+            if (s == null || p.outdoor) {
+                continue;
+            }
+            List<Door> doors = doorsIn(world, ox, oy, oz, s);
+            if ("에블린의 집".equals(p.name)) {
+                int steps = 0, outside = 0;
+                for (Door d : doors) {
+                    if (d.out() == null) {
+                        continue;
+                    }
+                    outside++;
+                    var st = world.getBlockState(d.at().offset(d.out()).down());
+                    boolean good = st.getBlock() instanceof StairsBlock && st.get(StairsBlock.FACING) == d.out().getOpposite();
+                    if (good) {
+                        steps++;
+                    }
+                    out.add("       outside door " + d.at().toShortString() + " out " + d.out() + ": " + st);
+                }
+                ok.accept(outside > 0 && steps == outside, p.id + ": a step up to each outside door, facing it (" + steps + " of " + outside + ")");
+                ok.accept(doors.stream().anyMatch(d -> d.out() == null && d.single()), p.id + ": its inner door is one block wide");
+            }
+        }
+        // Every flight faces the way it rises (the town hall's were drawn back to front).
+        var fl = state.flights == null ? List.<com.foredayner.scenario.town.Flights.Flight>of() : state.flights;
+        for (var flight : fl) {
+            int wrong = 0;
+            for (int[] st : flight.steps) {
+                var b0 = world.getBlockState(new BlockPos(st[0], st[1], st[2]));
+                if (!(b0.getBlock() instanceof StairsBlock) || !b0.get(StairsBlock.FACING).asString().equals(flight.dir)) {
+                    wrong++;
+                }
+            }
+            ok.accept(wrong == 0, "flight " + flight.from + " -> " + flight.to + " " + flight.dir + ": every step faces up it (" + wrong + " wrong)");
+        }
+        // A floating paper over every clue's spot, for everyone to see.
+        net.minecraft.util.math.Box area = new net.minecraft.util.math.Box(ox - 8, oy - 48, oz - 8, ox + l.size + 8, oy + 64, oz + l.size + 8);
+        int papers = world.getEntitiesByClass(net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity.class, area,
+            e -> e.getCommandTags().contains(BuildService.SPOT_TAG)).size();
+        ok.accept(papers == sheet.clues.size(), "a paper floats over each clue's spot (" + papers + " of " + sheet.clues.size() + ")");
+        // The clues file is in the world's own folder too.
+        Path inWorld = world.getServer().getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("blockworld").resolve("clues.json");
+        ok.accept(Files.exists(inWorld), "the clues file is in the world's folder (blockworld/clues.json)");
         var f = BuildService.cluesFile(id);
         if (Files.exists(f)) {
             var json = com.google.gson.JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
@@ -405,6 +491,33 @@ public class HandBench implements FabricClientGameTest {
             }
         }
         out.add("secretDoors", secrets);
+        // A one-block-wide inner door (Evelyn's house): where to stand before it, the door, and the
+        // block past it where a click on the door should take one.
+        for (ScenarioSheet.Place p : sheet.places) {
+            TownLayout.Site s = l.site(p.id);
+            if (s == null || p.outdoor) {
+                continue;
+            }
+            for (Door d : doorsIn(world, ox, oy, oz, s)) {
+                if (d.out() != null || !d.single() || out.has("singleDoor")) {
+                    continue;
+                }
+                var f = world.getBlockState(d.at()).get(DoorBlock.FACING);
+                BlockPos before = d.at().offset(f, 2), past = d.at().offset(f.getOpposite());
+                if (!standable(world, before) || !standable(world, past)) {
+                    before = d.at().offset(f.getOpposite(), 2);
+                    past = d.at().offset(f);
+                }
+                if (standable(world, before) && standable(world, past)) {
+                    com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+                    o.addProperty("place", p.id);
+                    o.add("door", xyz(d.at().getX(), d.at().getY(), d.at().getZ()));
+                    o.add("before", xyz(before.getX(), before.getY(), before.getZ()));
+                    o.add("past", xyz(past.getX(), past.getY(), past.getZ()));
+                    out.add("singleDoor", o);
+                }
+            }
+        }
         com.google.gson.JsonArray rooms = new com.google.gson.JsonArray();
         for (ScenarioSheet.Place p : sheet.places) {
             TownLayout.Site s = l.site(p.id);

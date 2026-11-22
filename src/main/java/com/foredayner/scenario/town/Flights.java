@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * The flights of stairs in a built town, found in the world (the AI drew them, the code dug the
- * cellar ones): a straight run of stair blocks, each a block up and on from the last, that rises a
+ * cellar ones): a straight run of stair blocks (facing any way), each a block up and on from the last, that rises a
  * whole storey and stands under a ceiling (not a roof's slope, not steps up to a porch). For the
  * game table: shown on its map and walked up and down.
  */
@@ -35,10 +35,6 @@ public final class Flights {
 
     /** At least this many steps (a storey is 5 up). */
     static final int MIN_STEPS = 4;
-
-    private static boolean step(BlockState s, Direction facing) {
-        return s.getBlock() instanceof StairsBlock && s.get(StairsBlock.HALF) == BlockHalf.BOTTOM && s.get(StairsBlock.FACING) == facing;
-    }
 
     /** Something solid over the foot of the flight within a storey or two: it is indoors. */
     private static boolean underCeiling(ServerWorld world, BlockPos foot) {
@@ -77,18 +73,25 @@ public final class Flights {
                         if (!(st.getBlock() instanceof StairsBlock) || st.get(StairsBlock.HALF) != BlockHalf.BOTTOM) {
                             continue;
                         }
-                        Direction f = st.get(StairsBlock.FACING);
-                        // Only from the foot of a run.
-                        if (step(world.getBlockState(at.offset(f.getOpposite()).down()), f)) {
-                            continue;
+                        // The way the run rises, whichever way its steps face (a flight built back to front is a flight).
+                        Direction f = null;
+                        List<int[]> steps = null;
+                        for (Direction r : Direction.Type.HORIZONTAL) {
+                            if (StairFix.step(world.getBlockState(at.offset(r.getOpposite()).down()))) {
+                                continue; // not the foot of a run this way
+                            }
+                            List<int[]> run = new ArrayList<>();
+                            BlockPos cur = at;
+                            while (StairFix.step(world.getBlockState(cur)) && run.size() < 32) {
+                                run.add(new int[] { cur.getX(), cur.getY(), cur.getZ() });
+                                cur = cur.offset(r).up();
+                            }
+                            if (run.size() >= MIN_STEPS && (steps == null || run.size() > steps.size())) {
+                                f = r;
+                                steps = run;
+                            }
                         }
-                        List<int[]> steps = new ArrayList<>();
-                        BlockPos cur = at;
-                        while (step(world.getBlockState(cur), f)) {
-                            steps.add(new int[] { cur.getX(), cur.getY(), cur.getZ() });
-                            cur = cur.offset(f).up();
-                        }
-                        if (steps.size() < MIN_STEPS || !underCeiling(world, at)) {
+                        if (steps == null || !underCeiling(world, at)) {
                             continue;
                         }
                         int[] first = steps.get(0), last = steps.get(steps.size() - 1);

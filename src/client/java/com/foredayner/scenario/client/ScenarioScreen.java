@@ -467,20 +467,43 @@ public class ScenarioScreen extends Screen {
         }
     }
 
-    /** Errors and things done show at the top for a moment, whatever tab is open. */
+    /**
+     * When a big piece of work is done (or fails), its log line shows over the workshop for a few
+     * seconds, then fades away: only the newest one. (On the 로그 tab it is in the list already.)
+     */
     private void renderToast(DrawContext ctx) {
         var toast = ScenarioClientState.toast();
-        if (toast == null || tab == Tab.LOG) {
+        long left = ScenarioClientState.toastLeft();
+        if (toast == null || left <= 0 || tab == Tab.LOG) {
             return;
         }
-        // Beside the title, not over it.
-        int room = right() - ((left() + right()) / 2 + 70);
-        String text = this.textRenderer.trimToWidth(toast.text(), Math.max(40, room - 16));
-        int w = this.textRenderer.getWidth(text) + 16;
-        int x = right() - w, y = 3;
-        ctx.fill(x, y, x + w, y + 16, 0xF0F4E4C1);
-        ctx.fill(x, y + 15, x + w, y + 16, logColor(toast.kind()));
-        ctx.drawText(this.textRenderer, text, x + 8, y + 4, logColor(toast.kind()), false);
+        int maxW = Math.min(360, Math.max(160, (right() - left()) * 3 / 5));
+        var lines = this.textRenderer.wrapLines(net.minecraft.text.Text.literal(toast.text()), maxW - 24);
+        if (lines.size() > 4) {
+            lines = lines.subList(0, 4);
+        }
+        int textW = 0;
+        for (var line : lines) {
+            textW = Math.max(textW, this.textRenderer.getWidth(line));
+        }
+        int w = textW + 24, h = lines.size() * 11 + 14;
+        int x = (left() + right() - w) / 2, y = top() + 34;
+        // Fades out over its last 0.8 seconds.
+        float a = Math.min(1f, left / 800f);
+        int alpha = Math.max(8, (int) (a * 0xF0));
+        int color = logColor(toast.kind());
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(0, 0, 400); // over everything in the window
+        ctx.fill(x - 1, y - 1, x + w + 1, y + h + 1, (alpha << 24) | (color & 0xFFFFFF));
+        ctx.fill(x, y, x + w, y + h, (alpha << 24) | 0xF4E4C1);
+        ctx.fill(x, y, x + 4, y + h, (alpha << 24) | (color & 0xFFFFFF));
+        int ty = y + 8;
+        int textAlpha = Math.max(0x10, (int) (a * 0xFF));
+        for (var line : lines) {
+            ctx.drawText(this.textRenderer, line, x + 14, ty, (textAlpha << 24) | (color & 0xFFFFFF), false);
+            ty += 11;
+        }
+        ctx.getMatrices().pop();
     }
 
     // ------------------------------------------------------------------ 배치도

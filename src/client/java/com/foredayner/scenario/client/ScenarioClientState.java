@@ -38,6 +38,8 @@ public final class ScenarioClientState {
     /** A short notice at the top of the workshop (errors and things done): text, kind, until when. */
     private static LogLine toast;
     private static long toastUntil;
+    /** How long the notice shows (the newest one only; it fades out at the end). */
+    public static final long TOAST_MS = 5000;
 
     /** What kind of line this is, from its words. */
     static int kindOf(String text) {
@@ -77,7 +79,7 @@ public final class ScenarioClientState {
         }
         if (kind == ERROR || kind == DONE) {
             toast = LOG.peekLast();
-            toastUntil = System.currentTimeMillis() + 3000;
+            toastUntil = System.currentTimeMillis() + TOAST_MS;
         }
     }
 
@@ -106,6 +108,11 @@ public final class ScenarioClientState {
 
     public static boolean unreadError() {
         return unreadError;
+    }
+
+    /** How long the notice still shows, ms (0 = gone). */
+    public static long toastLeft() {
+        return toast == null ? 0 : Math.max(0, toastUntil - System.currentTimeMillis());
     }
 
     /** The notice to show now, or null. */

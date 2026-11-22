@@ -99,8 +99,15 @@ public final class BuildService {
 
     /** Which world this server runs: the build record is kept per world (a scenario built in one world starts fresh in another). */
     private static String worldKey = "default";
+    /** The world's own folder: the clues file goes there too, so it travels with the world. */
+    private static java.nio.file.Path worldRoot;
 
     public static void world(MinecraftServer server) {
+        try {
+            worldRoot = server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).toAbsolutePath().normalize();
+        } catch (RuntimeException e) {
+            worldRoot = null;
+        }
         try {
             String root = server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).toAbsolutePath().normalize().toString();
             worldKey = "w" + Integer.toHexString(root.hashCode());
@@ -156,7 +163,6 @@ public final class BuildService {
         return ScenarioStore.dir(id).resolve("clues-" + worldKey + ".json");
     }
 
-    /** Write the clues file from the sheet and where the built places marked their clues. */
     /**
      * The flights of a building stage, in world blocks, for the game table to show and walk: each
      * with its floors, direction, the step blocks (the last one set in the floor above), and where
@@ -232,6 +238,7 @@ public final class BuildService {
         return out;
     }
 
+    /** Write the clues file from the sheet and where the built places marked their clues. */
     static void saveClues(String id, BuildState state) {
         try {
             ScenarioSheet sheet = SheetService.load(id);
@@ -282,8 +289,14 @@ public final class BuildService {
             file.addProperty("scenario", sheet.title == null ? id : sheet.title);
             file.add("clues", list);
             file.add("stairs", stairs);
-            Files.writeString(cluesFile(id), new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(file),
-                StandardCharsets.UTF_8);
+            String json = new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(file);
+            Files.writeString(cluesFile(id), json, StandardCharsets.UTF_8);
+            if (worldRoot != null) {
+                // In the world's folder too (<world>/blockworld/clues.json): the bridge's relay reads it from there.
+                java.nio.file.Path inWorld = worldRoot.resolve("blockworld").resolve("clues.json");
+                Files.createDirectories(inWorld.getParent());
+                Files.writeString(inWorld, json, StandardCharsets.UTF_8);
+            }
         } catch (IOException | RuntimeException e) {
             ScenarioBuilderMod.LOG.warn("Could not write the clues file: {}", e.toString());
         }
@@ -436,6 +449,8 @@ public final class BuildService {
         final Map<String, String> notes = new HashMap<>();
         /** Places designed again once already because their design was too small. */
         final Set<String> redone = new HashSet<>();
+        /** How many times each outdoor scene was sent back after its design failed. */
+        final Map<String, Integer> retried = new HashMap<>();
         /** How many times a building was sent back for its stairs or door. */
         final Map<String, Integer> stairTries = new HashMap<>();
         /** Places waiting for the design of the place they are the same as. */
@@ -901,6 +916,15 @@ public final class BuildService {
                 item.discard();
             }
         }
+        if (all) {
+            // Clues the designs left without a spot get one by code; then each spot gets its marker.
+            try {
+                fallbackClues(job);
+                markClues(job);
+            } catch (RuntimeException e) {
+                ScenarioBuilderMod.LOG.warn("Could not mark the clues: {}", e.toString());
+            }
+        }
         if (all && !job.layout.building()) {
             // The stairs as they were built, for the game table's map.
             try {
@@ -1031,6 +1055,7 @@ public final class BuildService {
             // The buildings stand: each cellar's trapdoor and ladder where there is room to stand.
             job.under.hatches();
             job.hatched = true;
+            ScenarioBuilderMod.LOG.info("Lights under the ground: {}", job.under.light());
             cellarClues(job);
             message(job, "지하실과 통로를 지었어요.");
         }
@@ -1055,6 +1080,136 @@ public final class BuildService {
             job.state.place(c.place).marks.put(BuildPrompts.clueMark(c), list);
         }
         job.dirty = true;
+    }
+
+    /** The spot a clue was given (by its place's design, a cellar or code), or null. */
+    private static int[] clueSpot(BuildState state, ScenarioSheet.Clue c) {
+        for (BuildState.Place bp : state.places.values()) {
+            List<int[]> marks = bp.marks.get(BuildPrompts.clueMark(c));
+            if (marks != null && !marks.isEmpty()) {
+                return marks.get(0);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A clue still without a spot (its design left it out, or its place failed): a free spot on the
+     * ground or floor of its place's lot, by code, so no clue is lost from the clues file.
+     */
+    private static void fallbackClues(Job job) {
+        java.util.Set<Long> used = new java.util.HashSet<>();
+        for (ScenarioSheet.Clue c : job.sheet.clues) {
+            int[] at = clueSpot(job.state, c);
+            if (at != null) {
+                used.add(BlockPos.asLong(at[0], at[1], at[2]));
+            }
+        }
+        Map<String, Integer> taken = new HashMap<>();
+        for (ScenarioSheet.Clue c : job.sheet.clues) {
+            if (clueSpot(job.state, c) != null) {
+                continue;
+            }
+            TownLayout.Site s = job.layout.site(c.place);
+            if (s == null) {
+                continue;
+            }
+            int n = taken.merge(c.place, 1, Integer::sum) - 1;
+            int[] at = freeSpot(job, s, n, used);
+            ScenarioSheet.Place p = job.sheet.place(c.place);
+            String where = p == null ? c.place : p.name;
+            if (at == null) {
+                message(job, c.name + ": " + where + "에 단서 자리를 찾지 못했어요");
+                continue;
+            }
+            used.add(BlockPos.asLong(at[0], at[1], at[2]));
+            List<int[]> list = new ArrayList<>();
+            list.add(at);
+            job.state.place(c.place).marks.put(BuildPrompts.clueMark(c), list);
+            message(job, c.name + ": 설계에 자리가 없어 " + where + "의 빈 곳에 놓았어요");
+        }
+    }
+
+    /** A free spot (world blocks, feet) on the ground or floor of a lot: room to stand, not on stairs or in a doorway. */
+    private static int[] freeSpot(Job job, TownLayout.Site s, int n, java.util.Set<Long> used) {
+        int feet0 = ShellWork.floorY(job.origin, s.level) + 1;
+        int x1 = s.x + 1, x2 = s.x + s.w - 2, z1 = s.z + 1, z2 = s.z + s.d - 2;
+        double cx = (x1 + x2) / 2.0, cz = (z1 + z2) / 2.0;
+        int[] order = { 0, 1, -1, 2, -2, 3, -3, 4, -4 };
+        BlockPos.Mutable p = new BlockPos.Mutable();
+        List<int[]> free = new ArrayList<>();
+        for (int x = x1; x <= x2; x++) {
+            for (int z = z1; z <= z2; z++) {
+                int wx = job.origin.getX() + x, wz = job.origin.getZ() + z;
+                for (int dy : order) {
+                    int feet = feet0 + dy;
+                    var under = job.world.getBlockState(p.set(wx, feet - 1, wz));
+                    if (!under.isSideSolidFullSquare(job.world, p, net.minecraft.util.math.Direction.UP)
+                        || under.getBlock() instanceof net.minecraft.block.StairsBlock
+                        || under.isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) {
+                        continue;
+                    }
+                    var here = job.world.getBlockState(p.set(wx, feet, wz));
+                    var head = job.world.getBlockState(p.set(wx, feet + 1, wz));
+                    boolean open = (here.isAir() || here.isReplaceable() && !here.isLiquid() || here.isIn(net.minecraft.registry.tag.BlockTags.WOOL_CARPETS))
+                        && head.isAir();
+                    if (open && !used.contains(BlockPos.asLong(wx, feet, wz)) && !nearDoor(job.world, wx, feet, wz)) {
+                        free.add(new int[] { wx, feet, wz, x, z });
+                    }
+                    break; // the first floor found in this column (nearest the place's own level)
+                }
+            }
+        }
+        if (free.isEmpty()) {
+            return null;
+        }
+        // Nearest the middle of the lot first; several clues spread out.
+        free.sort((a, b) -> Double.compare(Math.hypot(a[3] - cx, a[4] - cz), Math.hypot(b[3] - cx, b[4] - cz)));
+        int[] at = free.get(Math.min(n * 3, free.size() - 1));
+        return new int[] { at[0], at[1], at[2] };
+    }
+
+    private static boolean nearDoor(ServerWorld world, int x, int y, int z) {
+        BlockPos.Mutable p = new BlockPos.Mutable();
+        for (int[] o : new int[][] { { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+            if (world.getBlockState(p.set(x + o[0], y, z + o[1])).getBlock() instanceof net.minecraft.block.DoorBlock) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Tag on the floating paper over each clue's spot (the game table's relay takes it away when it puts the clue there itself). */
+    public static final String SPOT_TAG = "bwb_spot";
+
+    /** Over every clue's spot a floating sheet of paper, for everyone to see (the old ones of this town go first). */
+    private static void markClues(Job job) {
+        int r = Math.max(job.layout.size, 16);
+        net.minecraft.util.math.Box area = new net.minecraft.util.math.Box(job.origin.getX() - 4, job.origin.getY() - 48, job.origin.getZ() - 4,
+            job.origin.getX() + r + 4, job.origin.getY() + 64, job.origin.getZ() + r + 4);
+        for (var e : job.world.getEntitiesByClass(net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity.class, area,
+            e -> e.getCommandTags().contains(SPOT_TAG))) {
+            e.discard();
+        }
+        MinecraftServer server = job.world.getServer();
+        var source = server.getCommandSource().withWorld(job.world).withSilent().withLevel(4);
+        int n = 0;
+        for (ScenarioSheet.Clue c : job.sheet.clues) {
+            int[] at = clueSpot(job.state, c);
+            if (at == null) {
+                continue;
+            }
+            job.world.getChunk(at[0] >> 4, at[2] >> 4); // loaded, so the paper stays there
+            String id = (c.id == null ? "" : c.id).replaceAll("[^A-Za-z0-9_]", "_");
+            String cmd = String.format(java.util.Locale.ROOT,
+                "summon minecraft:item_display %.2f %.2f %.2f {item:{id:\"minecraft:paper\",count:1},billboard:\"vertical\","
+                    + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[0.55f,0.55f,0.55f]},"
+                    + "brightness:{sky:15,block:15},Tags:[\"%s\",\"bwb_s_%s\"]}",
+                at[0] + 0.5, at[1] + 0.6, at[2] + 0.5, SPOT_TAG, id);
+            server.getCommandManager().executeWithPrefix(source, cmd);
+            n++;
+        }
+        ScenarioBuilderMod.LOG.info("Clue markers: {}", n);
     }
 
     private static String tag(String id, String placeId) {
@@ -1201,6 +1356,9 @@ public final class BuildService {
         return "south";
     }
 
+    /** How many times an outdoor scene whose design failed is sent back to the AI with the error. */
+    static final int OUTDOOR_RETRIES = 2;
+
     private static void design(Job job, String placeId) {
         ScenarioSheet.Place p = job.sheet.place(placeId);
         TownLayout.Site s = job.layout.site(placeId);
@@ -1258,7 +1416,8 @@ public final class BuildService {
             int[] size = Overlaps.designSize(s);
             AiBuildApi.Site whole = new AiBuildApi.Site(size[0], size[1], BuildPrompts.outdoorHeight(p));
             AiBuildApi.BuildingRequest req = new AiBuildApi.BuildingRequest(BuildPrompts.propDescription(job.sheet, p), BuildPrompts.style(job.sheet),
-                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
+                List.of(), BuildPrompts.marks(job.sheet, p), BuildPrompts.propExtra(p) + "\n" + BuildPrompts.STAIR_FACING
+                    + Overlaps.note(job.overlaps, s) + job.notes.getOrDefault(placeId, "")
                     + blocksOnly(job.sheet) + "\n" + AiBuildApi.TRIM_TO_SITE, model);
             future = designer.building(job.world, siteMin(job, s), whole, req);
         } else {
@@ -1284,6 +1443,18 @@ public final class BuildService {
             }
             if (error != null || design == null || !design.ok()) {
                 String why = error != null ? String.valueOf(error.getMessage()) : design == null ? "no answer" : design.error();
+                int tries = job.retried.getOrDefault(placeId, 0);
+                if (s.outdoor && tries < OUTDOOR_RETRIES) {
+                    // Its script failed: once more (twice at most), told what went wrong.
+                    job.retried.put(placeId, tries + 1);
+                    String why1 = why.length() > 600 ? why.substring(0, 600) + "…" : why;
+                    job.notes.merge(placeId, "\nYOUR LAST DESIGN OF THIS SCENE FAILED WITH THIS ERROR, DO NOT REPEAT IT: " + why1,
+                        (a0, b0) -> a0 + b0);
+                    bp.state = "waiting";
+                    job.waiting.addFirst(placeId);
+                    message(job, p.name + ": 설계가 실패해 다시 맡겼어요 (" + (tries + 1) + "/" + OUTDOOR_RETRIES + ")");
+                    return;
+                }
                 if (s.outdoor) {
                     // The ground of an outdoor place is already made; it only lacks its prop.
                     bp.state = "done";
@@ -1425,18 +1596,33 @@ public final class BuildService {
         ScenarioSheet.Place place0 = job.sheet.place(placeId);
         boolean house = !job.layout.building() && !s.outdoor && place0 != null && !"ruins".equals(place0.kind);
         boolean indoors = !s.outdoor && place0 != null;
-        BlockPos lotMin = indoors ? siteMin(job, s) : null;
-        BlockPos lotMax = indoors ? lotMin.add(s.w - 1, BuildPrompts.maxHeight(place0), s.d - 1) : null;
+        boolean building = job.layout.building();
+        // What is lit: a building's room on its own floor; a town's lot from a little under the
+        // ground up (an outdoor scene too: only its roofed spots get light, a cave or a shelter).
+        BlockPos lotMin = building ? new BlockPos(job.origin.getX() + s.x, ShellWork.floorY(job.origin, s.level), job.origin.getZ() + s.z)
+            : siteMin(job, s).down(s.outdoor ? 4 : 0);
+        BlockPos lotMax = building ? lotMin.add(s.w - 1, com.foredayner.scenario.layout.IndoorPlan.FLOOR_H, s.d - 1)
+            : siteMin(job, s).add(s.w - 1, place0 == null ? 16 : BuildPrompts.maxHeight(place0), s.d - 1);
+        // Underground and roofed outdoor places are always lit bright; worn ones above ground dim.
+        boolean below = building && s.level < 0;
+        int want = below || s.outdoor || place0 == null ? Lights.BRIGHT
+            : "ruins".equals(place0.kind) || Outdoors.worn(place0, job.sheet) ? Lights.DIM : Lights.BRIGHT;
         Runnable done = () -> job.world.getServer().execute(() -> {
             if (job.placing.remove(placeId) != null) {
-                if (indoors) {
-                    // Dark spots inside: invisible light blocks.
-                    int lit = Lights.fill(job.world, lotMin, lotMax,
-                        "ruins".equals(place0.kind) || Outdoors.worn(place0, job.sheet) ? Lights.DIM : Lights.BRIGHT);
+                if (indoors || s.outdoor) {
+                    // Dark spots inside (or under a roof outdoors): invisible light blocks.
+                    int lit = Lights.fill(job.world, lotMin, lotMax, want);
                     ScenarioBuilderMod.LOG.info("Lights in {}: {}", placeId, lit);
                 }
+                if (house || s.outdoor) {
+                    // Runs of steps the design turned back to front: every step faces the way its run rises.
+                    int turned = StairFix.runs(job.world, lotMin.down(2), lotMax);
+                    if (turned > 0) {
+                        ScenarioBuilderMod.LOG.info("Stairs of {}: {} step(s) turned the right way", placeId, turned);
+                    }
+                }
                 if (house) {
-                    // Every way in: a double door with free ground in front of and behind it.
+                    // Every way in: a double door with free ground in front of and behind it (and a step up to it).
                     int found = Doors.fix(job.world, lotMin, lotMax);
                     ScenarioBuilderMod.LOG.info("Doors of {}: {} way(s) in", placeId, found);
                 }

@@ -18,6 +18,7 @@ import net.minecraft.util.math.Direction;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Digs what is under the town (Underground): cellars under buildings, landings under places a
@@ -53,6 +54,8 @@ public final class UndergroundWork {
     private int cell;
     private int single;
     private final List<String> notes = new ArrayList<>();
+    /** The tunnels dug (to light them when done). */
+    private final List<Underground.Tunnel> tunnels = new ArrayList<>();
     private final BlockPos.Mutable pos = new BlockPos.Mutable();
 
     public UndergroundWork(ServerWorld world, BlockPos origin, TownLayout layout, ScenarioSheet sheet) {
@@ -106,6 +109,9 @@ public final class UndergroundWork {
             }
         }
         for (Underground.Tunnel t : Underground.tunnels(layout, sheet)) {
+            if (deepest >= 1) {
+                tunnels.add(t);
+            }
             if (deepest < 1) {
                 notes.add("땅이 얕아 지하 통로를 못 지었어요");
                 break;
@@ -247,6 +253,37 @@ public final class UndergroundWork {
                 set(x, y, z, Blocks.LADDER.getDefaultState().with(LadderBlock.FACING, facing));
             }
         }
+    }
+
+    /**
+     * When it is all dug and the buildings stand: every cellar floor and tunnel (secret ones too)
+     * lit to a bright room's level with invisible light blocks. Returns how many went in.
+     */
+    public int light() {
+        int added = 0;
+        for (Underground.Cellar c : cellars) {
+            int bottom = y0 - 1 - Underground.LEVEL_H * c.levels();
+            added += Lights.fill(world, new BlockPos(origin.getX() + c.x1(), bottom, origin.getZ() + c.z1()), new BlockPos(origin.getX() + c.x2(), y0 - 2,
+                origin.getZ() + c.z2()), Lights.BRIGHT);
+        }
+        int f = y0 - 1 - Underground.LEVEL_H;
+        for (Underground.Tunnel t : tunnels) {
+            int x1 = Integer.MAX_VALUE, z1 = Integer.MAX_VALUE, x2 = Integer.MIN_VALUE, z2 = Integer.MIN_VALUE;
+            for (Set<Long> keys : List.of(t.inside(), t.walls())) {
+                for (long k : keys) {
+                    x1 = Math.min(x1, Underground.keyX(k));
+                    x2 = Math.max(x2, Underground.keyX(k));
+                    z1 = Math.min(z1, Underground.keyZ(k));
+                    z2 = Math.max(z2, Underground.keyZ(k));
+                }
+            }
+            if (x1 > x2) {
+                continue;
+            }
+            added += Lights.fill(world, new BlockPos(origin.getX() + x1, f, origin.getZ() + z1),
+                new BlockPos(origin.getX() + x2, y0 - 2, origin.getZ() + z2), Lights.BRIGHT);
+        }
+        return added;
     }
 
     /**

@@ -88,6 +88,12 @@ public final class BuildPrompts {
         + " hinges on the outer sides). Keep the 2 blocks in front of each double door (outside) and the 2 blocks behind it"
         + " (inside) free: no blocks, furniture, fences, crates, plants or steps up there, only the floor or ground.";
 
+    /** Which way stairs face: the AI often turns them back to front. */
+    public static final String STAIR_FACING = "STAIRS FACE UPHILL: a stair block's facing is the direction you walk to go UP it (its"
+        + " tall back is on the high side, against the wall or floor it leads up to). A flight rising toward -z uses"
+        + " facing=north, toward +z facing=south, toward +x facing=east, toward -x facing=west; a step up to a door faces"
+        + " the door. Every step of one flight has the same facing.";
+
     /** An old, abandoned or haunted building: textured walls (only these; others keep one wall block). */
     public static final String WORN = "THIS BUILDING IS OLD AND WORN: texture its walls with ai.wallMix - one main block with 2-3"
         + " near-colour blocks in PATCHES (not evenly sprinkled), the cracked and mossy ones low near the ground and under the"
@@ -261,13 +267,16 @@ public final class BuildPrompts {
         if (!"ruins".equals(p.kind)) {
             sb.append('\n').append(p.rooms.isEmpty() ? OPEN_PLAN : ONLY_LISTED_ROOMS);
             sb.append('\n').append(DOORS);
+            sb.append('\n').append(STAIR_FACING);
             sb.append('\n').append(LIGHTS);
             sb.append('\n').append(TOP_VIEW);
             if (p.floors > 1) {
                 int w = com.foredayner.scenario.layout.Underground.stairWidth(width, depth);
                 sb.append(String.format(Locale.ROOT, "\nSTAIRS BETWEEN FLOORS (a must, checked): from each floor to the next, ONE STRAIGHT"
-                    + " flight (no turns, no landings) %d block%s wide: 4 stair blocks rising one block each from the floor below, then"
-                    + " step off onto the floor above (floors 5 apart). 3 blocks of head room over every step; the hole in the floor"
+                    + " flight (no turns, no landings) %d block%s wide: 5 stair blocks, each one block up and one on from the last;"
+                    + " the first on the floor below, the fifth SET INTO the floor above (in place of a floor block, at the floor's"
+                    + " own height, floors 5 apart) so one walks off it onto the floor without a jump. All of them face the way"
+                    + " the flight rises. 3 blocks of head room over every step; the hole in the floor"
                     + " above exactly over the steps, with a railing round it. A ladder is not stairs. The ground floor has a door"
                     + " (2 high) in an outer wall with open ground in front of it.", w, w > 1 ? "s" : ""));
             }

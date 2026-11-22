@@ -17,6 +17,7 @@ import java.util.Set;
  * After a town building is placed: every door in an outside wall becomes a double door (a second
  * door is set into the wall beside it), and the 2 blocks in front of and behind every door (inner
  * ones too) are cleared at door height so nothing stands in the way (trapdoors, furniture, crates).
+ * An outside door whose ground is a block lower than its floor gets a step up to it.
  */
 public final class Doors {
 
@@ -75,22 +76,31 @@ public final class Doors {
                         hinge(world, other, otherLeft ? DoorHinge.LEFT : DoorHinge.RIGHT);
                     }
                     for (BlockPos d : other == null ? new BlockPos[] { pos } : new BlockPos[] { pos, other }) {
-                        for (Direction dir : new Direction[] { facing, facing.getOpposite() }) {
-                            for (int k = 1; k <= FREE; k++) {
-                                for (int up = 0; up <= 1; up++) {
-                                    BlockPos at = d.offset(dir, k).up(up);
-                                    BlockState s = world.getBlockState(at);
-                                    if (!s.isAir() && !(s.getBlock() instanceof DoorBlock) && !s.getCollisionShape(world, at).isEmpty()) {
-                                        world.setBlockState(at, Blocks.AIR.getDefaultState(), Block.NOTIFY_LISTENERS);
-                                    }
-                                }
-                            }
+                        clear(world, d, facing);
+                        if (outside) {
+                            // A step up to it when the ground outside is a block lower than the floor.
+                            StairFix.doorStep(world, d, front ? facing.getOpposite() : facing);
                         }
                     }
                 }
             }
         }
         return found;
+    }
+
+    /** Nothing at door height in front of and behind a door. */
+    private static void clear(ServerWorld world, BlockPos d, Direction facing) {
+        for (Direction dir : new Direction[] { facing, facing.getOpposite() }) {
+            for (int k = 1; k <= FREE; k++) {
+                for (int up = 0; up <= 1; up++) {
+                    BlockPos at = d.offset(dir, k).up(up);
+                    BlockState s = world.getBlockState(at);
+                    if (!s.isAir() && !(s.getBlock() instanceof DoorBlock) && !s.getCollisionShape(world, at).isEmpty()) {
+                        world.setBlockState(at, Blocks.AIR.getDefaultState(), Block.NOTIFY_LISTENERS);
+                    }
+                }
+            }
+        }
     }
 
     public static boolean lowerDoor(BlockState s) {
