@@ -893,6 +893,14 @@ public final class BuildService {
         int[] c = s.counts();
         boolean all = c[0] == c[2] && "done".equals(s.ground);
         s.status = job.cancelled ? "stopped" : all ? "done" : "idle";
+        if (all) {
+            // Things dropped while building (a crop whose ground was changed under it, a torch knocked off): picked up.
+            net.minecraft.util.math.Box area = new net.minecraft.util.math.Box(job.origin.getX(), job.origin.getY() - 32, job.origin.getZ(),
+                job.origin.getX() + job.layout.size, job.origin.getY() + 64, job.origin.getZ() + job.layout.size);
+            for (var item : job.world.getEntitiesByClass(net.minecraft.entity.ItemEntity.class, area, e -> true)) {
+                item.discard();
+            }
+        }
         if (all && !job.layout.building()) {
             // The stairs as they were built, for the game table's map.
             try {

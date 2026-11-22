@@ -396,14 +396,15 @@ final class TownHand {
                     }
                 }
                 // The path from the gate to the scarecrow.
+                // (The crop goes before the ground under it: a crop left without its farmland drops.)
                 for (int z = cz; z <= zf - 1; z++) {
-                    s.block(cx, -1, z, "dirt_path").block(cx, 0, z, "air");
+                    s.block(cx, 0, z, "air").block(cx, -1, z, "dirt_path");
                 }
                 s.layer(x0, zb, x1, zb, 0, "oak_fence").layer(x0, zf, x1, zf, 0, "oak_fence")
                     .layer(x0, zb, x0, zf, 0, "oak_fence").layer(x1, zb, x1, zf, 0, "oak_fence");
                 s.block(cx, 0, zf, "oak_fence_gate[facing=south]");
                 // The scarecrow: a post, a straw body with arms, a pumpkin head.
-                s.block(cx, -1, cz - 1, "dirt").block(cx, 0, cz - 1, "oak_fence").block(cx, 1, cz - 1, "hay_block")
+                s.block(cx, 0, cz - 1, "oak_fence").block(cx, -1, cz - 1, "dirt").block(cx, 1, cz - 1, "hay_block")
                     .block(cx - 1, 1, cz - 1, "oak_fence").block(cx + 1, 1, cz - 1, "oak_fence")
                     .block(cx, 2, cz - 1, "carved_pumpkin[facing=south]");
                 s.mark("clue:scarecrow", cx, 0, cz);
