@@ -371,6 +371,9 @@ public final class UndergroundWork {
                 int feet = k == 0 ? top : k == n + 1 ? bottom : top - k;
                 if (k >= 1 && k <= n) {
                     set(c[0], feet - 1, c[1], step);
+                } else if (k == 0) {
+                    // The top step is set in the floor above: no full block to climb at the top.
+                    set(c[0], top - 1, c[1], step);
                 }
                 if (k == n + 1 && air(c[0], bottom - 1, c[1])) {
                     set(c[0], bottom - 1, c[1], floorBlock);
