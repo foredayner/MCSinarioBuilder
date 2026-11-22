@@ -40,8 +40,9 @@ public final class Doors {
                     }
                     BlockState door = world.getBlockState(pos);
                     Direction facing = door.get(DoorBlock.FACING);
-                    boolean front = covered(world, pos.offset(facing), max.getY());
-                    boolean back = covered(world, pos.offset(facing.getOpposite()), max.getY());
+                    // A side is outside when open sky is a few steps out from the door (past eaves or a porch roof).
+                    boolean front = !opens(world, pos, facing, max.getY());
+                    boolean back = !opens(world, pos, facing.getOpposite(), max.getY());
                     // Only a way in from outside becomes a double door; every door gets free ground in front and behind.
                     boolean outside = front != back;
                     if (outside) {
@@ -105,6 +106,28 @@ public final class Doors {
 
     public static boolean lowerDoor(BlockState s) {
         return s.getBlock() instanceof DoorBlock && s.get(DoorBlock.HALF) == DoubleBlockHalf.LOWER;
+    }
+
+    /** How far out from a door open sky is looked for (past the eaves, under a porch roof). */
+    static final int SKY_REACH = 4;
+
+    /**
+     * Whether open sky is found going out from a door this way, a few blocks at most and not
+     * through a wall: the door leads outside on this side.
+     */
+    static boolean opens(ServerWorld world, BlockPos door, Direction dir, int top) {
+        for (int k = 1; k <= SKY_REACH; k++) {
+            BlockPos at = door.offset(dir, k);
+            BlockState feet = world.getBlockState(at), head = world.getBlockState(at.up());
+            if (!feet.getCollisionShape(world, at).isEmpty() && !(feet.getBlock() instanceof DoorBlock)
+                && !head.getCollisionShape(world, at.up()).isEmpty()) {
+                return false; // a wall
+            }
+            if (!covered(world, at, top)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether something is overhead (a ceiling or roof) above this spot, up to the top of the building. */

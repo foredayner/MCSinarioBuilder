@@ -212,6 +212,20 @@ public class HandBench implements FabricClientGameTest {
         return false;
     }
 
+    /** Open sky a few blocks out from a door this way (past eaves), not through a wall. */
+    private static boolean skyOut(ServerWorld world, BlockPos door, net.minecraft.util.math.Direction dir) {
+        for (int k = 1; k <= 4; k++) {
+            BlockPos at = door.offset(dir, k);
+            if (world.getBlockState(at).isSolidBlock(world, at) && world.getBlockState(at.up()).isSolidBlock(world, at.up())) {
+                return false;
+            }
+            if (!overhead(world, at)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean lowerDoor(net.minecraft.block.BlockState st) {
         return st.getBlock() instanceof DoorBlock && st.get(DoorBlock.HALF) == net.minecraft.block.enums.DoubleBlockHalf.LOWER;
     }
@@ -230,7 +244,7 @@ public class HandBench implements FabricClientGameTest {
                     var f = st.get(DoorBlock.FACING);
                     var side = f.rotateYClockwise();
                     boolean single = !lowerDoor(world.getBlockState(p.offset(side))) && !lowerDoor(world.getBlockState(p.offset(side.getOpposite())));
-                    boolean front = overhead(world, p.offset(f)), back = overhead(world, p.offset(f.getOpposite()));
+                    boolean front = !skyOut(world, p, f), back = !skyOut(world, p, f.getOpposite());
                     out.add(new Door(p, single, front == back ? null : front ? f.getOpposite() : f));
                 }
             }
@@ -629,8 +643,10 @@ public class HandBench implements FabricClientGameTest {
             ok.accept(hole, String.format(Locale.ROOT, "stairs level %d: the way up is open", st.level));
             // The landing: two blocks of air to step off into.
             BlockPos land = new BlockPos(ox + st.x + s[0] * IndoorPlan.STAIR_RUN, fy + IndoorPlan.FLOOR_H + 1, oz + st.z + s[1] * IndoorPlan.STAIR_RUN);
-            ok.accept(!world.getBlockState(land).isSolidBlock(world, land) && world.getBlockState(land.up()).isAir(),
-                String.format(Locale.ROOT, "stairs level %d: the landing is clear (%s)", st.level, world.getBlockState(land).getBlock()));
+            // (An invisible light block there is nothing in the way.)
+            ok.accept(!world.getBlockState(land).isSolidBlock(world, land) && world.getBlockState(land.up()).getCollisionShape(world, land.up()).isEmpty(),
+                String.format(Locale.ROOT, "stairs level %d: the landing is clear (%s / %s)", st.level, world.getBlockState(land).getBlock(),
+                    world.getBlockState(land.up()).getBlock()));
         }
         // Doors: real doors, the secret one a false wall; nothing in front of either side.
         for (TownLayout.Door d : l.doors) {
