@@ -164,7 +164,35 @@ public final class BuildService {
      */
     static com.google.gson.JsonArray stairsJson(TownLayout layout, BuildState state) {
         com.google.gson.JsonArray out = new com.google.gson.JsonArray();
-        if (layout == null || !layout.building()) {
+        if (layout != null && !layout.building()) {
+            // A town: the flights found in the world when it was done.
+            for (Flights.Flight f : state.flights == null ? List.<Flights.Flight>of() : state.flights) {
+                com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+                o.addProperty("from", f.from);
+                o.addProperty("to", f.to);
+                o.addProperty("dir", f.dir);
+                com.google.gson.JsonArray steps = new com.google.gson.JsonArray();
+                for (int[] st : f.steps) {
+                    com.google.gson.JsonArray b = new com.google.gson.JsonArray();
+                    b.add(st[0]);
+                    b.add(st[1]);
+                    b.add(st[2]);
+                    steps.add(b);
+                }
+                o.add("steps", steps);
+                for (String end : new String[] { "bottom", "top" }) {
+                    int[] v = "bottom".equals(end) ? f.bottom : f.top;
+                    com.google.gson.JsonArray b = new com.google.gson.JsonArray();
+                    b.add(v[0]);
+                    b.add(v[1]);
+                    b.add(v[2]);
+                    o.add(end, b);
+                }
+                out.add(o);
+            }
+            return out;
+        }
+        if (layout == null) {
             return out;
         }
         int run = com.foredayner.scenario.layout.IndoorPlan.STAIR_RUN;
@@ -536,6 +564,12 @@ public final class BuildService {
                     job.capture = new TownSnapshot(job.world, new BlockPos(job.origin.getX() - ring, low, job.origin.getZ() - ring),
                         job.origin.add(job.layout.size - 1 + ring, high, job.layout.size - 1 + ring));
                 }
+                // Animals and monsters on the ground go first: built over, they would die in the walls and leave their drops.
+                net.minecraft.util.math.Box area = new net.minecraft.util.math.Box(job.origin.getX(), job.origin.getY() - 32, job.origin.getZ(),
+                    job.origin.getX() + job.layout.size, job.origin.getY() + 64, job.origin.getZ() + job.layout.size);
+                for (var mob : job.world.getEntitiesByClass(net.minecraft.entity.mob.MobEntity.class, area, e -> !e.hasCustomName())) {
+                    mob.discard();
+                }
                 job.ground = new GroundWork(job.world, job.origin, job.plan, 0, 0, job.layout.size - 1, job.layout.size - 1, job.sheet.period());
                 if (job.layout.building()) {
                     job.shell = new ShellWork(job.world, job.origin, job.layout, job.sheet.period());
@@ -859,6 +893,14 @@ public final class BuildService {
         int[] c = s.counts();
         boolean all = c[0] == c[2] && "done".equals(s.ground);
         s.status = job.cancelled ? "stopped" : all ? "done" : "idle";
+        if (all && !job.layout.building()) {
+            // The stairs as they were built, for the game table's map.
+            try {
+                s.flights = Flights.scan(job.world, job.origin, job.layout, job.sheet);
+            } catch (RuntimeException e) {
+                ScenarioBuilderMod.LOG.warn("Could not look for the stairs: {}", e.toString());
+            }
+        }
         s.message = job.cancelled ? "멈췄어요." : all ? "마을을 다 지었어요." : "끝났어요: " + c[0] + "/" + c[2] + "곳 완료"
             + (c[1] > 0 ? ", 실패 " + c[1] + "곳" : "") + ".";
         save(job.id, s);

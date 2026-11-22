@@ -316,6 +316,20 @@ public class HandBench implements FabricClientGameTest {
             var json = com.google.gson.JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
             int n = json.getAsJsonArray("clues").size();
             ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
+            int want = 0;
+            for (ScenarioSheet.Place p : sheet.places) {
+                if (!p.outdoor) {
+                    want += Math.max(0, p.floors - 1) + Math.max(0, p.cellars);
+                }
+            }
+            int got = json.has("stairs") ? json.getAsJsonArray("stairs").size() : 0;
+            ok.accept(got == want, "clues file has " + got + " flights of stairs (" + want + " wanted: up to each floor, down to each cellar)");
+            if (json.has("stairs")) {
+                for (var el : json.getAsJsonArray("stairs")) {
+                    var o = el.getAsJsonObject();
+                    out.add("       flight " + o.get("from") + " -> " + o.get("to") + " " + o.get("dir") + " from " + o.get("bottom") + " to " + o.get("top"));
+                }
+            }
         } else {
             ok.accept(false, "clues file written");
         }

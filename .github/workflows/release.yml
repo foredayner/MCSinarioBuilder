@@ -1,0 +1,66 @@
+# Publishes a release whenever main has a mod version that has no release yet.
+# Bump mod_version in gradle.properties (and write .github/release-notes/v<version>.md), push to
+# main, and this builds the mod jar and creates tag v<version> with it.
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version and whether it is already released
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          full=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          ver=${full%%+*}
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          if gh release view "v$ver" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.ver.outputs.exists == 'false'
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.ver.outputs.exists == 'false'
+      - name: Build the mod
+        if: steps.ver.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p libs
+          gh release download mc1.21.4-latest -R foredayner/McTestBuilder -p '*.jar' -D libs-dl --clobber
+          mv "$(ls libs-dl/*.jar | grep -v sources | head -1)" libs/minecraft-ai-build-assistant.jar
+          chmod +x gradlew
+          ./gradlew build -x test
+          ls build/libs
+      - name: Publish the release
+        if: steps.ver.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          jar=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
+          notes=".github/release-notes/${TAG}.md"
+          [ -f "$notes" ] || echo "AI 시나리오 공방 ${TAG}" > "$notes"
+          gh release create "$TAG" "$jar" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "AI 시나리오 공방 ${TAG#v} (Minecraft 1.21.4)" --notes-file "$notes"

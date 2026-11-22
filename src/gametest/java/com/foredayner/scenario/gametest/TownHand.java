@@ -111,11 +111,17 @@ final class TownHand {
         Look k = look(name);
         int floors = floors(description);
         int m = w >= 12 ? 2 : 1;
-        int x0 = m, x1 = w - 1 - m;          // outer walls along x
-        int zf = -1 - m - 1, zb = -d + m;     // front wall (2 free before the door at least) and back wall
+        // A side that touches a joined building: the wall right on that edge, no windows, no eaves past it.
+        String up = extra.toUpperCase(Locale.ROOT);
+        boolean joinL = up.contains("THE LEFT EDGE (X = 0) TOUCHES THE BUILDING");
+        boolean joinR = Pattern.compile("THE RIGHT EDGE \\(X = \\d+\\) TOUCHES THE BUILDING").matcher(up).find();
+        boolean joinB = Pattern.compile("THE BACK EDGE \\(Z = -\\d+\\) TOUCHES THE BUILDING").matcher(up).find();
+        int x0 = joinL ? 0 : m, x1 = joinR ? w - 1 : w - 1 - m;   // outer walls along x
+        int zf = -1 - m - 1, zb = joinB ? -d : -d + m;            // front wall (2 free before the door at least) and back wall
         if (zf - zb < 5) {
             zf = -2;
         }
+        int ex0 = joinL ? x0 : x0 - 1, ex1 = joinR ? x1 : x1 + 1, ezb = joinB ? zb : zb - 1; // the eaves
         int cx = (x0 + x1) / 2;
         Script s = new Script();
         for (String mk : marks == null ? List.<String>of() : marks) {
@@ -145,11 +151,17 @@ final class TownHand {
                 if (f > 0 || Math.abs(x - cx) > 2) {
                     s.block(x, y + 2, zf, "glass_pane").block(x, y + 3, zf, "glass_pane");
                 }
-                s.block(x, y + 2, zb, "glass_pane").block(x, y + 3, zb, "glass_pane");
+                if (!joinB) {
+                    s.block(x, y + 2, zb, "glass_pane").block(x, y + 3, zb, "glass_pane");
+                }
             }
             for (int z = zb + 2; z <= zf - 2; z += 3) {
-                s.block(x0, y + 2, z, "glass_pane").block(x0, y + 3, z, "glass_pane");
-                s.block(x1, y + 2, z, "glass_pane").block(x1, y + 3, z, "glass_pane");
+                if (!joinL) {
+                    s.block(x0, y + 2, z, "glass_pane").block(x0, y + 3, z, "glass_pane");
+                }
+                if (!joinR) {
+                    s.block(x1, y + 2, z, "glass_pane").block(x1, y + 3, z, "glass_pane");
+                }
             }
         }
         // The foundation band under the walls (on the ground at y = -1 the floor sits a step above it).
@@ -165,18 +177,18 @@ final class TownHand {
         int rows = Math.min((zf - zb) / 2 + 1, Math.max(1, high - top - 1));
         for (int i = 0; i < rows; i++) {
             int y = top + 1 + i;
-            int north = zb - 1 + i, south = zf + 1 - i;
+            int north = ezb + i, south = zf + 1 - i;
             if (north >= south) {
                 break;
             }
-            s.layer(x0 - 1, north, x1 + 1, north, y, k.roof + "[facing=south]");
-            s.layer(x0 - 1, south, x1 + 1, south, y, k.roof + "[facing=north]");
+            s.layer(ex0, north, ex1, north, y, k.roof + "[facing=south]");
+            s.layer(ex0, south, ex1, south, y, k.roof + "[facing=north]");
             if (north + 1 < south) {
                 // The gable ends under the next row.
                 s.layer(x0, north + 1, x0, south - 1, y, k.wall).layer(x1, north + 1, x1, south - 1, y, k.wall);
             }
             if (i == rows - 1 && north + 1 <= south - 1) {
-                s.layer(x0 - 1, north + 1, x1 + 1, south - 1, y, k.ridge);
+                s.layer(ex0, north + 1, ex1, south - 1, y, k.ridge);
             }
         }
         // Stairs to each floor above: along the inside of the west wall, rising toward the back.

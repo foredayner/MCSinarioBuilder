@@ -24,6 +24,8 @@ public final class BuildState {
     public String ground = "waiting";
     public int groundPercent;
     public Map<String, Place> places = new LinkedHashMap<>();
+    /** A town's flights of stairs, found when it was done (a building stage's come from its plan). */
+    public List<Flights.Flight> flights = new java.util.ArrayList<>();
     public int tokensIn;
     public int tokensOut;
     public String message = "";
