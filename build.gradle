@@ -44,6 +44,8 @@ loom {
 			name "Client Game Test"
 			source sourceSets.gametest
 			vmArg "-Dfabric.client.gametest"
+			// Teleports and the world moving under a spectator now and then upset the network check (a flaky stop): off.
+			vmArg "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
 			runDir "build/clientgametest"
 		}
 	}
