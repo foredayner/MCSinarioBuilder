@@ -717,7 +717,9 @@ public class HandBench implements FabricClientGameTest {
         return world.getBlockState(below).isSolidBlock(world, below)
             // nothing at the feet higher than a rug
             && world.getBlockState(feet).getCollisionShape(world, feet).getMax(net.minecraft.util.math.Direction.Axis.Y) <= 0.1
-            && world.getBlockState(feet.up()).isAir();
+            // not in water, nor among crops (a character walks round those)
+            && world.getFluidState(feet).isEmpty() && !(world.getBlockState(feet).getBlock() instanceof net.minecraft.block.CropBlock)
+            && world.getBlockState(feet.up()).getCollisionShape(world, feet.up()).isEmpty() && world.getFluidState(feet.up()).isEmpty();
     }
 
     /**
