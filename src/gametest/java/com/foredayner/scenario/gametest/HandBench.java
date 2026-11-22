@@ -185,7 +185,13 @@ public class HandBench implements FabricClientGameTest {
                     case "west" -> { a.x = b.x + b.w - over; a.z = b.z + (b.d - a.d) / 2; }
                     default -> { a.z = b.z - a.d + over; a.x = b.x + (b.w - a.w) / 2; }
                 }
-                a.front = b.front;
+                // Back to back: a's door faces away from b.
+                a.front = switch (b.front == null ? "south" : b.front) {
+                    case "north" -> "south";
+                    case "east" -> "west";
+                    case "west" -> "east";
+                    default -> "north";
+                };
                 notes.add(a.id + " joined to the back of " + b.id + " at " + a.x + "," + a.z);
             }
         }
