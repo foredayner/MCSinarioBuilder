@@ -58,7 +58,7 @@ public class HandBench implements FabricClientGameTest {
                 .setUseConsistentSettings(false)
                 .adjustSettings(creator -> {
                     creator.setWorldType(creator.getNormalWorldTypes().get(0));
-                    creator.setSeed("302");
+                    creator.setSeed(name);
                     creator.setGameMode(WorldCreator.Mode.CREATIVE);
                 })
                 .create()) {
@@ -76,8 +76,16 @@ public class HandBench implements FabricClientGameTest {
                     List<String> sheetProblems = sheet.normalize();
                     write("sheet_problems.txt", String.join("\n", sheetProblems) + "\n");
                     SheetService.save(info.id, sheet);
-                    TownLayout layout = IndoorPlan.fromAnswer(ScenarioGameTests.resource("/scenarios/" + name + ".plan.json"), sheet);
-                    List<String> repaired = IndoorPlan.repair(layout, sheet);
+                    TownLayout layout;
+                    List<String> repaired;
+                    if (sheet.building()) {
+                        layout = IndoorPlan.fromAnswer(ScenarioGameTests.resource("/scenarios/" + name + ".plan.json"), sheet);
+                        repaired = IndoorPlan.repair(layout, sheet);
+                    } else {
+                        // A town: the layout the code makes (the AI only touches it up), then the scenario's own moves.
+                        layout = TownLayout.auto(sheet);
+                        repaired = adjust(layout, name);
+                    }
                     List<String> problems = layout.check(sheet);
                     write("plan_check.txt", "repaired: " + repaired + "\nproblems: " + problems + "\n");
                     LayoutService.save(info.id, layout);
@@ -124,7 +132,18 @@ public class HandBench implements FabricClientGameTest {
                     throw new RuntimeException(e);
                 }
             });
-            photos(context, game, layout, origin);
+            if (layout.building()) {
+                photos(context, game, layout, origin);
+            } else {
+                ScenarioSheet sheetNow = game.getServer().computeOnServer(server -> {
+                    try {
+                        return SheetService.load(id);
+                    } catch (java.io.IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                townPhotos(context, game, layout, origin, sheetNow);
+            }
             clueShots(context, game);
             game.getServer().runCommand("gamemode creative @a");
             long failed = checks.stream().filter(c -> c.startsWith("FAIL")).count();
@@ -132,6 +151,299 @@ public class HandBench implements FabricClientGameTest {
                 throw new AssertionError(failed + " check(s) failed:\n" + String.join("\n", checks));
             }
         }
+    }
+
+    // ------------------------------------------------------------------ a town
+
+    /**
+     * Moves the scenario asks of the town layout ({@code <name>.adjust.json}): {"join": [[a, b], ...]}
+     * puts place a against the back of place b, their lots overlapping, so the two are built joined.
+     */
+    private static List<String> adjust(TownLayout l, String name) {
+        List<String> notes = new ArrayList<>();
+        String text;
+        try {
+            text = ScenarioGameTests.resource("/scenarios/" + name + ".adjust.json");
+        } catch (RuntimeException e) {
+            return notes;
+        }
+        if (text == null || text.isBlank()) {
+            return notes;
+        }
+        var json = com.google.gson.JsonParser.parseString(text).getAsJsonObject();
+        if (json.has("join")) {
+            for (var el : json.getAsJsonArray("join")) {
+                var pair = el.getAsJsonArray();
+                TownLayout.Site a = l.site(pair.get(0).getAsString()), b = l.site(pair.get(1).getAsString());
+                if (a == null || b == null) {
+                    continue;
+                }
+                int over = 5; // lots overlap this much: the buildings on them meet
+                switch (b.front == null ? "south" : b.front) {
+                    case "north" -> { a.z = b.z + b.d - over; a.x = b.x + (b.w - a.w) / 2; }
+                    case "east" -> { a.x = b.x - a.w + over; a.z = b.z + (b.d - a.d) / 2; }
+                    case "west" -> { a.x = b.x + b.w - over; a.z = b.z + (b.d - a.d) / 2; }
+                    default -> { a.z = b.z - a.d + over; a.x = b.x + (b.w - a.w) / 2; }
+                }
+                a.front = b.front;
+                notes.add(a.id + " joined to the back of " + b.id + " at " + a.x + "," + a.z);
+            }
+        }
+        return notes;
+    }
+
+    /** The place a cell (layout x, z) belongs to, or null. */
+    private static TownLayout.Site siteAt(TownLayout l, int x, int z) {
+        for (TownLayout.Site s : l.sites) {
+            if (x >= s.x && x < s.x + s.w && z >= s.z && z < s.z + s.d) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private static boolean roofed(ServerWorld world, BlockPos feet) {
+        for (int y = 2; y <= 12; y++) {
+            BlockPos p = feet.up(y);
+            if (world.getBlockState(p).isSolidBlock(world, p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A free spot in a place's lot at about the given feet height, nearest its middle (roofed ones first for a building). */
+    private static BlockPos spotIn(ServerWorld world, int ox, int oz, TownLayout.Site s, int feet, boolean indoor) {
+        BlockPos best = null;
+        double bestD = Double.MAX_VALUE;
+        double mx = ox + s.x + s.w / 2.0, mz = oz + s.z + s.d / 2.0;
+        for (int x = ox + s.x + 1; x < ox + s.x + s.w - 1; x++) {
+            for (int z = oz + s.z + 1; z < oz + s.z + s.d - 1; z++) {
+                for (int y = feet - 1; y <= feet + 1; y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    if (!standable(world, p)) {
+                        continue;
+                    }
+                    double dd = Math.hypot(x + 0.5 - mx, z + 0.5 - mz) + Math.abs(y - feet) * 0.5 + (indoor && !roofed(world, p) ? 1000 : 0);
+                    if (dd < bestD) {
+                        best = p;
+                        bestD = dd;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static com.google.gson.JsonArray xyz(int x, int y, int z) {
+        com.google.gson.JsonArray a = new com.google.gson.JsonArray();
+        a.add(x);
+        a.add(y);
+        a.add(z);
+        return a;
+    }
+
+    private static List<String> townCheck(ServerWorld world, String id, com.foredayner.scenario.town.BuildState state, TownLayout l,
+                                          ScenarioSheet sheet) throws java.io.IOException {
+        List<String> out = new ArrayList<>();
+        int ox = state.originX, oy = state.originY, oz = state.originZ;
+        java.util.function.BiConsumer<Boolean, String> ok = (pass, what) -> out.add((pass ? "ok   " : "FAIL ") + what);
+        ok.accept("done".equals(state.status), "the build finished (" + state.status + ")");
+        for (ScenarioSheet.Place p : sheet.places) {
+            var bp = state.places.get(p.id);
+            boolean built = bp != null && "done".equals(bp.state) && (bp.error == null || bp.error.isEmpty());
+            ok.accept(built, "place " + p.id + " built" + (bp == null ? "" : " (" + bp.state + (bp.error == null || bp.error.isEmpty() ? "" : ": " + bp.error) + ")"));
+        }
+        // Stairs: up to every floor of a building with floors, down into every cellar.
+        for (ScenarioSheet.Place p : sheet.places) {
+            TownLayout.Site s = l.site(p.id);
+            if (s == null || p.outdoor) {
+                continue;
+            }
+            if (p.floors > 1) {
+                int n = countStairs(world, ox + s.x, oy + 1, oz + s.z, ox + s.x + s.w - 1, oy + 5 * (p.floors - 1) + 1, oz + s.z + s.d - 1);
+                ok.accept(n >= 4, p.id + ": stairs to the floor above (" + n + " stair blocks)");
+            }
+            if (p.cellars > 0) {
+                int n = countStairs(world, ox + s.x, oy - 5 * p.cellars - 1, oz + s.z, ox + s.x + s.w - 1, oy, oz + s.z + s.d - 1);
+                ok.accept(n >= 4, p.id + ": stairs down to the cellar (" + n + " stair blocks)");
+            }
+        }
+        // Tunnels: secret ones shut by a false wall where they meet a cellar.
+        for (var t : com.foredayner.scenario.layout.Underground.tunnels(l, sheet)) {
+            int f = oy - 1 - com.foredayner.scenario.layout.Underground.LEVEL_H;
+            int open = 0, shut = 0;
+            for (long k : t.doorways()) {
+                BlockPos at = new BlockPos(ox + com.foredayner.scenario.layout.Underground.keyX(k), f + 1, oz + com.foredayner.scenario.layout.Underground.keyZ(k));
+                if (world.getBlockState(at).isSolidBlock(world, at)) {
+                    shut++;
+                } else {
+                    open++;
+                }
+            }
+            int inside = 0;
+            for (long k : t.inside()) {
+                BlockPos at = new BlockPos(ox + com.foredayner.scenario.layout.Underground.keyX(k), f + 1, oz + com.foredayner.scenario.layout.Underground.keyZ(k));
+                if (world.getBlockState(at).isAir()) {
+                    inside++;
+                }
+            }
+            ok.accept(inside >= t.inside().size() * 0.8, "tunnel " + t.from() + " - " + t.to() + ": dug (" + inside + " of " + t.inside().size() + ")");
+            ok.accept(t.secret() ? shut > 0 && open == 0 : open > 0, "tunnel " + t.from() + " - " + t.to() + (t.secret() ? ": shut by a false wall" : ": open")
+                + " (" + shut + " shut, " + open + " open)");
+        }
+        // Every clue has its spot, not inside a solid block, in its place's lot (or its cellar).
+        for (ScenarioSheet.Clue c : sheet.clues) {
+            var bp = state.places.get(c.place);
+            var spots = bp == null ? null : bp.marks.get(BuildPrompts.clueMark(c));
+            boolean has = spots != null && !spots.isEmpty();
+            String where = has ? String.format(Locale.ROOT, " at %d,%d,%d (%s)", spots.get(0)[0], spots.get(0)[1], spots.get(0)[2],
+                world.getBlockState(new BlockPos(spots.get(0)[0], spots.get(0)[1], spots.get(0)[2])).getBlock()) : "";
+            ok.accept(has, "clue " + c.id + " (" + c.kind() + ") has its spot" + where);
+            if (has) {
+                BlockPos p = new BlockPos(spots.get(0)[0], spots.get(0)[1], spots.get(0)[2]);
+                ok.accept(!world.getBlockState(p).isSolidBlock(world, p), "  clue " + c.id + " is not inside a solid block");
+                TownLayout.Site s = l.site(c.place);
+                ok.accept(s != null && p.getX() >= ox + s.x && p.getX() < ox + s.x + s.w && p.getZ() >= oz + s.z && p.getZ() < oz + s.z + s.d,
+                    "  clue " + c.id + " lies in its place's lot");
+                if (BuildPrompts.underground(c)) {
+                    ok.accept(p.getY() < oy - 1, "  clue " + c.id + " is down in the cellar (y " + p.getY() + ")");
+                }
+            }
+        }
+        var f = BuildService.cluesFile(id);
+        if (Files.exists(f)) {
+            var json = com.google.gson.JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
+            int n = json.getAsJsonArray("clues").size();
+            ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
+        } else {
+            ok.accept(false, "clues file written");
+        }
+        return out;
+    }
+
+    private static int countStairs(ServerWorld world, int x1, int y1, int z1, int x2, int y2, int z2) {
+        int n = 0;
+        for (int x = x1; x <= x2; x++) {
+            for (int y = y1; y <= y2; y++) {
+                for (int z = z1; z <= z2; z++) {
+                    if (world.getBlockState(new BlockPos(x, y, z)).getBlock() instanceof StairsBlock) {
+                        n++;
+                    }
+                }
+            }
+        }
+        return n;
+    }
+
+    /** The town for the play test: every place (and each upper floor and cellar) with a spot to walk to, a start on a street. */
+    private static String townPlaytest(ServerWorld world, com.foredayner.scenario.town.BuildState state, TownLayout l, ScenarioSheet sheet) {
+        int ox = state.originX, oy = state.originY, oz = state.originZ;
+        com.google.gson.JsonObject out = new com.google.gson.JsonObject();
+        out.add("origin", xyz(ox, oy, oz));
+        int x1 = Integer.MAX_VALUE, z1 = Integer.MAX_VALUE, x2 = Integer.MIN_VALUE, z2 = Integer.MIN_VALUE;
+        for (TownLayout.Site s : l.sites) {
+            x1 = Math.min(x1, s.x);
+            z1 = Math.min(z1, s.z);
+            x2 = Math.max(x2, s.x + s.w - 1);
+            z2 = Math.max(z2, s.z + s.d - 1);
+        }
+        com.google.gson.JsonArray box = new com.google.gson.JsonArray();
+        for (int v : new int[] { ox + x1 - 4, oz + z1 - 4, ox + x2 + 4, oz + z2 + 4 }) {
+            box.add(v);
+        }
+        out.add("bounds", box);
+        // Start on a street near the middle of the places.
+        int mx = (x1 + x2) / 2, mz = (z1 + z2) / 2;
+        BlockPos start = null;
+        double bestD = Double.MAX_VALUE;
+        for (TownLayout.Road r : l.roads) {
+            for (int[] pt : r.points) {
+                double dd = Math.hypot(pt[0] - mx, pt[1] - mz);
+                if (dd < bestD && siteAt(l, pt[0], pt[1]) == null) {
+                    int top = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, ox + pt[0], oz + pt[1]);
+                    BlockPos feet = new BlockPos(ox + pt[0], top, oz + pt[1]);
+                    if (standable(world, feet)) {
+                        start = feet;
+                        bestD = dd;
+                    }
+                }
+            }
+        }
+        if (start == null) {
+            start = new BlockPos(ox + mx, world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, ox + mx, oz + mz), oz + mz);
+        }
+        out.add("entrance", xyz(start.getX(), start.getY(), start.getZ()));
+        // Secret doors: the false walls where a secret tunnel meets a cellar (feet height, both blocks above).
+        com.google.gson.JsonArray secrets = new com.google.gson.JsonArray();
+        int tf = oy - com.foredayner.scenario.layout.Underground.LEVEL_H; // feet in the first cellar floor
+        for (var t : com.foredayner.scenario.layout.Underground.tunnels(l, sheet)) {
+            if (t.secret()) {
+                for (long k : t.doorways()) {
+                    secrets.add(xyz(ox + com.foredayner.scenario.layout.Underground.keyX(k), tf, oz + com.foredayner.scenario.layout.Underground.keyZ(k)));
+                }
+            }
+        }
+        out.add("secretDoors", secrets);
+        com.google.gson.JsonArray rooms = new com.google.gson.JsonArray();
+        for (ScenarioSheet.Place p : sheet.places) {
+            TownLayout.Site s = l.site(p.id);
+            if (s == null) {
+                continue;
+            }
+            List<Object[]> parts = new ArrayList<>();
+            parts.add(new Object[] { p.id, 0, p.outdoor ? oy : oy + 1, !p.outdoor });
+            for (int k = 1; k < p.floors && !p.outdoor; k++) {
+                parts.add(new Object[] { p.id + "#" + (k + 1) + "f", k, oy + 1 + 5 * k, true });
+            }
+            for (int k = 1; k <= p.cellars; k++) {
+                parts.add(new Object[] { p.id + "#cellar" + (k > 1 ? k : ""), -k, oy - 5 * k, false });
+            }
+            for (Object[] part : parts) {
+                com.google.gson.JsonObject r = new com.google.gson.JsonObject();
+                r.addProperty("id", (String) part[0]);
+                r.addProperty("level", (Integer) part[1]);
+                r.addProperty("floorY", (Integer) part[2]);
+                BlockPos at = spotIn(world, ox, oz, s, (Integer) part[2], (Boolean) part[3]);
+                if (at != null) {
+                    r.add("stand", xyz(at.getX(), at.getY(), at.getZ()));
+                }
+                rooms.add(r);
+            }
+        }
+        out.add("rooms", rooms);
+        return new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(out);
+    }
+
+    private static void townPhotos(ClientGameTestContext context, TestSingleplayerContext game, TownLayout l, int[] o, ScenarioSheet sheet) {
+        game.getServer().runCommand("gamemode spectator @a");
+        context.runOnClient(client -> client.options.hudHidden = true);
+        int x1 = Integer.MAX_VALUE, z1 = Integer.MAX_VALUE, x2 = Integer.MIN_VALUE, z2 = Integer.MIN_VALUE;
+        for (TownLayout.Site s : l.sites) {
+            x1 = Math.min(x1, s.x);
+            z1 = Math.min(z1, s.z);
+            x2 = Math.max(x2, s.x + s.w - 1);
+            z2 = Math.max(z2, s.z + s.d - 1);
+        }
+        double cx = o[0] + (x1 + x2) / 2.0, cz = o[2] + (z1 + z2) / 2.0;
+        look(context, game, cx, o[1] + 70, cz + 50, cx, o[1], cz);
+        context.takeScreenshot("hand_town_above");
+        look(context, game, cx - 60, o[1] + 30, cz + 60, cx, o[1], cz);
+        context.takeScreenshot("hand_town_sw");
+        for (TownLayout.Site s : l.sites) {
+            double sx = o[0] + s.x + s.w / 2.0, sz = o[2] + s.z + s.d / 2.0;
+            double fx = 0, fz = 1;
+            switch (s.front == null ? "south" : s.front) {
+                case "north" -> { fx = 0; fz = -1; }
+                case "east" -> { fx = 1; fz = 0; }
+                case "west" -> { fx = -1; fz = 0; }
+                default -> { }
+            }
+            double r = Math.max(s.w, s.d) * 0.9 + 6;
+            look(context, game, sx + fx * r - fz * r * 0.4, o[1] + 10, sz + fz * r + fx * r * 0.4, sx, o[1] + 2, sz);
+            context.takeScreenshot("hand_place_" + s.id);
+        }
+        context.runOnClient(client -> client.options.hudHidden = false);
     }
 
     // ------------------------------------------------------------------ checks
@@ -153,6 +465,9 @@ public class HandBench implements FabricClientGameTest {
         List<String> out = new ArrayList<>();
         TownLayout l = LayoutService.load(id);
         ScenarioSheet sheet = SheetService.load(id);
+        if (!l.building()) {
+            return townCheck(world, id, state, l, sheet);
+        }
         int ox = state.originX, oy = state.originY, oz = state.originZ;
         java.util.function.BiConsumer<Boolean, String> ok = (pass, what) -> out.add((pass ? "ok   " : "FAIL ") + what);
         ok.accept("done".equals(state.status), "the build finished (" + state.status + ")");
@@ -263,6 +578,9 @@ public class HandBench implements FabricClientGameTest {
      */
     private static String playtest(ServerWorld world, String id, com.foredayner.scenario.town.BuildState state) throws java.io.IOException {
         TownLayout l = LayoutService.load(id);
+        if (!l.building()) {
+            return townPlaytest(world, state, l, SheetService.load(id));
+        }
         int ox = state.originX, oy = state.originY, oz = state.originZ;
         com.google.gson.JsonObject out = new com.google.gson.JsonObject();
         com.google.gson.JsonArray origin = new com.google.gson.JsonArray();

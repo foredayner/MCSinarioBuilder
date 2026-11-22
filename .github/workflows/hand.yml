@@ -3,13 +3,13 @@ name: hand
 # The whole way from a test scenario to a built stage with no AI: the sheet, floor plan and room
 # furnishings are written by hand as the AI would answer (src/gametest/resources/scenarios/<name>.*
 # and HandDesigner). Checks what the builder made and photographs it. Start it from the Actions tab
-# or by pushing to the "hand" branch. Results go to the hand-results branch.
+# or by pushing to the "hand" branch (every scenario). Results go to the hand-results-<scenario> branch.
 on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: Test scenario with a hand-made sheet and plan
-        default: apartment302
+        description: Test scenario with a hand-made sheet (empty for all of them)
+        default: ""
   push:
     branches: [hand]
 
@@ -20,6 +20,10 @@ jobs:
   hand:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ${{ fromJSON(github.event.inputs.scenario && format('["{0}"]', github.event.inputs.scenario) || '["apartment302","millbrook"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,7 +44,7 @@ jobs:
         uses: modmuss50/xvfb-action@v1
         env:
           SCN_BENCH_ONLY: "1"
-          SCN_HAND: ${{ github.event.inputs.scenario || 'apartment302' }}
+          SCN_HAND: ${{ matrix.scenario }}
         with:
           run: |
             chmod +x gradlew
@@ -59,13 +63,13 @@ jobs:
           mkdir -p "$out/logs"
           cp build/clientgametest/logs/latest.log "$out/logs/client.log" 2>/dev/null || true
           tail -c 200000 hand-gradle.log > "$out/logs/gradle.log" 2>/dev/null || true
-          echo "${GITHUB_SHA} hand=${{ steps.hand.outcome }} scenario=${{ github.event.inputs.scenario || 'apartment302' }}" > "$out/RUN.txt"
+          echo "${GITHUB_SHA} hand=${{ steps.hand.outcome }} scenario=${{ matrix.scenario }}" > "$out/RUN.txt"
           cd "$out"
           git init -q
-          git checkout -q -b hand-results
+          git checkout -q -b hand-results-${{ matrix.scenario }}
           git add -A
           git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "hand for ${GITHUB_SHA}"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" hand-results
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" hand-results-${{ matrix.scenario }}
       - name: Fail when the checks failed
         if: steps.hand.outcome != 'success'
         run: exit 1

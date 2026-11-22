@@ -57,6 +57,15 @@ public final class HandDesigner implements BuildService.Designer {
     public CompletableFuture<AiBuildApi.Design> building(ServerWorld world, BlockPos near, AiBuildApi.Site site, AiBuildApi.BuildingRequest req) {
         String name = roomName(req.description());
         int w = site.width(), d = site.depth();
+        if (!req.description().startsWith("the furnishing of the room")) {
+            // A town's building or outdoor scene.
+            String town = req.description().startsWith("outdoor place") ? TownHand.outdoor(name, w, d)
+                : TownHand.building(name, w, d, site.maxHeight(), req.description(), req.extra() == null ? "" : req.extra(), req.marks());
+            if (town == null) {
+                return CompletableFuture.completedFuture(new AiBuildApi.Design(false, "no hand script for " + name, null, "", 0, 0, 0));
+            }
+            return run(world, near, name, w, d, site.maxHeight(), town);
+        }
         Script s = new Script();
         switch (name) {
             case "1층 복도" -> {
@@ -175,8 +184,11 @@ public final class HandDesigner implements BuildService.Designer {
                 return CompletableFuture.completedFuture(new AiBuildApi.Design(false, "no hand script for " + name, null, "", 0, 0, 0));
             }
         }
-        String script = s.s.toString();
-        scripts.put(name, String.format(Locale.ROOT, "// site %d x %d, height %d\n%s", w, d, site.maxHeight(), script));
+        return run(world, near, name, w, d, site.maxHeight(), s.s.toString());
+    }
+
+    private CompletableFuture<AiBuildApi.Design> run(ServerWorld world, BlockPos near, String name, int w, int d, int high, String script) {
+        scripts.put(name, String.format(Locale.ROOT, "// site %d x %d, height %d\n%s", w, d, high, script));
         var eval = AiController.evaluate(world, near, 180f, null, script, false);
         if (!eval.ok()) {
             return CompletableFuture.completedFuture(new AiBuildApi.Design(false, eval.failure(), null, script, 0, 0, 0));

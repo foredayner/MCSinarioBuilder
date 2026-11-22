@@ -212,7 +212,7 @@ public final class BuildPrompts {
     public static List<String> marks(ScenarioSheet sheet, ScenarioSheet.Place p) {
         List<String> out = new ArrayList<>();
         for (ScenarioSheet.Clue c : sheet.clues) {
-            if (c.place.equals(p.id)) {
+            if (c.place.equals(p.id) && !(p.cellars > 0 && underground(c))) { // a cellar's clue gets its spot when the cellar is dug
                 out.add(clueMark(c) + " (" + c.name + ", a " + c.form + ")" + (c.room.isBlank() || p.rooms.isEmpty() ? "" : " in the " + c.room)
                     + (c.hidden ? ", hidden inside or behind something" : ", where it can be seen")
                 + "; mark the AIR block it lies in, just above the floor, table or shelf it rests on (a floating marker for the"
@@ -226,6 +226,14 @@ public final class BuildPrompts {
             }
         }
         return out;
+    }
+
+    private static final java.util.regex.Pattern UNDERGROUND = java.util.regex.Pattern.compile(
+        "(?i).*(지하|땅굴|터널|굴|cellar|basement|vault|crypt|tunnel|undercroft).*");
+
+    /** A clue that lies below the ground: in a cellar or a tunnel (by the room it is in). */
+    public static boolean underground(ScenarioSheet.Clue c) {
+        return c.room != null && UNDERGROUND.matcher(c.room).matches();
     }
 
     public static String clueMark(ScenarioSheet.Clue c) {

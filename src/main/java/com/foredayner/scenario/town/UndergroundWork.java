@@ -249,6 +249,42 @@ public final class UndergroundWork {
         }
     }
 
+    /**
+     * A spot on a cellar's first floor for something left down there (a clue): a cell with room to
+     * stand, away from the stairs, the n-th of them (so several get their own); world blocks, feet.
+     * Null when the place has no cellar dug.
+     */
+    public int[] spot(String id, int n) {
+        Underground.Cellar c = null;
+        for (Underground.Cellar k : cellars) {
+            if (k.id().equals(id)) {
+                c = k;
+            }
+        }
+        if (c == null) {
+            return null;
+        }
+        int feet = y0 - Underground.LEVEL_H;
+        Underground.Stairwell sw = stairs.get(id);
+        int[] from = sw != null ? sw.cell(0, 0) : c.middle();
+        List<int[]> free = new ArrayList<>();
+        for (int x = c.x1() + 1; x <= c.x2() - 1; x++) {
+            for (int z = c.z1() + 1; z <= c.z2() - 1; z++) {
+                if ((sw == null || !inStairs(sw, x, z)) && air(x, feet, z) && air(x, feet + 1, z)
+                    && !world.getBlockState(pos.set(origin.getX() + x, feet - 1, origin.getZ() + z)).isAir()) {
+                    free.add(new int[] { x, z });
+                }
+            }
+        }
+        if (free.isEmpty()) {
+            return null;
+        }
+        // Farthest from the foot of the stairs first.
+        free.sort((a, b) -> Integer.compare(Math.abs(b[0] - from[0]) + Math.abs(b[1] - from[1]), Math.abs(a[0] - from[0]) + Math.abs(a[1] - from[1])));
+        int[] at = free.get(Math.min(n * 3, free.size() - 1));
+        return new int[] { origin.getX() + at[0], feet, origin.getZ() + at[1] };
+    }
+
     /** The cellar's stairs, if it has them (else a ladder). */
     public Underground.Stairwell stairwell(String id) {
         return stairs.get(id);

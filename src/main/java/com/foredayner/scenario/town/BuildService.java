@@ -981,8 +981,30 @@ public final class BuildService {
             // The buildings stand: each cellar's trapdoor and ladder where there is room to stand.
             job.under.hatches();
             job.hatched = true;
+            cellarClues(job);
             message(job, "지하실과 통로를 지었어요.");
         }
+    }
+
+    /** Clues left in a cellar (or a tunnel): a spot on the cellar's floor, as the buildings' designs give the others. */
+    private static void cellarClues(Job job) {
+        Map<String, Integer> taken = new HashMap<>();
+        for (ScenarioSheet.Clue c : job.sheet.clues) {
+            ScenarioSheet.Place p = job.sheet.place(c.place);
+            if (p == null || p.cellars <= 0 || !BuildPrompts.underground(c)) {
+                continue;
+            }
+            int n = taken.merge(c.place, 1, Integer::sum) - 1;
+            int[] at = job.under.spot(c.place, n);
+            if (at == null) {
+                message(job, c.name + ": 지하실에 단서 자리를 찾지 못했어요");
+                continue;
+            }
+            List<int[]> list = new ArrayList<>();
+            list.add(at);
+            job.state.place(c.place).marks.put(BuildPrompts.clueMark(c), list);
+        }
+        job.dirty = true;
     }
 
     private static String tag(String id, String placeId) {
