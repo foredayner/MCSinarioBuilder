@@ -974,6 +974,7 @@ public final class BuildService {
         if (all) {
             // Clues the designs left without a spot get one by code; then each spot gets its marker.
             try {
+                freeClues(job);
                 fallbackClues(job);
                 markClues(job);
             } catch (RuntimeException e) {
@@ -1146,6 +1147,66 @@ public final class BuildService {
             }
         }
         return null;
+    }
+
+    /** Nothing there to bump into or hide in: no collision, no water. */
+    private static boolean open(ServerWorld world, BlockPos at) {
+        var st = world.getBlockState(at);
+        return st.getCollisionShape(world, at).isEmpty() && st.getFluidState().isEmpty()
+            && !(st.getBlock() instanceof net.minecraft.block.DoorBlock);
+    }
+
+    /**
+     * Clue spots the design put inside a block (a chest, a shelf, a table, a wall), where the
+     * floating paper and the clue would be hidden: on top of that block when there is room, else
+     * the nearest open spot with something under it, close by.
+     */
+    private static void freeClues(Job job) {
+        for (ScenarioSheet.Clue c : job.sheet.clues) {
+            for (BuildState.Place bp : job.state.places.values()) {
+                List<int[]> marks = bp.marks.get(BuildPrompts.clueMark(c));
+                if (marks == null || marks.isEmpty()) {
+                    continue;
+                }
+                int[] at = marks.get(0);
+                BlockPos pos = new BlockPos(at[0], at[1], at[2]);
+                if (open(job.world, pos)) {
+                    break;
+                }
+                BlockPos to = null;
+                if (open(job.world, pos.up()) && open(job.world, pos.up(2))) {
+                    to = pos.up(); // lying on it
+                } else {
+                    double best = Double.MAX_VALUE;
+                    for (int r = 1; r <= 3 && to == null; r++) {
+                        for (int dx = -r; dx <= r; dx++) {
+                            for (int dz = -r; dz <= r; dz++) {
+                                if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+                                    continue;
+                                }
+                                for (int dy : new int[] { 0, 1, -1 }) {
+                                    BlockPos q = pos.add(dx, dy, dz);
+                                    if (open(job.world, q) && open(job.world, q.up())
+                                        && !job.world.getBlockState(q.down()).getCollisionShape(job.world, q.down()).isEmpty()) {
+                                        double d = dx * dx + dz * dz + dy * dy * 0.5;
+                                        if (d < best) {
+                                            best = d;
+                                            to = q;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (to != null) {
+                    marks.set(0, new int[] { to.getX(), to.getY(), to.getZ() });
+                    ScenarioBuilderMod.LOG.info("Clue {} was inside {}: moved to {}", c.id,
+                        job.world.getBlockState(pos).getBlock(), to.toShortString());
+                }
+                break;
+            }
+        }
     }
 
     /**

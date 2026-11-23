@@ -285,7 +285,8 @@ final class TownHand {
         for (int x = in.l(); x <= in.l() + 4; x++) {
             s.thing(x, 1, cz, "spruce_slab[type=top]");
         }
-        s.mark("clue:credit_ledger", in.l() + 2, 2, cz);
+        // Marked inside the counter (as the AI does now and then): the builder lifts it onto it.
+        s.mark("clue:credit_ledger", in.l() + 2, 1, cz);
         s.npc(in.l() + 2, 1, cz - 1);
         for (int x = in.l(); x <= in.r(); x++) {
             s.thing(x, 1, in.b(), "barrel[facing=south]");

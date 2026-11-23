@@ -421,6 +421,16 @@ public class HandBench implements FabricClientGameTest {
         if (Files.exists(f)) {
             var json = com.google.gson.JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
             int n = json.getAsJsonArray("clues").size();
+            int buried = 0;
+            for (var el : json.getAsJsonArray("clues")) {
+                var o = el.getAsJsonObject();
+                BlockPos at = new BlockPos(o.get("x").getAsInt(), o.get("y").getAsInt(), o.get("z").getAsInt());
+                if (!world.getBlockState(at).getCollisionShape(world, at).isEmpty() || !world.getFluidState(at).isEmpty()) {
+                    buried++;
+                    out.add("       clue " + o.get("id").getAsString() + " inside " + world.getBlockState(at).getBlock());
+                }
+            }
+            ok.accept(buried == 0, "no clue spot is inside a block (" + buried + ")");
             int named = json.has("places") ? json.getAsJsonArray("places").size() : 0;
             ok.accept(named >= sheet.places.size(), "clues file names " + named + " places (" + sheet.places.size() + " in the sheet)");
             ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
@@ -702,6 +712,16 @@ public class HandBench implements FabricClientGameTest {
         if (Files.exists(f)) {
             var json = com.google.gson.JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
             int n = json.getAsJsonArray("clues").size();
+            int buried = 0;
+            for (var el : json.getAsJsonArray("clues")) {
+                var o = el.getAsJsonObject();
+                BlockPos at = new BlockPos(o.get("x").getAsInt(), o.get("y").getAsInt(), o.get("z").getAsInt());
+                if (!world.getBlockState(at).getCollisionShape(world, at).isEmpty() || !world.getFluidState(at).isEmpty()) {
+                    buried++;
+                    out.add("       clue " + o.get("id").getAsString() + " inside " + world.getBlockState(at).getBlock());
+                }
+            }
+            ok.accept(buried == 0, "no clue spot is inside a block (" + buried + ")");
             int named = json.has("places") ? json.getAsJsonArray("places").size() : 0;
             ok.accept(named >= sheet.places.size(), "clues file names " + named + " places (" + sheet.places.size() + " in the sheet)");
             ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
