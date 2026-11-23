@@ -168,6 +168,50 @@ public final class BuildService {
      * with its floors, direction, the step blocks (the last one set in the floor above), and where
      * a character stands at the bottom (on the first step) and at the top (on the last).
      */
+    /**
+     * The places as built, for the game table's map to name them: {id, name, x1, z1, x2, z2 (world
+     * blocks, inclusive), y (feet on its floor), outdoor}; a cellar under a place is one more, on
+     * its first floor below the ground.
+     */
+    static com.google.gson.JsonArray placesJson(TownLayout layout, ScenarioSheet sheet, BuildState state) {
+        com.google.gson.JsonArray out = new com.google.gson.JsonArray();
+        if (layout == null || sheet == null) {
+            return out;
+        }
+        BlockPos origin = new BlockPos(state.originX, state.originY, state.originZ);
+        java.util.function.Consumer<Object[]> add = (v) -> {
+            com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+            o.addProperty("id", (String) v[0]);
+            o.addProperty("name", (String) v[1]);
+            o.addProperty("x1", (int) v[2]);
+            o.addProperty("z1", (int) v[3]);
+            o.addProperty("x2", (int) v[4]);
+            o.addProperty("z2", (int) v[5]);
+            o.addProperty("y", (int) v[6]);
+            o.addProperty("outdoor", (boolean) v[7]);
+            out.add(o);
+        };
+        for (TownLayout.Site s : layout.sites) {
+            ScenarioSheet.Place p = sheet.place(s.id);
+            if (p == null || s.w <= 0 || s.d <= 0) {
+                continue;
+            }
+            int x1 = origin.getX() + s.x, z1 = origin.getZ() + s.z;
+            add.accept(new Object[] { s.id, p.name, x1, z1, x1 + s.w - 1, z1 + s.d - 1, ShellWork.floorY(origin, s.level) + 1, s.outdoor });
+        }
+        if (!layout.building()) {
+            for (com.foredayner.scenario.layout.Underground.Cellar c : com.foredayner.scenario.layout.Underground.cellars(layout, sheet)) {
+                ScenarioSheet.Place p = sheet.place(c.id());
+                if (c.landing() || p == null) {
+                    continue;
+                }
+                add.accept(new Object[] { c.id() + "#cellar", p.name + " 지하", origin.getX() + c.x1(), origin.getZ() + c.z1(),
+                    origin.getX() + c.x2(), origin.getZ() + c.z2(), origin.getY() - com.foredayner.scenario.layout.Underground.LEVEL_H, false });
+            }
+        }
+        return out;
+    }
+
     static com.google.gson.JsonArray stairsJson(TownLayout layout, BuildState state) {
         com.google.gson.JsonArray out = new com.google.gson.JsonArray();
         if (layout != null && !layout.building()) {
@@ -280,8 +324,10 @@ public final class BuildService {
                 o.add("checks", checks);
                 list.add(o);
             }
-            com.google.gson.JsonArray stairs = stairsJson(LayoutService.load(id), state);
-            if (list.isEmpty() && stairs.isEmpty()) {
+            TownLayout layoutNow = LayoutService.load(id);
+            com.google.gson.JsonArray stairs = stairsJson(layoutNow, state);
+            com.google.gson.JsonArray places = placesJson(layoutNow, sheet, state);
+            if (list.isEmpty() && stairs.isEmpty() && places.isEmpty()) {
                 return;
             }
             com.google.gson.JsonObject file = new com.google.gson.JsonObject();
@@ -289,6 +335,7 @@ public final class BuildService {
             file.addProperty("scenario", sheet.title == null ? id : sheet.title);
             file.add("clues", list);
             file.add("stairs", stairs);
+            file.add("places", places);
             String json = new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(file);
             Files.writeString(cluesFile(id), json, StandardCharsets.UTF_8);
             if (worldRoot != null) {
