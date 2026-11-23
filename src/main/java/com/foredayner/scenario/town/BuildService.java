@@ -196,8 +196,16 @@ public final class BuildService {
             if (p == null || s.w <= 0 || s.d <= 0) {
                 continue;
             }
-            int x1 = origin.getX() + s.x, z1 = origin.getZ() + s.z;
-            add.accept(new Object[] { s.id, p.name, x1, z1, x1 + s.w - 1, z1 + s.d - 1, ShellWork.floorY(origin, s.level) + 1, s.outdoor });
+            int x1 = origin.getX() + s.x, z1 = origin.getZ() + s.z, x2 = x1 + s.w - 1, z2 = z1 + s.d - 1;
+            // A building: where it actually stands in its lot (its name in its middle); outdoors the whole lot.
+            BuildState.Place bp = state.places.get(s.id);
+            if (!s.outdoor && !layout.building() && bp != null && bp.min != null && bp.max != null && bp.min.length >= 3 && bp.max.length >= 3) {
+                x1 = Math.min(bp.min[0], bp.max[0]);
+                z1 = Math.min(bp.min[2], bp.max[2]);
+                x2 = Math.max(bp.min[0], bp.max[0]);
+                z2 = Math.max(bp.min[2], bp.max[2]);
+            }
+            add.accept(new Object[] { s.id, p.name, x1, z1, x2, z2, ShellWork.floorY(origin, s.level) + 1, s.outdoor });
         }
         if (!layout.building()) {
             for (com.foredayner.scenario.layout.Underground.Cellar c : com.foredayner.scenario.layout.Underground.cellars(layout, sheet)) {
