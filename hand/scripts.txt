@@ -1,0 +1,120 @@
+== 1층 복도
+// site 3 x 23, height 3
+ai.placeFloor(0, 0, -23, 3, 23, 'light_gray_carpet')
+ai.placeFloor(0, 1, -9, 1, 4, 'barrel[facing=east]')
+ai.placeFloor(0, 2, -9, 1, 4, 'barrel[facing=east]')
+ai.mark('clue:bills', 1, 0, -7)
+ai.placeBlock(1, 3, -3, 'sea_lantern')
+ai.placeBlock(1, 3, -10, 'sea_lantern')
+ai.placeBlock(1, 3, -17, 'sea_lantern')
+ai.placeBlock(2, 0, -2, 'potted_fern')
+
+== 관리실
+// site 7 x 6, height 3
+ai.placeFloor(0, 0, -6, 7, 6, 'light_gray_carpet')
+ai.placeFloor(0, 0, -5, 3, 1, 'spruce_slab[type=top]')
+ai.placeBlock(1, 0, -4, 'spruce_stairs[facing=north]')
+ai.placeBlock(0, 1, -5, 'lantern')
+ai.placeBlock(2, 1, -5, 'black_concrete')
+ai.placeBlock(4, 2, -6, 'tripwire_hook[facing=south]')
+ai.placeBlock(6, 2, -6, 'tripwire_hook[facing=south]')
+ai.mark('clue:key_rack', 5, 1, -6)
+ai.placeFloor(6, 0, -3, 1, 1, 'barrel[facing=west]')
+ai.placeFloor(6, 1, -3, 1, 1, 'barrel[facing=west]')
+ai.mark('npc:최씨', 0, 0, -3)
+ai.placeBlock(3, 3, -3, 'lantern[hanging=true]')
+
+== 3층 복도
+// site 23 x 3, height 3
+ai.placeFloor(0, 0, -3, 23, 3, 'light_gray_carpet')
+ai.placeBlock(2, 3, -2, 'sea_lantern')
+ai.placeBlock(9, 3, -2, 'sea_lantern')
+ai.placeBlock(16, 3, -2, 'sea_lantern')
+ai.placeBlock(22, 0, -3, 'potted_fern')
+
+== 301호
+// site 7 x 6, height 3
+ai.placeFloor(0, 0, -6, 7, 6, 'yellow_carpet')
+ai.placeFloor(0, 0, -6, 3, 1, 'dark_oak_planks')
+ai.placeFloor(0, 1, -6, 3, 1, 'dark_oak_planks')
+ai.placeBlock(1, 2, -6, 'lantern')
+ai.placeFloor(2, 0, -3, 2, 1, 'spruce_slab[type=bottom]')
+ai.placeBlock(2, 0, -2, 'red_carpet')
+ai.placeBlock(3, 0, -4, 'red_carpet')
+ai.placeBlock(6, 0, -6, 'dark_oak_slab[type=bottom]')
+ai.placeBlock(6, 1, -6, 'black_concrete')
+ai.placeFloor(5, 0, -2, 2, 1, 'white_carpet')
+ai.mark('npc:오순례', 1, 0, -3)
+ai.placeBlock(3, 3, -3, 'lantern[hanging=true]')
+
+== 302호 거실
+// site 7 x 6, height 3
+ai.placeFloor(0, 0, -6, 7, 6, 'yellow_carpet')
+ai.placeFloor(1, 0, -5, 2, 1, 'spruce_slab[type=top]')
+ai.placeBlock(1, 0, -4, 'spruce_stairs[facing=south]')
+ai.placeBlock(2, 0, -6, 'spruce_stairs[facing=north]')
+ai.placeBlock(2, 1, -5, 'flower_pot')
+ai.mark('clue:rusty_key', 1, 1, -5)
+ai.placeFloor(4, 0, -6, 3, 1, 'dark_oak_stairs[facing=north]')
+ai.placeBlock(6, 0, -1, 'dark_oak_slab[type=bottom]')
+ai.placeBlock(6, 1, -1, 'black_concrete')
+ai.placeBlock(3, 3, -3, 'lantern[hanging=true]')
+
+== 302호 서재
+// site 6 x 7, height 3
+ai.placeFloor(0, 0, -7, 6, 7, 'brown_carpet')
+ai.placeFloor(0, 0, -7, 6, 1, 'bookshelf')
+ai.placeFloor(0, 1, -7, 6, 1, 'bookshelf')
+ai.placeFloor(0, 2, -7, 6, 1, 'bookshelf')
+ai.mark('clue:bookshelf', 3, 0, -6)
+ai.placeFloor(0, 0, -3, 1, 2, 'spruce_slab[type=top]')
+ai.placeBlock(1, 0, -3, 'spruce_stairs[facing=east]')
+ai.placeBlock(0, 1, -3, 'lantern')
+ai.mark('clue:manuscript', 0, 1, -2)
+ai.placeBlock(5, 0, -2, 'chest[facing=west]')
+ai.placeBlock(3, 3, -3, 'lantern[hanging=true]')
+
+== 302호 침실
+// site 6 x 7, height 3
+ai.placeBlock(4, 0, -6, 'white_bed[facing=north,part=foot]')
+ai.placeBlock(4, 0, -7, 'white_bed[facing=north,part=head]')
+ai.placeFloor(0, 0, -7, 2, 1, 'dark_oak_planks')
+ai.placeFloor(0, 1, -7, 2, 1, 'dark_oak_planks')
+ai.placeFloor(0, 2, -7, 2, 1, 'dark_oak_planks')
+ai.placeBlock(5, 0, -7, 'spruce_slab[type=bottom]')
+ai.placeBlock(5, 1, -7, 'lantern')
+ai.placeBlock(0, 0, -2, 'oak_trapdoor[half=bottom]')
+ai.placeBlock(1, 0, -2, 'oak_trapdoor[half=bottom]')
+ai.mark('clue:floorboard', 0, 1, -2)
+ai.mark('clue:diary', 1, 1, -2)
+ai.placeBlock(3, 3, -3, 'lantern[hanging=true]')
+
+== 지하 보일러실
+// site 11 x 15, height 3
+ai.placeFloor(2, 0, -14, 4, 3, 'iron_block')
+ai.placeFloor(2, 1, -14, 4, 3, 'iron_block')
+ai.placeFloor(2, 2, -14, 4, 3, 'iron_block')
+ai.placeFloor(3, 0, -11, 2, 1, 'furnace[facing=south]')
+ai.placeBlock(1, 0, -13, 'chain[axis=y]')
+ai.placeBlock(1, 1, -13, 'chain[axis=y]')
+ai.placeBlock(1, 2, -13, 'chain[axis=y]')
+ai.placeFloor(0, 3, -9, 11, 1, 'iron_bars')
+ai.placeBlock(10, 0, -15, 'barrel[facing=up]')
+ai.placeBlock(10, 0, -14, 'barrel[facing=up]')
+ai.placeBlock(0, 3, -15, 'cobweb')
+ai.placeBlock(9, 0, -4, 'iron_trapdoor[half=bottom]')
+ai.mark('clue:silver_ring', 9, 1, -4)
+ai.mark('clue:new_wall', 5, 0, -1)
+ai.placeBlock(5, 3, -8, 'lantern[hanging=true]')
+
+== 벽 뒤 공간
+// site 5 x 5, height 3
+ai.placeFloor(0, -1, -5, 5, 5, 'coarse_dirt')
+ai.placeFloor(1, 0, -5, 3, 1, 'stripped_spruce_log[axis=x]')
+ai.placeBlock(1, 1, -5, 'candle[candles=3,lit=true]')
+ai.placeBlock(3, 1, -5, 'candle[candles=2,lit=true]')
+ai.mark('clue:altar', 2, 1, -5)
+ai.placeBlock(0, 0, -5, 'dead_bush')
+ai.placeBlock(4, 0, -5, 'dead_bush')
+ai.placeBlock(0, 3, -5, 'cobweb')
+

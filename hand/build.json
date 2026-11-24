@@ -1,0 +1,261 @@
+{
+  "placed": true,
+  "originX": -136,
+  "originY": 67,
+  "originZ": -114,
+  "dimension": "minecraft:overworld",
+  "status": "done",
+  "ground": "done",
+  "groundPercent": 100,
+  "places": {
+    "hallway_1f": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_2cb64faa",
+      "min": [
+        -68,
+        67,
+        -48
+      ],
+      "max": [
+        -46,
+        70,
+        -46
+      ],
+      "marks": {
+        "clue:bills": [
+          [
+            -62,
+            68,
+            -47
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "office": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_ee23bd48",
+      "min": [
+        -68,
+        67,
+        -55
+      ],
+      "max": [
+        -62,
+        70,
+        -50
+      ],
+      "marks": {
+        "npc:최씨": [
+          [
+            -68,
+            67,
+            -52
+          ]
+        ],
+        "clue:key_rack": [
+          [
+            -63,
+            68,
+            -55
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "hallway_3f": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_2cb64fe8",
+      "min": [
+        -68,
+        77,
+        -48
+      ],
+      "max": [
+        -46,
+        80,
+        -46
+      ],
+      "marks": {},
+      "prop": false
+    },
+    "unit301": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_218ea064",
+      "min": [
+        -60,
+        77,
+        -55
+      ],
+      "max": [
+        -54,
+        80,
+        -50
+      ],
+      "marks": {
+        "npc:오순례": [
+          [
+            -59,
+            77,
+            -52
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "living302": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_5ade7c20",
+      "min": [
+        -60,
+        77,
+        -44
+      ],
+      "max": [
+        -54,
+        80,
+        -39
+      ],
+      "marks": {
+        "clue:rusty_key": [
+          [
+            -55,
+            78,
+            -40
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "study302": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_91a10298",
+      "min": [
+        -68,
+        77,
+        -44
+      ],
+      "max": [
+        -62,
+        80,
+        -39
+      ],
+      "marks": {
+        "clue:manuscript": [
+          [
+            -63,
+            78,
+            -39
+          ]
+        ],
+        "clue:bookshelf": [
+          [
+            -67,
+            78,
+            -42
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "bedroom302": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_b583cba5",
+      "min": [
+        -52,
+        77,
+        -44
+      ],
+      "max": [
+        -46,
+        80,
+        -39
+      ],
+      "marks": {
+        "clue:floorboard": [
+          [
+            -51,
+            78,
+            -44
+          ]
+        ],
+        "clue:diary": [
+          [
+            -51,
+            78,
+            -43
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "boiler_room": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_ef5bb9f1",
+      "min": [
+        -60,
+        62,
+        -52
+      ],
+      "max": [
+        -46,
+        65,
+        -42
+      ],
+      "marks": {
+        "clue:silver_ring": [
+          [
+            -57,
+            63,
+            -43
+          ]
+        ],
+        "clue:new_wall": [
+          [
+            -60,
+            62,
+            -47
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "hidden_space": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_71cbefbd",
+      "min": [
+        -66,
+        62,
+        -49
+      ],
+      "max": [
+        -62,
+        65,
+        -45
+      ],
+      "marks": {
+        "clue:altar": [
+          [
+            -66,
+            63,
+            -47
+          ]
+        ]
+      },
+      "prop": false
+    }
+  },
+  "flights": [],
+  "tokensIn": 0,
+  "tokensOut": 0,
+  "message": "마을을 다 지었어요."
+}
