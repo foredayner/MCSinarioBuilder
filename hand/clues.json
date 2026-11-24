@@ -1,0 +1,393 @@
+{
+  "version": 1,
+  "scenario": "밀브룩의 물레방아",
+  "clues": [
+    {
+      "id": "town_records",
+      "name": "마을 기록부",
+      "kind": "normal",
+      "item": "written_book",
+      "text": "마을 설립 때부터의 기록. 30년마다 가을에 실종자가 한 명씩 나온다.",
+      "place": "town_hall",
+      "x": -96,
+      "y": 80,
+      "z": 80,
+      "checks": [
+        {
+          "label": "실종자 명단을 대조한다",
+          "skill": "library",
+          "difficulty": "regular",
+          "text": "실종자들은 모두 옛 피스크 가 집에 살던 사람이다."
+        }
+      ]
+    },
+    {
+      "id": "credit_ledger",
+      "name": "외상 장부",
+      "kind": "normal",
+      "item": "written_book",
+      "text": "에블린이 실종 전날 등잔 기름 두 통과 분필 한 상자를 외상으로 샀다.",
+      "place": "general_store",
+      "x": -101,
+      "y": 75,
+      "z": 118,
+      "checks": []
+    },
+    {
+      "id": "wet_sacks",
+      "name": "젖은 밀가루 포대",
+      "kind": "hidden",
+      "item": "paper",
+      "text": "피스크 방앗간 포대 몇 개가 아래쪽부터 젖어 있다. 시냇물 냄새가 난다.",
+      "place": "store_shed",
+      "x": -117,
+      "y": 74,
+      "z": 140,
+      "checks": []
+    },
+    {
+      "id": "footprints",
+      "name": "우물가 발자국",
+      "kind": "hidden",
+      "item": "paper",
+      "text": "진흙에 찍힌 맨발 발자국이 시내 쪽으로 이어진다. 발가락 사이에 물갈퀴 자국.",
+      "place": "well",
+      "x": -69,
+      "y": 73,
+      "z": 60,
+      "checks": []
+    },
+    {
+      "id": "torn_flyer",
+      "name": "찢어진 전단",
+      "kind": "normal",
+      "item": "paper",
+      "text": "\"가을 추수 감사제 — 피스크 방앗간 제공\". 뒷면에 에블린의 글씨로 \"벽 뒤에서 물소리\".",
+      "place": "market",
+      "x": -106,
+      "y": 74,
+      "z": 49,
+      "checks": []
+    },
+    {
+      "id": "mill_key",
+      "name": "방앗간 열쇠",
+      "kind": "item",
+      "item": "tripwire_hook",
+      "text": "피스크 집안 문장이 새겨진 무거운 쇠 열쇠. 방앗간 지하실 문을 연다.",
+      "place": "market",
+      "x": -122,
+      "y": 73,
+      "z": 66,
+      "checks": []
+    },
+    {
+      "id": "evelyn_diary",
+      "name": "에블린의 일기장",
+      "kind": "item",
+      "item": "written_book",
+      "text": "10월 12일. 지하실 벽 너머에서 물소리가 난다. 이 집은 원래 피스크 집안 것이었다고 한다. 분필로 벽에 표시를 해 두었다.",
+      "place": "evelyn_house",
+      "x": -33,
+      "y": 75,
+      "z": 129,
+      "checks": [
+        {
+          "label": "마지막 장을 살핀다",
+          "skill": "psychology",
+          "difficulty": "regular",
+          "text": "마지막 장의 글씨가 떨린다. 쓰는 동안 누군가 지켜보고 있었다."
+        }
+      ]
+    },
+    {
+      "id": "scarecrow",
+      "name": "허수아비",
+      "kind": "normal",
+      "item": "paper",
+      "text": "허수아비가 입은 옷은 에블린의 외투다.",
+      "place": "field",
+      "x": -27,
+      "y": 73,
+      "z": 54,
+      "checks": []
+    },
+    {
+      "id": "new_plank",
+      "name": "새 판자",
+      "kind": "normal",
+      "item": "paper",
+      "text": "다른 판자보다 새것이고, 틈으로 차가운 바람이 올라온다.",
+      "place": "mill",
+      "x": -54,
+      "y": 74,
+      "z": 97,
+      "checks": [
+        {
+          "label": "판자 틈을 살핀다",
+          "skill": "spot",
+          "difficulty": "hard",
+          "text": "판자 아래로 지하실로 내려가는 계단이 있다."
+        }
+      ]
+    },
+    {
+      "id": "altar",
+      "name": "지하 제단",
+      "kind": "normal",
+      "item": "paper",
+      "text": "젖은 돌 제단 위에 곡식 낟알과 에블린의 머리핀. 터널 쪽에서 물 흐르는 소리가 들린다 (정신력 1/1D4).",
+      "place": "mill",
+      "x": -33,
+      "y": 68,
+      "z": 101,
+      "checks": []
+    }
+  ],
+  "stairs": [
+    {
+      "from": 0,
+      "to": 1,
+      "dir": "north",
+      "steps": [
+        [
+          -108,
+          74,
+          98
+        ],
+        [
+          -108,
+          75,
+          97
+        ],
+        [
+          -108,
+          76,
+          96
+        ],
+        [
+          -108,
+          77,
+          95
+        ],
+        [
+          -108,
+          78,
+          94
+        ]
+      ],
+      "bottom": [
+        -108,
+        75,
+        98
+      ],
+      "top": [
+        -108,
+        79,
+        94
+      ]
+    },
+    {
+      "from": -1,
+      "to": 0,
+      "dir": "west",
+      "steps": [
+        [
+          -43,
+          68,
+          88
+        ],
+        [
+          -44,
+          69,
+          88
+        ],
+        [
+          -45,
+          70,
+          88
+        ],
+        [
+          -46,
+          71,
+          88
+        ],
+        [
+          -47,
+          72,
+          88
+        ],
+        [
+          -48,
+          73,
+          88
+        ]
+      ],
+      "bottom": [
+        -43,
+        69,
+        88
+      ],
+      "top": [
+        -48,
+        74,
+        88
+      ]
+    },
+    {
+      "from": -1,
+      "to": 0,
+      "dir": "west",
+      "steps": [
+        [
+          -25,
+          68,
+          121
+        ],
+        [
+          -26,
+          69,
+          121
+        ],
+        [
+          -27,
+          70,
+          121
+        ],
+        [
+          -28,
+          71,
+          121
+        ],
+        [
+          -29,
+          72,
+          121
+        ],
+        [
+          -30,
+          73,
+          121
+        ]
+      ],
+      "bottom": [
+        -25,
+        69,
+        121
+      ],
+      "top": [
+        -30,
+        74,
+        121
+      ]
+    }
+  ],
+  "places": [
+    {
+      "id": "town_hall",
+      "name": "마을 회관",
+      "x1": -111,
+      "z1": 74,
+      "x2": -82,
+      "z2": 103,
+      "y": 73,
+      "outdoor": false
+    },
+    {
+      "id": "general_store",
+      "name": "잡화점",
+      "x1": -125,
+      "z1": 111,
+      "x2": -96,
+      "z2": 137,
+      "y": 73,
+      "outdoor": false
+    },
+    {
+      "id": "mill",
+      "name": "물레방앗간",
+      "x1": -59,
+      "z1": 74,
+      "x2": -30,
+      "z2": 103,
+      "y": 73,
+      "outdoor": false
+    },
+    {
+      "id": "store_shed",
+      "name": "잡화점 창고",
+      "x1": -121,
+      "z1": 138,
+      "x2": -100,
+      "z2": 157,
+      "y": 73,
+      "outdoor": false
+    },
+    {
+      "id": "evelyn_house",
+      "name": "에블린의 집",
+      "x1": -37,
+      "z1": 111,
+      "x2": -16,
+      "z2": 132,
+      "y": 73,
+      "outdoor": false
+    },
+    {
+      "id": "well",
+      "name": "마을 우물",
+      "x1": -82,
+      "z1": 47,
+      "x2": -61,
+      "z2": 68,
+      "y": 73,
+      "outdoor": true
+    },
+    {
+      "id": "market",
+      "name": "장터 천막",
+      "x1": -125,
+      "z1": 47,
+      "x2": -104,
+      "z2": 68,
+      "y": 73,
+      "outdoor": true
+    },
+    {
+      "id": "field",
+      "name": "피스크 가의 밭",
+      "x1": -42,
+      "z1": 39,
+      "x2": -13,
+      "z2": 68,
+      "y": 73,
+      "outdoor": true
+    },
+    {
+      "id": "mill#cellar",
+      "name": "물레방앗간 지하",
+      "x1": -58,
+      "z1": 75,
+      "x2": -31,
+      "z2": 102,
+      "y": 68,
+      "outdoor": false
+    },
+    {
+      "id": "evelyn_house#cellar",
+      "name": "에블린의 집 지하",
+      "x1": -36,
+      "z1": 112,
+      "x2": -17,
+      "z2": 131,
+      "y": 68,
+      "outdoor": false
+    }
+  ],
+  "town": {
+    "x1": -151,
+    "z1": 7,
+    "x2": 8,
+    "z2": 166
+  }
+}

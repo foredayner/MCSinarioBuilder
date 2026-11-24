@@ -1,0 +1,2 @@
+repaired: [store_shed joined to the back of general_store at 30,129]
+problems: [general_store and store_shed overlap; move one so they are apart, store_shed's front (south) does not reach a street within 4 blocks]

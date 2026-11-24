@@ -1,0 +1,165 @@
+{
+  "origin": [
+    -151,
+    73,
+    7
+  ],
+  "bounds": [
+    -129,
+    35,
+    -9,
+    161
+  ],
+  "entrance": [
+    -71,
+    73,
+    107
+  ],
+  "secretDoors": [
+    [
+      -36,
+      68,
+      121
+    ],
+    [
+      -36,
+      68,
+      122
+    ],
+    [
+      -45,
+      68,
+      102
+    ],
+    [
+      -44,
+      68,
+      102
+    ]
+  ],
+  "singleDoor": {
+    "place": "evelyn_house",
+    "door": [
+      -26,
+      74,
+      127
+    ],
+    "before": [
+      -26,
+      74,
+      125
+    ],
+    "past": [
+      -26,
+      74,
+      128
+    ]
+  },
+  "rooms": [
+    {
+      "id": "town_hall",
+      "level": 0,
+      "floorY": 74,
+      "stand": [
+        -97,
+        74,
+        90
+      ]
+    },
+    {
+      "id": "town_hall#2f",
+      "level": 1,
+      "floorY": 79,
+      "stand": [
+        -97,
+        79,
+        88
+      ]
+    },
+    {
+      "id": "general_store",
+      "level": 0,
+      "floorY": 74,
+      "stand": [
+        -111,
+        74,
+        125
+      ]
+    },
+    {
+      "id": "store_shed",
+      "level": 0,
+      "floorY": 74,
+      "stand": [
+        -111,
+        74,
+        146
+      ]
+    },
+    {
+      "id": "evelyn_house",
+      "level": 0,
+      "floorY": 74,
+      "stand": [
+        -25,
+        74,
+        121
+      ]
+    },
+    {
+      "id": "evelyn_house#cellar",
+      "level": -1,
+      "floorY": 68,
+      "stand": [
+        -27,
+        68,
+        121
+      ]
+    },
+    {
+      "id": "mill",
+      "level": 0,
+      "floorY": 74,
+      "stand": [
+        -43,
+        74,
+        88
+      ]
+    },
+    {
+      "id": "mill#cellar",
+      "level": -1,
+      "floorY": 68,
+      "stand": [
+        -45,
+        68,
+        88
+      ]
+    },
+    {
+      "id": "well",
+      "level": 0,
+      "floorY": 73,
+      "stand": [
+        -74,
+        73,
+        57
+      ]
+    },
+    {
+      "id": "market",
+      "level": 0,
+      "floorY": 73,
+      "stand": [
+        -123,
+        74,
+        66
+      ]
+    },
+    {
+      "id": "field",
+      "level": 0,
+      "floorY": 73
+    }
+  ]
+}

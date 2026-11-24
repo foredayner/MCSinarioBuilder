@@ -1,0 +1,388 @@
+{
+  "placed": true,
+  "originX": -151,
+  "originY": 73,
+  "originZ": 7,
+  "dimension": "minecraft:overworld",
+  "status": "done",
+  "ground": "done",
+  "groundPercent": 100,
+  "places": {
+    "town_hall": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_c50af156",
+      "min": [
+        -111,
+        73,
+        74
+      ],
+      "max": [
+        -82,
+        91,
+        103
+      ],
+      "marks": {
+        "clue:town_records": [
+          [
+            -96,
+            80,
+            80
+          ]
+        ],
+        "npc:마사_톨런드": [
+          [
+            -94,
+            79,
+            81
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "general_store": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_96e9e65a",
+      "min": [
+        -125,
+        73,
+        111
+      ],
+      "max": [
+        -96,
+        86,
+        137
+      ],
+      "marks": {
+        "clue:credit_ledger": [
+          [
+            -101,
+            75,
+            118
+          ]
+        ],
+        "npc:벤_하딩": [
+          [
+            -101,
+            74,
+            119
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "store_shed": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_6bb5d8c2",
+      "min": [
+        -121,
+        73,
+        138
+      ],
+      "max": [
+        -100,
+        86,
+        157
+      ],
+      "marks": {
+        "clue:wet_sacks": [
+          [
+            -117,
+            74,
+            140
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "evelyn_house": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_2434ecfe",
+      "min": [
+        -37,
+        73,
+        111
+      ],
+      "max": [
+        -16,
+        86,
+        132
+      ],
+      "marks": {
+        "clue:evelyn_diary": [
+          [
+            -33,
+            75,
+            129
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "mill": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_4d06928c",
+      "min": [
+        -59,
+        73,
+        74
+      ],
+      "max": [
+        -30,
+        86,
+        103
+      ],
+      "marks": {
+        "clue:new_plank": [
+          [
+            -54,
+            74,
+            97
+          ]
+        ],
+        "npc:호레이스_피스크": [
+          [
+            -45,
+            74,
+            90
+          ]
+        ],
+        "clue:altar": [
+          [
+            -33,
+            68,
+            101
+          ]
+        ]
+      },
+      "prop": false
+    },
+    "well": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_4d0b0f3e",
+      "min": [
+        -82,
+        71,
+        47
+      ],
+      "max": [
+        -61,
+        87,
+        68
+      ],
+      "marks": {
+        "clue:footprints": [
+          [
+            -69,
+            73,
+            60
+          ]
+        ]
+      },
+      "prop": true
+    },
+    "market": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_253e26ac",
+      "min": [
+        -125,
+        71,
+        47
+      ],
+      "max": [
+        -104,
+        87,
+        68
+      ],
+      "marks": {
+        "clue:mill_key": [
+          [
+            -122,
+            73,
+            66
+          ]
+        ],
+        "clue:torn_flyer": [
+          [
+            -106,
+            74,
+            49
+          ]
+        ]
+      },
+      "prop": true
+    },
+    "field": {
+      "state": "done",
+      "error": "",
+      "tag": "scn_5369008a",
+      "min": [
+        -42,
+        71,
+        39
+      ],
+      "max": [
+        -13,
+        87,
+        68
+      ],
+      "marks": {
+        "clue:scarecrow": [
+          [
+            -27,
+            73,
+            54
+          ]
+        ]
+      },
+      "prop": true
+    }
+  },
+  "flights": [
+    {
+      "from": 0,
+      "to": 1,
+      "dir": "north",
+      "steps": [
+        [
+          -108,
+          74,
+          98
+        ],
+        [
+          -108,
+          75,
+          97
+        ],
+        [
+          -108,
+          76,
+          96
+        ],
+        [
+          -108,
+          77,
+          95
+        ],
+        [
+          -108,
+          78,
+          94
+        ]
+      ],
+      "bottom": [
+        -108,
+        75,
+        98
+      ],
+      "top": [
+        -108,
+        79,
+        94
+      ]
+    },
+    {
+      "from": -1,
+      "to": 0,
+      "dir": "west",
+      "steps": [
+        [
+          -43,
+          68,
+          88
+        ],
+        [
+          -44,
+          69,
+          88
+        ],
+        [
+          -45,
+          70,
+          88
+        ],
+        [
+          -46,
+          71,
+          88
+        ],
+        [
+          -47,
+          72,
+          88
+        ],
+        [
+          -48,
+          73,
+          88
+        ]
+      ],
+      "bottom": [
+        -43,
+        69,
+        88
+      ],
+      "top": [
+        -48,
+        74,
+        88
+      ]
+    },
+    {
+      "from": -1,
+      "to": 0,
+      "dir": "west",
+      "steps": [
+        [
+          -25,
+          68,
+          121
+        ],
+        [
+          -26,
+          69,
+          121
+        ],
+        [
+          -27,
+          70,
+          121
+        ],
+        [
+          -28,
+          71,
+          121
+        ],
+        [
+          -29,
+          72,
+          121
+        ],
+        [
+          -30,
+          73,
+          121
+        ]
+      ],
+      "bottom": [
+        -25,
+        69,
+        121
+      ],
+      "top": [
+        -30,
+        74,
+        121
+      ]
+    }
+  ],
+  "tokensIn": 0,
+  "tokensOut": 0,
+  "message": "마을을 다 지었어요."
+}

@@ -1,0 +1,254 @@
+{
+  "size": 160,
+  "stage": "town",
+  "sites": [
+    {
+      "id": "town_hall",
+      "x": 40,
+      "z": 67,
+      "w": 30,
+      "d": 30,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "general_store",
+      "x": 26,
+      "z": 104,
+      "w": 30,
+      "d": 30,
+      "front": "north",
+      "outdoor": false,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "mill",
+      "x": 92,
+      "z": 67,
+      "w": 30,
+      "d": 30,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "store_shed",
+      "x": 30,
+      "z": 129,
+      "w": 22,
+      "d": 22,
+      "front": "south",
+      "outdoor": false,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "evelyn_house",
+      "x": 114,
+      "z": 104,
+      "w": 22,
+      "d": 22,
+      "front": "north",
+      "outdoor": false,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "well",
+      "x": 69,
+      "z": 40,
+      "w": 22,
+      "d": 22,
+      "front": "south",
+      "outdoor": true,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "market",
+      "x": 26,
+      "z": 40,
+      "w": 22,
+      "d": 22,
+      "front": "south",
+      "outdoor": true,
+      "fromMap": false,
+      "level": 0
+    },
+    {
+      "id": "field",
+      "x": 109,
+      "z": 32,
+      "w": 30,
+      "d": 30,
+      "front": "south",
+      "outdoor": true,
+      "fromMap": false,
+      "level": 0
+    }
+  ],
+  "doors": [],
+  "stairs": [],
+  "roads": [
+    {
+      "points": [
+        [
+          3,
+          100
+        ],
+        [
+          156,
+          100
+        ]
+      ],
+      "width": 5,
+      "kind": "road"
+    },
+    {
+      "points": [
+        [
+          80,
+          63
+        ],
+        [
+          80,
+          100
+        ]
+      ],
+      "width": 3,
+      "kind": "path"
+    },
+    {
+      "points": [
+        [
+          37,
+          63
+        ],
+        [
+          37,
+          100
+        ]
+      ],
+      "width": 3,
+      "kind": "path"
+    },
+    {
+      "points": [
+        [
+          124,
+          63
+        ],
+        [
+          124,
+          100
+        ]
+      ],
+      "width": 3,
+      "kind": "path"
+    }
+  ],
+  "zones": [
+    {
+      "kind": "woods",
+      "x": 0,
+      "z": 0,
+      "w": 160,
+      "d": 16
+    },
+    {
+      "kind": "field",
+      "x": 4,
+      "z": 18,
+      "w": 96,
+      "d": 12
+    },
+    {
+      "kind": "field",
+      "x": 4,
+      "z": 30,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "field",
+      "x": 52,
+      "z": 30,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "field",
+      "x": 4,
+      "z": 42,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "field",
+      "x": 52,
+      "z": 42,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "field",
+      "x": 4,
+      "z": 54,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "garden",
+      "x": 4,
+      "z": 66,
+      "w": 24,
+      "d": 12
+    },
+    {
+      "kind": "garden",
+      "x": 136,
+      "z": 66,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "garden",
+      "x": 4,
+      "z": 78,
+      "w": 24,
+      "d": 12
+    },
+    {
+      "kind": "garden",
+      "x": 136,
+      "z": 78,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "garden",
+      "x": 4,
+      "z": 114,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "garden",
+      "x": 4,
+      "z": 126,
+      "w": 12,
+      "d": 12
+    },
+    {
+      "kind": "field",
+      "x": 4,
+      "z": 138,
+      "w": 144,
+      "d": 12
+    }
+  ]
+}

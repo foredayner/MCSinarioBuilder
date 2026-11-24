@@ -1,0 +1,64 @@
+ok   the build finished (done)
+ok   place town_hall built (done)
+ok   place general_store built (done)
+ok   place store_shed built (done)
+ok   place evelyn_house built (done)
+ok   place mill built (done)
+ok   place well built (done)
+ok   place market built (done)
+ok   place field built (done)
+ok   town_hall: stairs to the floor above (23 stair blocks)
+ok   evelyn_house: stairs down to the cellar (14 stair blocks)
+ok   mill: stairs down to the cellar (12 stair blocks)
+ok   tunnel evelyn_house - mill: dug (53 of 53)
+ok   tunnel evelyn_house - mill: shut by a false wall (4 shut, 0 open)
+ok   clue town_records (normal) has its spot at -96,80,80 (Block{minecraft:air})
+ok     clue town_records is not inside a solid block
+ok     clue town_records lies in its place's lot
+ok   clue credit_ledger (normal) has its spot at -101,75,118 (Block{minecraft:air})
+ok     clue credit_ledger is not inside a solid block
+ok     clue credit_ledger lies in its place's lot
+ok   clue wet_sacks (hidden) has its spot at -117,74,140 (Block{minecraft:air})
+ok     clue wet_sacks is not inside a solid block
+ok     clue wet_sacks lies in its place's lot
+ok   clue footprints (hidden) has its spot at -69,73,60 (Block{minecraft:air})
+ok     clue footprints is not inside a solid block
+ok     clue footprints lies in its place's lot
+ok   clue torn_flyer (normal) has its spot at -106,74,49 (Block{minecraft:air})
+ok     clue torn_flyer is not inside a solid block
+ok     clue torn_flyer lies in its place's lot
+ok   clue mill_key (item) has its spot at -122,73,66 (Block{minecraft:air})
+ok     clue mill_key is not inside a solid block
+ok     clue mill_key lies in its place's lot
+ok   clue evelyn_diary (item) has its spot at -33,75,129 (Block{minecraft:air})
+ok     clue evelyn_diary is not inside a solid block
+ok     clue evelyn_diary lies in its place's lot
+ok   clue scarecrow (normal) has its spot at -27,73,54 (Block{minecraft:air})
+ok     clue scarecrow is not inside a solid block
+ok     clue scarecrow lies in its place's lot
+ok   clue new_plank (normal) has its spot at -54,74,97 (Block{minecraft:air})
+ok     clue new_plank is not inside a solid block
+ok     clue new_plank lies in its place's lot
+ok   clue altar (normal) has its spot at -33,68,101 (Block{minecraft:air})
+ok     clue altar is not inside a solid block
+ok     clue altar lies in its place's lot
+ok     clue altar is down in the cellar (y 68)
+       outside door -26, 74, 114 out north: Block{minecraft:oak_stairs}[facing=south,half=bottom,shape=straight,waterlogged=false]
+       outside door -25, 74, 114 out north: Block{minecraft:oak_stairs}[facing=south,half=bottom,shape=straight,waterlogged=false]
+ok   evelyn_house: a step up to each outside door, facing it (2 of 2)
+ok   evelyn_house: its inner door is one block wide
+ok   flight 0 -> 1 north: every step faces up it (0 wrong)
+ok   flight -1 -> 0 west: every step faces up it (0 wrong)
+ok   flight -1 -> 0 west: every step faces up it (0 wrong)
+ok   no paper floats over the clue spots (they are not shown in the world): 0
+       마을 기록부: 여기로 옮겼어요 (-95, 80, 80). 단서 파일도 다시 썼어요.
+ok   "여기로" moves town_records in the clues file (the world's copy too)
+ok   the clues file is in the world's folder (blockworld/clues.json)
+ok   no clue spot is inside a block (0)
+ok   clues file names 10 places (8 in the sheet)
+ok   clues file has the town's lay-out bounds
+ok   clues file has 10 of 10 clues
+ok   clues file has 3 flights of stairs (3 wanted: up to each floor, down to each cellar)
+       flight 0 -> 1 "north" from [-108,75,98] to [-108,79,94]
+       flight -1 -> 0 "west" from [-43,69,88] to [-48,74,88]
+       flight -1 -> 0 "west" from [-25,69,121] to [-30,74,121]
