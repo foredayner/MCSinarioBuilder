@@ -462,6 +462,7 @@ public class HandBench implements FabricClientGameTest {
             ok.accept(buried == 0, "no clue spot is inside a block (" + buried + ")");
             int named = json.has("places") ? json.getAsJsonArray("places").size() : 0;
             ok.accept(named >= sheet.places.size(), "clues file names " + named + " places (" + sheet.places.size() + " in the sheet)");
+            ok.accept(json.has("town") && json.getAsJsonObject("town").has("x2"), "clues file has the town's lay-out bounds");
             ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
             int want = 0;
             for (ScenarioSheet.Place p : sheet.places) {
@@ -753,6 +754,7 @@ public class HandBench implements FabricClientGameTest {
             ok.accept(buried == 0, "no clue spot is inside a block (" + buried + ")");
             int named = json.has("places") ? json.getAsJsonArray("places").size() : 0;
             ok.accept(named >= sheet.places.size(), "clues file names " + named + " places (" + sheet.places.size() + " in the sheet)");
+            ok.accept(json.has("town") && json.getAsJsonObject("town").has("x2"), "clues file has the town's lay-out bounds");
             ok.accept(n == sheet.clues.size(), "clues file has " + n + " of " + sheet.clues.size() + " clues");
             int m = json.has("stairs") ? json.getAsJsonArray("stairs").size() : 0;
             ok.accept(m == l.stairs.size(), "clues file has " + m + " of " + l.stairs.size() + " flights of stairs");

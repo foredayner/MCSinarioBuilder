@@ -344,6 +344,16 @@ public final class BuildService {
             file.add("clues", list);
             file.add("stairs", stairs);
             file.add("places", places);
+            // The town's whole lay-out (world blocks): the game table's map draws what lies outside
+            // it and its places plainer.
+            if (layoutNow != null && layoutNow.size > 0) {
+                com.google.gson.JsonObject town = new com.google.gson.JsonObject();
+                town.addProperty("x1", state.originX);
+                town.addProperty("z1", state.originZ);
+                town.addProperty("x2", state.originX + layoutNow.size - 1);
+                town.addProperty("z2", state.originZ + layoutNow.size - 1);
+                file.add("town", town);
+            }
             String json = new com.google.gson.GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(file);
             Files.writeString(cluesFile(id), json, StandardCharsets.UTF_8);
             if (worldRoot != null) {
