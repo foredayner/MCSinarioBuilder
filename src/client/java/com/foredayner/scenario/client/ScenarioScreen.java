@@ -326,16 +326,20 @@ public class ScenarioScreen extends Screen {
                     ScenarioClientState.saveSheet();
                 }, true));
             }
-            // Clues: name, hidden or not, remove.
+            // Clues: name, "여기로" (its spot where I stand), hidden or not, remove.
             cx = colX(1);
             i = 0;
             for (int k = scroll[2]; k < sheet.clues.size() && i < maxRows; k++, i++) {
                 var c = sheet.clues.get(k);
                 int ry = listTop() + i * ROW;
-                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 62, 18, fit(c.name, w - 62), b -> { }, false);
+                WoodUi.WoodButton name = new WoodUi.WoodButton(cx, ry, w - 102, 18, fit(c.name, w - 102), b -> { }, false);
                 name.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(c.name + " [" + formKo(c.form) + "]\n장소: "
                     + placeName(sheet, c.place) + (c.room.isBlank() ? "" : " / " + c.room) + "\n" + c.text)));
                 addDrawableChild(name);
+                WoodUi.WoodButton here = new WoodUi.WoodButton(cx + w - 100, ry, 38, 18, Text.literal("여기로"), b -> ScenarioClientState.clueHere(c.id), false);
+                here.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("이 단서의 자리를 내 캐릭터가 서 있는 칸으로 옮겨요."
+                    + "\n가구 위에 놓으려면 그 위에 올라서서 누르세요. 지은 뒤라면 단서 파일도 다시 써요.")));
+                addDrawableChild(here);
                 addDrawableChild(new WoodUi.WoodButton(cx + w - 60, ry, 36, 18, Text.literal(c.hidden ? "숨김" : "보임"), b -> {
                     c.hidden = !c.hidden;
                     ScenarioClientState.saveSheet();

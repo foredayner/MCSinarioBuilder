@@ -413,7 +413,36 @@ public class HandBench implements FabricClientGameTest {
         net.minecraft.util.math.Box area = new net.minecraft.util.math.Box(ox - 8, oy - 48, oz - 8, ox + l.size + 8, oy + 64, oz + l.size + 8);
         int papers = world.getEntitiesByClass(net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity.class, area,
             e -> e.getCommandTags().contains(BuildService.SPOT_TAG)).size();
-        ok.accept(papers == sheet.clues.size(), "a paper floats over each clue's spot (" + papers + " of " + sheet.clues.size() + ")");
+        ok.accept(papers == 0, "no paper floats over the clue spots (they are not shown in the world): " + papers);
+        // "여기로": a clue's spot moved to where the keeper stands; the clues file says so; and back.
+        {
+            ScenarioSheet.Clue c0 = sheet.clues.get(0);
+            Path file = BuildService.cluesFile(id);
+            int[] was = null;
+            var before = com.google.gson.JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
+            for (var el : before.getAsJsonArray("clues")) {
+                var o = el.getAsJsonObject();
+                if (c0.id.equals(o.get("id").getAsString())) {
+                    was = new int[] { o.get("x").getAsInt(), o.get("y").getAsInt(), o.get("z").getAsInt() };
+                }
+            }
+            if (was != null) {
+                BlockPos to = new BlockPos(was[0] + 1, was[1], was[2]);
+                out.add("       " + BuildService.moveClueTo(id, c0.id, to));
+                boolean moved = false;
+                var after = com.google.gson.JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
+                for (var el : after.getAsJsonArray("clues")) {
+                    var o = el.getAsJsonObject();
+                    moved |= c0.id.equals(o.get("id").getAsString()) && o.get("x").getAsInt() == to.getX() && o.get("z").getAsInt() == to.getZ();
+                }
+                var inWorld = world.getServer().getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("blockworld").resolve("clues.json");
+                boolean worldToo = Files.readString(inWorld, StandardCharsets.UTF_8).contains("\"x\": " + to.getX());
+                ok.accept(moved && worldToo, "\"여기로\" moves " + c0.id + " in the clues file (the world's copy too)");
+                BuildService.moveClueTo(id, c0.id, new BlockPos(was[0], was[1], was[2]));
+            } else {
+                ok.accept(false, c0.id + " is not in the clues file");
+            }
+        }
         // The clues file is in the world's own folder too.
         Path inWorld = world.getServer().getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("blockworld").resolve("clues.json");
         ok.accept(Files.exists(inWorld), "the clues file is in the world's folder (blockworld/clues.json)");

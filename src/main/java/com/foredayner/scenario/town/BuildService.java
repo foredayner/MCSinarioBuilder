@@ -976,7 +976,7 @@ public final class BuildService {
             try {
                 freeClues(job);
                 fallbackClues(job);
-                markClues(job);
+                clearMarkers(job);
             } catch (RuntimeException e) {
                 ScenarioBuilderMod.LOG.warn("Could not mark the clues: {}", e.toString());
             }
@@ -1295,11 +1295,11 @@ public final class BuildService {
         return false;
     }
 
-    /** Tag on the floating paper over each clue's spot (the game table's relay takes it away when it puts the clue there itself). */
+    /** Tag on the floating papers older versions put over each clue's spot (taken away now). */
     public static final String SPOT_TAG = "bwb_spot";
 
-    /** Over every clue's spot a floating sheet of paper, for everyone to see (the old ones of this town go first). */
-    private static void markClues(Job job) {
+    /** The floating papers an older version put over this town's clue spots: gone. (Clue spots are not shown in the world.) */
+    private static void clearMarkers(Job job) {
         int r = Math.max(job.layout.size, 16);
         net.minecraft.util.math.Box area = new net.minecraft.util.math.Box(job.origin.getX() - 4, job.origin.getY() - 48, job.origin.getZ() - 4,
             job.origin.getX() + r + 4, job.origin.getY() + 64, job.origin.getZ() + r + 4);
@@ -1307,25 +1307,43 @@ public final class BuildService {
             e -> e.getCommandTags().contains(SPOT_TAG))) {
             e.discard();
         }
-        MinecraftServer server = job.world.getServer();
-        var source = server.getCommandSource().withWorld(job.world).withSilent().withLevel(4);
-        int n = 0;
-        for (ScenarioSheet.Clue c : job.sheet.clues) {
-            int[] at = clueSpot(job.state, c);
-            if (at == null) {
-                continue;
-            }
-            job.world.getChunk(at[0] >> 4, at[2] >> 4); // loaded, so the paper stays there
-            String id = (c.id == null ? "" : c.id).replaceAll("[^A-Za-z0-9_]", "_");
-            String cmd = String.format(java.util.Locale.ROOT,
-                "summon minecraft:item_display %.2f %.2f %.2f {item:{id:\"minecraft:paper\",count:1},billboard:\"vertical\","
-                    + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[0.55f,0.55f,0.55f]},"
-                    + "brightness:{sky:15,block:15},Tags:[\"%s\",\"bwb_s_%s\"]}",
-                at[0] + 0.5, at[1] + 0.6, at[2] + 0.5, SPOT_TAG, id);
-            server.getCommandManager().executeWithPrefix(source, cmd);
-            n++;
+    }
+
+    /**
+     * "여기로": the keeper stands where a clue should lie; its spot moves there (taken from wherever
+     * it was) and, when the scenario is built, the clues file is written again (the world's copy
+     * too) for the game table to load the new spot.
+     */
+    public static void moveClue(ServerPlayerEntity player, String id, String clueId) {
+        if (JOBS.containsKey(id)) {
+            say(player, "짓는 중에는 단서를 옮길 수 없어요.", id);
+            return;
         }
-        ScenarioBuilderMod.LOG.info("Clue markers: {}", n);
+        try {
+            say(player, moveClueTo(id, clueId, player.getBlockPos()), id);
+        } catch (IOException | RuntimeException e) {
+            say(player, "단서를 옮기지 못했어요: " + e.getMessage(), id);
+        }
+    }
+
+    /** Move a clue's spot to a block (feet); the message for the keeper. */
+    public static String moveClueTo(String id, String clueId, BlockPos at) throws IOException {
+        ScenarioSheet sheet = SheetService.load(id);
+        ScenarioSheet.Clue c = sheet == null ? null : sheet.clues.stream().filter(k -> clueId.equals(k.id)).findFirst().orElse(null);
+        if (c == null) {
+            return "그 단서를 찾지 못했어요.";
+        }
+        BuildState state = load(id);
+        String mark = BuildPrompts.clueMark(c);
+        for (BuildState.Place bp : state.places.values()) {
+            bp.marks.remove(mark);
+        }
+        List<int[]> list = new ArrayList<>();
+        list.add(new int[] { at.getX(), at.getY(), at.getZ() });
+        state.place(c.place).marks.put(mark, list);
+        save(id, state);
+        return c.name + ": 여기로 옮겼어요 (" + at.getX() + ", " + at.getY() + ", " + at.getZ() + ")"
+            + ("done".equals(state.status) ? ". 단서 파일도 다시 썼어요." : ". 다 지으면 단서 파일에 들어가요.");
     }
 
     private static String tag(String id, String placeId) {

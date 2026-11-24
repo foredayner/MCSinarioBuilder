@@ -27,6 +27,13 @@ public final class ScenarioBuilderMod implements ModInitializer {
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(com.foredayner.scenario.town.BuildService::tick);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> com.foredayner.scenario.town.BuildService.reset());
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTING.register(com.foredayner.scenario.town.BuildService::world);
+        // The floating papers older versions put over clue spots: gone as their chunks load.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
+            if (entity instanceof net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity
+                && entity.getCommandTags().contains(com.foredayner.scenario.town.BuildService.SPOT_TAG)) {
+                world.getServer().execute(entity::discard);
+            }
+        });
         LOG.info("AI Scenario Builder ready (AI Build Assistant API {})", AiBuildApi.VERSION);
     }
 }

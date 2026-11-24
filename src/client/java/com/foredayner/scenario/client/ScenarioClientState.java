@@ -268,6 +268,13 @@ public final class ScenarioClientState {
         }
     }
 
+    /** "여기로": this clue's spot becomes where my character stands. */
+    public static void clueHere(String clueId) {
+        if (selected != null && !selected.isEmpty() && clueId != null && !clueId.isEmpty()) {
+            ClientPlayNetworking.send(new ScenarioNet.RequestC2S("clue_here", selected + "\n" + clueId));
+        }
+    }
+
     public static void reviseLayout(String instruction) {
         if (!selected.isEmpty() && instruction != null && !instruction.isBlank()) {
             ClientPlayNetworking.send(new ScenarioNet.RequestC2S("layout_revise", selected + "\n" + instruction.trim()));

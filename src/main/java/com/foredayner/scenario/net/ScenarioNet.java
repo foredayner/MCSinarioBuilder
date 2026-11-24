@@ -281,6 +281,12 @@ public final class ScenarioNet {
             }
             case "map_clear" -> com.foredayner.scenario.layout.MapService.clear(player, p.arg());
             case "style" -> com.foredayner.scenario.town.StyleService.make(player.getServer(), player, p.arg(), guide -> { });
+            case "clue_here" -> {
+                int nl = p.arg().indexOf('\n');
+                if (nl > 0) {
+                    com.foredayner.scenario.town.BuildService.moveClue(player, p.arg().substring(0, nl), p.arg().substring(nl + 1));
+                }
+            }
             case "build_here" -> com.foredayner.scenario.town.BuildService.here(player, p.arg());
             case "build_start" -> com.foredayner.scenario.town.BuildService.start(player, p.arg());
             case "build_stop" -> com.foredayner.scenario.town.BuildService.stop(player, p.arg());
